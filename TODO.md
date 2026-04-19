@@ -2,6 +2,7 @@
 
 ## Active Sprint
 
+- [x] Fix workflow-engine inbox sync TypeScript alias normalization so Docker/package builds stop failing on `normalizeChatIdCandidates` calls
 - [x] Fix Voicetree context drift for workflow-engine docs (stale `messaging_integration.md` links and stale `.../messaging/noxivo-saas/...` paths)
 - [x] Sync Voicetree workflow-engine context docs with live code (webhook secret var, webhook service naming, action support statement, CRM specialized mapping note)
 - [x] AI-Powered Reply Suggestions

@@ -1,5 +1,35 @@
 # Session Handoff - 2026-04-18
 
+## Update - 2026-04-19 (Workflow-Engine Build Fix for inbox sync alias normalization)
+
+### Summary
+Fixed the workflow-engine TypeScript build failure that blocked the Dockerfile package-build sequence. The issue was in `MessagingInboxSyncService`, where a helper expecting an array (`buildMessagingAliasCandidates`) had been assigned directly to a single-value normalizer name and then called with individual strings.
+
+### Root Cause
+- `buildMessagingAliasCandidates()` accepts `Array<string | null | undefined>`.
+- `apps/workflow-engine/src/modules/inbox/messaging-sync.service.ts` assigned that helper directly to `normalizeChatIdCandidates`.
+- The later call sites in `syncConversationMessages()` pass one value at a time (`conversation.contactId`, `metadataChatId`, alias strings), so TypeScript rejected those calls during package builds.
+
+### Completed Changes
+- Replaced the direct alias with a single-value wrapper:
+  - `const normalizeChatIdCandidates = (value) => buildMessagingAliasCandidates([value])`
+- Kept the surrounding sync logic unchanged; this is a type-safe adapter, not a behavioral refactor.
+
+### Files Changed (2026-04-19)
+- `apps/workflow-engine/src/modules/inbox/messaging-sync.service.ts`
+- `TODO.md`
+- `SESSION_HANDOFF.md`
+
+### Verification
+- Reproduced the remote-base failure in an isolated worktree from `origin/main`.
+- `pnpm --filter @noxivo/contracts build && pnpm --filter @noxivo/database build && pnpm --filter @noxivo/messaging-client build && pnpm --filter @noxivo/workflow-engine build` ✅
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/messaging-inbox-sync.service.test.ts` ✅
+- `pnpm --filter @noxivo/workflow-engine lint` ✅
+- Note: an earlier broad `vitest run -- test/messaging-inbox-sync.service.test.ts` invocation also ran unrelated suites and surfaced a pre-existing failure in `test/inbox.service.test.ts`; the focused inbox-sync test above passed cleanly.
+
+### Next Step
+- Push/deploy this minimal workflow-engine build fix, then continue the live MessagingProvider inbox/session validation work already tracked below.
+
 ## Update - 2026-04-19 (Outbound Send Missing-Cluster Fallback Fix)
 
 ### Summary
