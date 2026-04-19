@@ -281,6 +281,7 @@ export class MessagingRouteService {
   private readonly conversationRepo: ConversationRepo;
   private readonly deliveryLifecycleService: DeliveryLifecycleService;
   private readonly inboxEventsPublisher: InboxEventsPublisher;
+  private readonly mediaStorageService: any; // Using any for simplicity here or import it
 
   constructor(input: {
     messagingSessionBindingRepo: MessagingSessionBindingRepo;
@@ -293,6 +294,7 @@ export class MessagingRouteService {
     conversationRepo?: ConversationRepo;
     deliveryLifecycleService: DeliveryLifecycleService;
     inboxEventsPublisher?: InboxEventsPublisher;
+    mediaStorageService?: any;
   }) {
     this.messagingSessionBindingRepo = input.messagingSessionBindingRepo;
     this.agencyRepo = input.agencyRepo;
@@ -304,6 +306,7 @@ export class MessagingRouteService {
     this.conversationRepo = input.conversationRepo ?? ConversationModel;
     this.deliveryLifecycleService = input.deliveryLifecycleService;
     this.inboxEventsPublisher = input.inboxEventsPublisher ?? new InboxEventsPublisher();
+    this.mediaStorageService = input.mediaStorageService;
   }
 
   private async findScopedMessage(input: {
@@ -365,17 +368,30 @@ export class MessagingRouteService {
 
       const fromMe = msg.fromMe === true;
       const contactId = fromMe ? msg.to : msg.from;
-      const attachments = msg.hasMedia && msg.media?.url && msg.media.mimetype
-        ? [
+      
+      let attachments: any[] = [];
+      if (msg.hasMedia && msg.media?.url && msg.media.mimetype) {
+        let finalUrl = msg.media.url;
+        if (this.mediaStorageService) {
+          finalUrl = await this.mediaStorageService.processMedia(
+            resolution.agencyId,
+            msg.media.url,
+            msg.media.mimetype,
+            msg.media.filename ?? undefined
+          );
+        }
+
+        attachments = [
           {
             kind: mapMimeTypeToAttachmentKind(msg.media.mimetype),
-            url: msg.media.url,
+            url: finalUrl,
             mimeType: msg.media.mimetype,
             fileName: msg.media.filename ?? null,
             caption: msg.body?.trim() ? msg.body : null
           }
-        ]
-        : [];
+        ];
+      }
+      
       const quotedMessageMetadata = buildQuotedMessageMetadata(msg.replyTo);
       const deliveryStatus = mapAckToDeliveryStatus(msg.ack);
       const existingMessage = await this.findScopedMessage({

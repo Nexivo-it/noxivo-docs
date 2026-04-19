@@ -193,7 +193,8 @@ export class MessagingInboxSyncService {
 
   constructor(
     private readonly inboxService: InboxService = new InboxService(),
-    private readonly inboxEventsPublisher: InboxEventsPublisher = new InboxEventsPublisher()
+    private readonly inboxEventsPublisher: InboxEventsPublisher = new InboxEventsPublisher(),
+    private readonly mediaStorageService?: any
   ) {}
 
   private async acquireConversationSyncLock(lockKey: string): Promise<void> {
@@ -602,17 +603,28 @@ export class MessagingInboxSyncService {
               uniqueMessagesInPage += 1;
             }
 
-            const attachments = message.hasMedia && message.media?.url && message.media.mimetype
-              ? [
-                  {
-                    kind: mapMimeTypeToAttachmentKind(message.media.mimetype),
-                    url: message.media.url,
-                    mimeType: message.media.mimetype,
-                    fileName: message.media.filename ?? null,
-                    caption: message.body?.trim() ? message.body.trim() : null
-                  }
-                ]
-              : [];
+            let attachments: any[] = [];
+            if (message.hasMedia && message.media?.url && message.media.mimetype) {
+              let finalUrl = message.media.url;
+              if (this.mediaStorageService) {
+                finalUrl = await this.mediaStorageService.processMedia(
+                  input.agencyId,
+                  message.media.url,
+                  message.media.mimetype,
+                  message.media.filename ?? undefined
+                );
+              }
+
+              attachments = [
+                {
+                  kind: mapMimeTypeToAttachmentKind(message.media.mimetype),
+                  url: finalUrl,
+                  mimeType: message.media.mimetype,
+                  fileName: message.media.filename ?? null,
+                  caption: message.body?.trim() ? message.body.trim() : null
+                }
+              ];
+            }
             const quotedMessage = buildQuotedMessageMetadata(message.replyTo);
 
             if (timestampSeconds) {

@@ -235,8 +235,15 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await aiSalesAgentRoutes(fastify);
   await registerSpaRoutes(fastify);
 
+  const { MediaStorageService } = await import('./modules/storage/media-storage.service.js');
+  const mediaStorageService = new MediaStorageService();
+
   const internalInboxMessageService = new InternalInboxMessageService();
-  const messagingInboxSyncService = new MessagingInboxSyncService();
+  const messagingInboxSyncService = new MessagingInboxSyncService(
+    undefined,
+    undefined,
+    mediaStorageService
+  );
   const deliveryLifecycleService = new DeliveryLifecycleService();
   const pluginRegistry = new PluginRegistry();
   const workflowActionService = new WorkflowActionService();
@@ -312,7 +319,8 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     },
     inboxService: new InboxService(),
     conversationIngestService,
-    deliveryLifecycleService
+    deliveryLifecycleService,
+    mediaStorageService
   });
 
   // ADR-001 Phase 4: Start the BullMQ worker for workflow execution
