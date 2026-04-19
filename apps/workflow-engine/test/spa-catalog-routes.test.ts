@@ -6,7 +6,7 @@ import {
   resetWorkflowEngineTestDb,
 } from './helpers/mongo-memory.js';
 import {
-  SpaMediaStorageConfigModel,
+  MediaStorageConfigModel,
   SpaServiceCategoryModel,
   SpaServiceModel,
 } from '@noxivo/database';
@@ -39,7 +39,7 @@ describe('spa catalog routes', () => {
       sortOrder: 0,
     });
 
-    await SpaMediaStorageConfigModel.create({
+    await MediaStorageConfigModel.create({
       agencyId: agency._id,
       provider: 'imagekit',
       isActive: true,

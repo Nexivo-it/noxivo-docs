@@ -16,6 +16,7 @@ import {
   WorkspaceHeader,
   WorkspacePanel,
 } from '../../../../components/dashboard-workspace-ui';
+import { WebhookInboxSourcesPanel } from './webhook-inbox-sources-panel';
 
 type Provider = 'airtable' | 'google_sheets' | 'shopify' | 'woocommerce';
 type ShopProvider = 'shopify' | 'woocommerce';
@@ -735,6 +736,8 @@ export function IntegrationsClient() {
             </div>
           )}
         </WorkspacePanel>
+
+        <WebhookInboxSourcesPanel />
       </div>
 
       {isModalOpen ? (

@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const SpaRoleSchema = z.enum(['member', 'admin']);
 export const SpaStatusSchema = z.enum(['active', 'suspended']);
-export const SpaMediaProviderSchema = z.enum(['s3', 'google_drive', 'imagekit', 'cloudinary']);
 
 export const SpaSignupInputSchema = z.object({
   agencyId: z.string().min(1),

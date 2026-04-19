@@ -2,7 +2,7 @@ import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 const { Schema, model, models } = mongoose;
 
-const SpaMediaStorageConfigSchema = new Schema({
+const MediaStorageConfigSchema = new Schema({
   agencyId: {
     type: Schema.Types.ObjectId,
     ref: 'Agency',
@@ -36,12 +36,12 @@ const SpaMediaStorageConfigSchema = new Schema({
     default: '',
   },
 }, {
-  collection: 'spa_media_storage_configs',
+  collection: 'media_storage_configs',
   timestamps: true,
 });
 
-export type SpaMediaStorageConfig = InferSchemaType<typeof SpaMediaStorageConfigSchema>;
+export type MediaStorageConfig = InferSchemaType<typeof MediaStorageConfigSchema>;
 
-export const SpaMediaStorageConfigModel =
-  (models.SpaMediaStorageConfig as Model<SpaMediaStorageConfig> | undefined) ||
-  model<SpaMediaStorageConfig>('SpaMediaStorageConfig', SpaMediaStorageConfigSchema);
+export const MediaStorageConfigModel =
+  (models.MediaStorageConfig as Model<MediaStorageConfig> | undefined) ||
+  model<MediaStorageConfig>('MediaStorageConfig', MediaStorageConfigSchema);

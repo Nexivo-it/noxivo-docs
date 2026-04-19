@@ -6,7 +6,7 @@ import {
   SpaBookingCreateInputSchema,
   SpaGalleryImageInputSchema,
   SpaLoginInputSchema,
-  SpaMediaStorageConfigSchema,
+  MediaStorageConfigSchema,
   SpaSignupInputSchema,
   SpaSiteSettingsInputSchema,
   SpaWebhookInputSchema,
@@ -493,44 +493,6 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
       id: String(service._id),
       name: service.name,
     });
-  });
-
-  fastify.put('/api/v1/spa/admin/media-storage', async (request, reply) => {
-    await dbConnect();
-    const admin = await requireSpaAdmin(request, reply);
-    if (!admin) {
-      return;
-    }
-
-    const input = SpaMediaStorageConfigSchema.parse(request.body);
-    const config = await SpaMediaStorageConfigModel.findOneAndUpdate(
-      { agencyId: admin.agencyId },
-      {
-        $set: {
-          agencyId: admin.agencyId,
-          provider: input.provider,
-          isActive: input.isActive,
-          publicBaseUrl: input.publicBaseUrl,
-          publicConfig: input.publicConfig,
-          secretConfig: input.secretConfig,
-          pathPrefix: input.pathPrefix,
-        },
-      },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
-    ).lean();
-
-    return reply.status(200).send(redactMediaConfig(config));
-  });
-
-  fastify.get('/api/v1/spa/admin/media-storage', async (request, reply) => {
-    await dbConnect();
-    const admin = await requireSpaAdmin(request, reply);
-    if (!admin) {
-      return;
-    }
-
-    const config = await SpaMediaStorageConfigModel.findOne({ agencyId: admin.agencyId }).lean();
-    return reply.status(200).send(config ? redactMediaConfig(config) : null);
   });
 
   fastify.put('/api/v1/spa/admin/site-settings', async (request, reply) => {

@@ -11,3 +11,4 @@ export * from './internal-inbox.js';
 export * from './messaging-inbox.js';
 export * from './workflow-events.js';
 export * from './spa.js';
+export * from './storage.js';
