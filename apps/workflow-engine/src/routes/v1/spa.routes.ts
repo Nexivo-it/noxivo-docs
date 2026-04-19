@@ -18,7 +18,7 @@ import {
   SpaBookingModel,
   SpaCustomerProfileModel,
   SpaGalleryImageModel,
-  SpaMediaStorageConfigModel,
+  MediaStorageConfigModel,
   SpaMemberModel,
   SpaSiteSettingsModel,
   SpaServiceCategoryModel,
@@ -189,11 +189,11 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     const [services, categories, mediaConfig] = await Promise.all([
       SpaServiceModel.find({ agencyId: agency._id, isActive: true }).sort({ sortOrder: 1, createdAt: 1 }).lean(),
       SpaServiceCategoryModel.find({ agencyId: agency._id, isActive: true }).lean(),
-      SpaMediaStorageConfigModel.findOne({ agencyId: agency._id, isActive: true }).sort({ updatedAt: -1 }).lean(),
+      MediaStorageConfigModel.findOne({ agencyId: agency._id, isActive: true }).sort({ updatedAt: -1 }).lean(),
     ]);
 
-    const categoryNames = new Map(
-      categories.map((category: { _id: unknown; name: string }) => [String(category._id), category.name]),
+    const categoryNames = new Map<string, string>(
+      categories.map((category: { _id: unknown; name: string }) => [String(category._id), String(category.name)]),
     );
     const activeMediaConfig = mediaConfig
       ? {
@@ -434,10 +434,10 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     const [services, categories, mediaConfig] = await Promise.all([
       SpaServiceModel.find({ agencyId: admin.agencyId }).sort({ sortOrder: 1, createdAt: 1 }).lean(),
       SpaServiceCategoryModel.find({ agencyId: admin.agencyId }).lean(),
-      SpaMediaStorageConfigModel.findOne({ agencyId: admin.agencyId, isActive: true }).sort({ updatedAt: -1 }).lean(),
+      MediaStorageConfigModel.findOne({ agencyId: admin.agencyId, isActive: true }).sort({ updatedAt: -1 }).lean(),
     ]);
 
-    const categoryNames = new Map(categories.map((category) => [String(category._id), category.name]));
+    const categoryNames = new Map<string, string>(categories.map((category: any) => [String(category._id), String(category.name)]));
     const activeMediaConfig = mediaConfig
       ? {
           provider: mediaConfig.provider,
@@ -447,7 +447,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
       : null;
 
     return reply.status(200).send(
-      services.map((service) => ({
+      services.map((service: any) => ({
         ...serializeSpaService(service, categoryNames.get(String(service.categoryId)) ?? null, activeMediaConfig),
         categoryId: String(service.categoryId),
         slug: service.slug,

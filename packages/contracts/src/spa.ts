@@ -54,15 +54,6 @@ export const SpaAdminServiceInputSchema = z.object({
   kind: z.enum(['service', 'product']).default('service'),
 }).strict();
 
-export const SpaMediaStorageConfigSchema = z.object({
-  provider: SpaMediaProviderSchema,
-  isActive: z.boolean().default(true),
-  publicBaseUrl: z.string().url(),
-  publicConfig: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
-  secretConfig: z.record(z.string()).default({}),
-  pathPrefix: z.string().max(200).default(''),
-}).strict();
-
 export const SpaSiteSettingsInputSchema = z.object({
   salonName: z.string().min(2).max(160).transform((value) => value.trim()),
   tagline: z.string().max(200).default(''),
