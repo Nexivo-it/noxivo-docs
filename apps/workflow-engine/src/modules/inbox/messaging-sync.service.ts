@@ -218,6 +218,14 @@ export class MessagingInboxSyncService {
       .lean();
 
     if (!binding) {
+      const defaultSession = (process.env.MessagingProvider_DEFAULT_SESSION ?? '').trim();
+      if (defaultSession.length > 0) {
+        return {
+          sessionName: defaultSession,
+          baseUrl: normalizeMessagingBaseUrl(getConfiguredMessagingBaseUrl() || ''),
+          fallbackBaseUrl: getConfiguredMessagingBaseUrl()
+        };
+      }
       return null;
     }
 

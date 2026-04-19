@@ -577,8 +577,8 @@ export class MessagingRouteService {
     }
 
     return {
-      agencyId,
-      tenantId,
+      agencyId: (agency as any)._id.toString(),
+      tenantId: (tenant as any)._id.toString(),
       clusterId: metadata?.clusterId ?? 'unbound',
       sessionBindingId: metadata?.sessionBindingId ?? payload.session,
     };

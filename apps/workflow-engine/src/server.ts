@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -63,6 +64,7 @@ import { registerDashboardRoutes } from './routes/v1/dashboard-registry.routes.j
 import { registerApiKeysRoutes } from './routes/v1/api-keys.routes.js';
 import { registerMessagingFallbackRoutes } from './routes/v1/messaging-fallback.routes.js';
 import { aiSalesAgentRoutes } from './routes/v1/ai-sales-agent.routes.js';
+import { registerSpaRoutes } from './routes/v1/spa.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -231,6 +233,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await registerApiKeysRoutes(fastify);
   await registerMessagingFallbackRoutes(fastify);
   await aiSalesAgentRoutes(fastify);
+  await registerSpaRoutes(fastify);
 
   const internalInboxMessageService = new InternalInboxMessageService();
   const messagingInboxSyncService = new MessagingInboxSyncService();
@@ -285,13 +288,21 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       }
     },
     agencyRepo: {
-      async findById() {
-        return null;
+      async findById(id: string) {
+        const { AgencyModel } = await import('@noxivo/database');
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          return await AgencyModel.findById(id).lean().exec();
+        }
+        return await AgencyModel.findOne({ slug: id }).lean().exec();
       }
     },
     tenantRepo: {
-      async findById() {
-        return null;
+      async findById(id: string) {
+        const { TenantModel } = await import('@noxivo/database');
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          return await TenantModel.findById(id).lean().exec();
+        }
+        return await TenantModel.findOne({ slug: id }).lean().exec();
       }
     },
     entitlementService: {
