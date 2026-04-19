@@ -25,12 +25,18 @@ export function ChatInputActionBar({
   onReturnToAi
 }: ChatInputActionBarProps) {
   const isReturnToAi = conversation?.status === 'handoff' || Boolean(conversation?.assignedTo);
-  const sendDisabled = !conversation || isSending || draft.trim().length === 0;
+  const isArchivedConversation = conversation?.status === 'closed' || conversation?.status === 'deleted';
+  const isMessagingConversation = conversation?.channel === 'whatsapp' || conversation?.channel === undefined;
+  const sendDisabled = !conversation
+    || isSending
+    || draft.trim().length === 0
+    || isArchivedConversation
+    || !isMessagingConversation;
 
   return (
     <footer className="border-t border-border-ghost bg-surface-section/70 px-4 py-3 md:px-6">
       <div className="mb-3 flex items-center gap-2">
-        {conversation ? (
+        {conversation && isMessagingConversation && !isArchivedConversation ? (
           isReturnToAi ? (
             <button
               type="button"
@@ -68,8 +74,14 @@ export function ChatInputActionBar({
               }
             }
           }}
-          placeholder={conversation ? 'Type a message...' : 'Select a conversation to send a message'}
-          disabled={!conversation}
+          placeholder={!conversation
+            ? 'Select a conversation to send a message'
+            : isArchivedConversation
+              ? 'Archived conversation is read-only'
+              : !isMessagingConversation
+                ? 'Direct reply is only available for WhatsApp conversations'
+                : 'Type a message...'}
+          disabled={!conversation || isArchivedConversation || !isMessagingConversation}
           className="min-h-[44px] w-full resize-none rounded-2xl border border-border-ghost bg-surface-base px-3 py-2.5 text-[13px] text-on-surface placeholder:text-on-surface-subtle focus:outline-none focus:border-primary/40 disabled:opacity-60"
         />
         <button

@@ -35,6 +35,11 @@ type TeamInboxStreamConversation = {
   unreadCount: number;
   status: string;
   assignedTo: string | null;
+  channel: 'whatsapp' | 'webhook' | 'internal' | 'unknown';
+  sourceName: string | null;
+  sourceLabel: string | null;
+  isArchived: boolean;
+  lastMessageSource: string | null;
   lastMessage: {
     content: string;
     createdAt: string;
@@ -62,6 +67,45 @@ function extractAvatarUrlFromMetadata(metadata: unknown): string | null {
   }
 
   return null;
+}
+
+function inferConversationChannel(
+  latestMessageSource: string | null,
+  metadata: unknown,
+  contactId: string
+): 'whatsapp' | 'webhook' | 'internal' | 'unknown' {
+  const source = (latestMessageSource ?? '').trim().toLowerCase();
+
+  if (source.includes('webhook')) {
+    return 'webhook';
+  }
+
+  if (source.includes('dashboard.internal-inbox') || source.includes('dashboard.engine-client')) {
+    return 'whatsapp';
+  }
+
+  if (source.length > 0) {
+    return 'whatsapp';
+  }
+
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    const record = metadata as Record<string, unknown>;
+    if (typeof record.messagingChatId === 'string' && record.messagingChatId.trim().length > 0) {
+      return 'whatsapp';
+    }
+    if (typeof record.webhookInboxSourceId === 'string' && record.webhookInboxSourceId.trim().length > 0) {
+      return 'webhook';
+    }
+  }
+
+  const normalizedContactId = contactId.trim().toLowerCase();
+  const localPart = normalizedContactId.split('@')[0] ?? '';
+  const digits = localPart.replace(/\D/g, '');
+  if (digits.length >= 7) {
+    return 'whatsapp';
+  }
+
+  return 'unknown';
 }
 
 type TeamInboxStreamEnvelope = {
@@ -132,6 +176,24 @@ async function buildEnvelope(
     unreadCount: conversation.unreadCount,
     status: conversation.status,
     assignedTo: conversation.assignedTo ? conversation.assignedTo.toString() : null,
+    channel: inferConversationChannel(
+      latestMessage && latestMessage.metadata && typeof latestMessage.metadata.source === 'string'
+        ? latestMessage.metadata.source
+        : null,
+      conversation.metadata,
+      conversation.contactId
+    ),
+    sourceName: null,
+    sourceLabel: null,
+    isArchived: conversation.status === 'closed' || conversation.status === 'deleted' || (
+      Boolean(conversation.metadata)
+      && typeof conversation.metadata === 'object'
+      && !Array.isArray(conversation.metadata)
+      && (conversation.metadata as Record<string, unknown>).isArchived === true
+    ),
+    lastMessageSource: latestMessage && latestMessage.metadata && typeof latestMessage.metadata.source === 'string'
+      ? latestMessage.metadata.source
+      : null,
     lastMessage:
       conversation.lastMessageContent && conversation.lastMessageAt
         ? {

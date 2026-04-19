@@ -4,8 +4,11 @@ import * as React from 'react';
 import { act } from 'react';
 const { createElement } = React;
 import { createRoot } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InboxPage from '../app/dashboard/inbox/page.js';
+import { ChatList } from '../components/team-inbox/chat-list.js';
+import { ChatWindow } from '../components/team-inbox/chat-window.js';
 
 vi.mock('../components/team-inbox/chat-input-action-bar', () => ({
   ChatInputActionBar: () => null
@@ -39,6 +42,117 @@ function createMessages(start: number, end: number) {
     };
   });
 }
+
+describe('inbox source-aware UI rendering', () => {
+  it('renders source filter controls and source badges in the chat list', () => {
+    vi.stubGlobal('React', React);
+
+    const markup = renderToStaticMarkup(createElement(ChatList, {
+      chats: [
+        {
+          _id: 'webhook-conv',
+          contactId: 'webhook-contact-123',
+          contactName: 'Website Visitor',
+          contactPhone: null,
+          avatarUrl: null,
+          leadSaved: false,
+          unreadCount: 2,
+          status: 'open',
+          assignedTo: null,
+          channel: 'webhook',
+          sourceName: 'Website Chat',
+          sourceLabel: 'Webhook',
+          isArchived: false,
+          lastMessage: {
+            content: 'Need help from the website',
+            createdAt: '2026-04-19T12:00:00.000Z'
+          }
+        },
+        {
+          _id: 'whatsapp-conv',
+          contactId: '15550001111@c.us',
+          contactName: 'Alice Smith',
+          contactPhone: '+1 555-000-1111',
+          avatarUrl: null,
+          leadSaved: false,
+          unreadCount: 0,
+          status: 'open',
+          assignedTo: null,
+          channel: 'whatsapp',
+          sourceName: 'WhatsApp',
+          sourceLabel: 'WhatsApp',
+          isArchived: false,
+          lastMessage: {
+            content: 'Hi there',
+            createdAt: '2026-04-19T11:00:00.000Z'
+          }
+        }
+      ],
+      selectedConversationId: 'webhook-conv',
+      liveConversationIds: ['webhook-conv'],
+      searchQuery: '',
+      sourceFilter: 'all',
+      statusFilter: 'active',
+      isLoading: false,
+      onSearchQueryChange: () => undefined,
+      onSourceFilterChange: () => undefined,
+      onStatusFilterChange: () => undefined,
+      onSelectConversation: () => undefined,
+      onRefresh: () => undefined
+    }));
+
+    expect(markup).toContain('WhatsApp');
+    expect(markup).toContain('Webhook');
+    expect(markup).toContain('Archived');
+    expect(markup).toContain('Website Chat');
+    expect(markup).toContain('Alice Smith');
+  });
+
+  it('renders webhook source name and contact context in the chat window header', () => {
+    vi.stubGlobal('React', React);
+
+    const markup = renderToStaticMarkup(createElement(ChatWindow, {
+      conversation: {
+        _id: 'webhook-conv',
+        contactId: 'webhook-contact-123',
+        contactName: 'Website Visitor',
+        contactPhone: null,
+        avatarUrl: null,
+        leadSaved: false,
+        unreadCount: 1,
+        status: 'open',
+        assignedTo: null,
+        channel: 'webhook',
+        sourceName: 'Website Chat',
+        sourceLabel: 'Webhook',
+        isArchived: false,
+        lastMessage: {
+          content: 'Need help from the website',
+          createdAt: '2026-04-19T12:00:00.000Z'
+        }
+      },
+      messages: [
+        {
+          _id: 'msg-1',
+          role: 'user',
+          content: 'Need help from the website',
+          createdAt: '2026-04-19T12:00:00.000Z'
+        }
+      ],
+      isLoading: false,
+      isLoadingConversations: false,
+      hasMoreMessages: false,
+      isLoadingOlderMessages: false,
+      isRunningMessageAction: false,
+      isRunningConversationAction: false,
+      draft: ''
+    }));
+
+    expect(markup).toContain('Webhook');
+    expect(markup).toContain('Website Chat');
+    expect(markup).toContain('Contact ID: webhook-contact-123');
+  });
+});
 
 describe('inbox realtime pagination cursor handling', () => {
   beforeEach(() => {

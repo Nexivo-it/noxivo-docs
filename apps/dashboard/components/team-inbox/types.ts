@@ -1,3 +1,5 @@
+export type InboxConversationChannel = 'whatsapp' | 'webhook' | 'internal' | 'unknown';
+
 export interface ChatSummary {
   _id: string;
   contactId: string;
@@ -8,6 +10,11 @@ export interface ChatSummary {
   unreadCount: number;
   status: string;
   assignedTo: string | null;
+  channel?: InboxConversationChannel;
+  sourceName?: string | null;
+  sourceLabel?: string | null;
+  isArchived?: boolean;
+  lastMessageSource?: string | null;
   lastMessage: {
     content: string;
     createdAt: string;
@@ -38,6 +45,7 @@ export interface TeamInboxActionResponse {
   conversationId?: string;
   messageId?: string;
   status?: string;
+  isArchived?: boolean;
   updatedAt?: string;
   error?: {
     code?: string;
@@ -67,6 +75,7 @@ export interface PaginatedMessagesResponse {
   messages: ChatMessage[];
   hasMore: boolean;
   nextCursor: string | null;
+  conversation?: ChatSummary | null;
 }
 
 export interface InboxRealtimeEvent {

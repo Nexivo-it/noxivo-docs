@@ -1,5 +1,87 @@
 # Session Handoff - 2026-04-18
 
+## Update - 2026-04-19 (Task 5 complete: source-aware inbox + archived behavior)
+
+### Summary
+Completed Task 5 for webhook inbox sources: the dashboard inbox now supports source-aware filtering/rendering (Webhook vs WhatsApp) and consistent archived conversation behavior across list API, UI rendering, and conversation actions.
+
+### Completed Changes
+- Added source-aware filtering on `GET /api/team-inbox` with `source` query support (`whatsapp`, `webhook`, `internal`, `unknown`) and status behavior (`active`, `archived`, `all`, plus explicit statuses).
+- Added archive semantics to inbox list responses via `isArchived` (derived from status or `metadata.isArchived`) and excluded archived conversations by default.
+- Added source metadata to inbox summaries (`channel`, `sourceName`, `sourceLabel`, `lastMessageSource`) and resolved webhook source names from `WebhookInboxSourceModel`.
+- Updated conversation action route to support local archive/unarchive for non-WhatsApp conversations (no messaging session dependency) while preserving WhatsApp proxy behavior and persisting local archive state (`metadata.isArchived`).
+- Updated inbox UI list and header rendering:
+  - Source + status filters in sidebar
+  - Source badge rendering on conversation rows
+  - Webhook source/context rendering in chat header
+  - Archived/read-only and non-WhatsApp send constraints in the input/action bar
+- Extended SSE envelope shape to include source/channel/archive fields for consistent realtime updates.
+
+### Files Changed (2026-04-19)
+- `apps/dashboard/app/api/team-inbox/route.ts`
+- `apps/dashboard/app/api/team-inbox/events/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/actions/route.ts`
+- `apps/dashboard/app/dashboard/inbox/page.tsx`
+- `apps/dashboard/components/team-inbox/chat-list.tsx`
+- `apps/dashboard/components/team-inbox/chat-window.tsx`
+- `apps/dashboard/components/team-inbox/chat-input-action-bar.tsx`
+- `apps/dashboard/components/team-inbox/types.ts`
+- `apps/dashboard/test/team-inbox-routes.test.ts`
+- `apps/dashboard/test/inbox-pagination-realtime.test.tsx`
+- `TODO.md`
+- `SESSION_HANDOFF.md`
+
+### Verification
+- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
+- `pnpm --filter @noxivo/dashboard build` ✅
+- `lsp_diagnostics` clean for updated inbox API/UI/test files ✅
+
+### Follow-up
+- If desired, expose the same source/status filter controls in any future mobile/compact inbox variant for parity.
+
+## Update - 2026-04-19 (Dashboard webhook inbox source settings)
+
+### Summary
+Implemented Task 4 for webhook inbox sources on the dashboard side only. Tenant settings now expose dedicated API routes to create/list/update/disable webhook inbox sources, inbound secrets are hashed before storage, and the integrations settings page now includes a webhook source management panel.
+
+### Completed Changes
+- Added a dedicated `WebhookInboxSourceModel` to the database package and exported it through `@noxivo/database`.
+- Added dashboard-only webhook inbox source settings helpers for payload validation, secret hashing, and safe DTO serialization (no inbound secret hash leakage in responses).
+- Added `GET /api/settings/webhook-inbox-sources` and `POST /api/settings/webhook-inbox-sources` in the dashboard for tenant-scoped list/create behavior.
+- Added `PATCH /api/settings/webhook-inbox-sources/[sourceId]` in the dashboard for tenant-scoped update/disable/re-enable and secret rotation behavior.
+- Added route regression coverage for authz, create/list DTO behavior, update + secret rotation, and disable state transitions.
+- Added a new `Webhook Inbox Sources` management panel to `dashboard/settings/integrations` with create/edit modal flows and enable/disable controls.
+
+### Files Changed (2026-04-19)
+- `apps/dashboard/app/api/settings/webhook-inbox-sources/route.ts` (new)
+- `apps/dashboard/app/api/settings/webhook-inbox-sources/[sourceId]/route.ts` (new)
+- `apps/dashboard/app/dashboard/settings/integrations/webhook-inbox-sources-panel.tsx` (new)
+- `apps/dashboard/app/dashboard/settings/integrations/integrations-client.tsx`
+- `apps/dashboard/lib/settings/webhook-inbox-sources.ts` (new)
+- `apps/dashboard/test/settings-webhook-inbox-sources-route.test.ts` (new)
+- `packages/database/src/models/webhook-inbox-source.ts` (new)
+- `packages/database/src/models/index.ts`
+- `TODO.md`
+- `SESSION_HANDOFF.md`
+
+### Verification
+- `pnpm --filter @noxivo/dashboard exec vitest run test/settings-webhook-inbox-sources-route.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts test/settings-shop-route.test.ts` ✅
+- `pnpm --filter @noxivo/database build` ✅
+- `pnpm --filter @noxivo/dashboard build` ✅
+- `lsp_diagnostics` clean for:
+  - `apps/dashboard/app/api/settings/webhook-inbox-sources/*`
+  - `apps/dashboard/app/dashboard/settings/integrations/*`
+  - `apps/dashboard/lib/settings/webhook-inbox-sources.ts`
+  - `apps/dashboard/test/settings-webhook-inbox-sources-route.test.ts`
+  - `packages/database/src/models/webhook-inbox-source.ts`
+  - `packages/database/src/models/index.ts`
+
+### Constraints / Follow-up
+- This session intentionally did **not** implement Task 5 inbox filter/render work.
+- This session intentionally did **not** modify workflow-engine routes.
+- Next logical step is Task 5: make inbox list/thread rendering and filters source-aware for webhook vs WhatsApp plus archived conversation behavior.
+
 ## Update - 2026-04-19 (Spa Backend Source-of-Truth API Foundation)
 
 ### Summary

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import dbConnect from '../../../lib/mongodb';
-import { ContactProfileModel, ConversationModel, MessageModel } from '@noxivo/database';
+import { ContactProfileModel, ConversationModel, MessageModel, WebhookInboxSourceModel } from '@noxivo/database';
 import { getCurrentSession } from '../../../lib/auth/session';
 import { syncInboxState } from '../../../lib/team-inbox-sync';
 import { engineClient } from '../../../lib/api/engine-client';
@@ -46,6 +46,11 @@ type InboxSummary = {
   unreadCount: number;
   status: string;
   assignedTo: string | null;
+  channel: 'whatsapp' | 'webhook' | 'internal' | 'unknown';
+  sourceName: string | null;
+  sourceLabel: string | null;
+  isArchived: boolean;
+  lastMessageSource: string | null;
   lastMessage: {
     content: string;
     createdAt: string;
@@ -53,6 +58,82 @@ type InboxSummary = {
   contactProfile: ContactProfileSummary;
   latestProviderMessageId?: string | null;
 };
+
+type InboxSourceFilter = 'all' | 'whatsapp' | 'webhook' | 'internal' | 'unknown';
+
+function normalizeStatusFilter(rawStatus: string | null): string | null {
+  if (!rawStatus) {
+    return null;
+  }
+
+  const normalized = rawStatus.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeSourceFilter(rawSource: string | null): InboxSourceFilter {
+  if (!rawSource) {
+    return 'all';
+  }
+
+  const normalized = rawSource.trim().toLowerCase();
+  if (normalized === 'whatsapp' || normalized === 'webhook' || normalized === 'internal' || normalized === 'unknown') {
+    return normalized;
+  }
+
+  return 'all';
+}
+
+function inferConversationChannel(
+  latestMessageSource: string | null,
+  metadata: unknown,
+  contactId: string
+): 'whatsapp' | 'webhook' | 'internal' | 'unknown' {
+  const source = (latestMessageSource ?? '').trim().toLowerCase();
+
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    const record = metadata as Record<string, unknown>;
+    if (typeof record.webhookInboxSourceId === 'string' && record.webhookInboxSourceId.trim().length > 0) {
+      return 'webhook';
+    }
+    if (typeof record.messagingChatId === 'string' && record.messagingChatId.trim().length > 0) {
+      return 'whatsapp';
+    }
+  }
+
+  if (source.includes('webhook')) {
+    return 'webhook';
+  }
+
+  if (source.includes('dashboard.internal-inbox') || source.includes('dashboard.engine-client')) {
+    return 'whatsapp';
+  }
+
+  if (source.length > 0) {
+    return 'whatsapp';
+  }
+
+  const normalizedContactId = contactId.trim().toLowerCase();
+  const [localPart] = normalizedContactId.split('@');
+  const digits = normalizedDigits(localPart);
+  if (digits.length >= 7) {
+    return 'whatsapp';
+  }
+
+  return 'unknown';
+}
+
+function isArchivedConversation(status: string, metadata: unknown): boolean {
+  if (status === 'closed' || status === 'deleted') {
+    return true;
+  }
+
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false;
+  }
+
+  const value = (metadata as Record<string, unknown>).isArchived;
+  return value === true || value === 'true';
+}
 
 function extractAvatarUrlFromMetadata(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
@@ -259,6 +340,11 @@ function collapseDuplicateSummaries(summaries: InboxSummary[]): InboxSummary[] {
       avatarUrl: primary.avatarUrl ?? secondary.avatarUrl ?? null,
       leadSaved: primary.leadSaved || secondary.leadSaved,
       unreadCount: Math.max(primary.unreadCount, secondary.unreadCount),
+      channel: primary.channel ?? secondary.channel,
+      sourceName: primary.sourceName ?? secondary.sourceName ?? null,
+      sourceLabel: primary.sourceLabel ?? secondary.sourceLabel ?? null,
+      isArchived: primary.isArchived || secondary.isArchived,
+      lastMessageSource: primary.lastMessageSource ?? secondary.lastMessageSource ?? null,
       lastMessage: latestMessage,
       contactProfile: mergeContactProfiles(primary.contactProfile, secondary.contactProfile),
       latestProviderMessageId: primary.latestProviderMessageId ?? secondary.latestProviderMessageId ?? null
@@ -293,9 +379,10 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query')?.trim();
-    const status = searchParams.get('status')?.trim();
+    const statusFilter = normalizeStatusFilter(searchParams.get('status'));
+    const sourceFilter = normalizeSourceFilter(searchParams.get('source'));
 
-    const shouldBackfillHistory = !query && !status;
+    const shouldBackfillHistory = !query && !statusFilter && sourceFilter === 'all';
 
     await syncInboxState({
       agencyId: session.actor.agencyId,
@@ -312,8 +399,13 @@ export async function GET(request: Request) {
       agencyId: session.actor.agencyId
     };
 
-    if (status) {
-      filterBase.status = status;
+    if (
+      statusFilter
+      && statusFilter !== 'all'
+      && statusFilter !== 'active'
+      && statusFilter !== 'archived'
+    ) {
+      filterBase.status = statusFilter;
     }
 
     if (query) {
@@ -487,7 +579,7 @@ export async function GET(request: Request) {
     let engineChats = await fetchEngineChats(tenantId);
     let conversations = await fetchConversations(tenantId);
 
-    if (!query && !status && conversations.length === 0 && engineChats.length === 0) {
+    if (shouldBackfillHistory && conversations.length === 0 && engineChats.length === 0) {
       for (const candidateTenantId of tenantCandidates.slice(1)) {
         await syncInboxState({
           agencyId: session.actor.agencyId,
@@ -510,7 +602,7 @@ export async function GET(request: Request) {
       }
     }
 
-    if (!query && !status && conversations.length === 0 && engineChats.length === 0) {
+    if (shouldBackfillHistory && conversations.length === 0 && engineChats.length === 0) {
       for (const candidateTenantId of tenantCandidates) {
         const messagingChats = await fetchMessagingChatsWithSync(candidateTenantId);
         if (messagingChats.length === 0) {
@@ -524,7 +616,7 @@ export async function GET(request: Request) {
       }
     }
 
-    if (!query && !status) {
+    if (shouldBackfillHistory) {
       const messagingChats = await fetchMessagingChatsWithSync(selectedTenantId);
       if (messagingChats.length > 0) {
         engineChats = mapMessagingChatsToEngineChats(messagingChats);
@@ -534,7 +626,7 @@ export async function GET(request: Request) {
 
     const engineConversationOrder = engineChats.map((chat) => chat.id);
 
-    if (!query && !status && engineConversationOrder.length > 0) {
+    if (shouldBackfillHistory && engineConversationOrder.length > 0) {
       const orderByConversationId = new Map<string, number>();
       engineChats.forEach((chat, index) => {
         orderByConversationId.set(chat.id, index);
@@ -637,13 +729,42 @@ export async function GET(request: Request) {
             $group: {
               _id: '$conversationId',
               providerMessageId: { $first: '$providerMessageId' },
-              messagingMessageId: { $first: '$messagingMessageId' }
+              messagingMessageId: { $first: '$messagingMessageId' },
+              lastMessageSource: { $first: '$metadata.source' }
+            }
+          }
+        ])
+      : [];
+
+    const latestSourcedMessageByConversationId = conversationIds.length > 0
+      ? await MessageModel.aggregate([
+          {
+            $match: {
+              conversationId: { $in: conversationIds },
+              'metadata.source': { $type: 'string', $nin: ['', null] }
+            }
+          },
+          {
+            $sort: {
+              timestamp: -1,
+              _id: -1
+            }
+          },
+          {
+            $group: {
+              _id: '$conversationId',
+              sourcedTimestamp: { $first: '$timestamp' },
+              sourcedContent: { $first: '$content' },
+              sourcedSource: { $first: '$metadata.source' }
             }
           }
         ])
       : [];
 
     const latestProviderMessageIdByConversationId = new Map<string, string>();
+    const latestMessageSourceByConversationId = new Map<string, string | null>();
+    const latestSourcedMessageTimestampByConversationId = new Map<string, string>();
+    const latestSourcedMessageContentByConversationId = new Map<string, string>();
     for (const row of latestProviderMessageByConversationId) {
       const conversationId = row?._id?.toString?.();
       if (!conversationId) {
@@ -661,6 +782,60 @@ export async function GET(request: Request) {
         latestProviderMessageIdByConversationId.set(conversationId, providerMessageId);
       } else if (messagingMessageId.length > 0) {
         latestProviderMessageIdByConversationId.set(conversationId, messagingMessageId);
+      }
+
+      const lastMessageSource = typeof row.lastMessageSource === 'string'
+        ? row.lastMessageSource.trim()
+        : null;
+      latestMessageSourceByConversationId.set(conversationId, lastMessageSource && lastMessageSource.length > 0 ? lastMessageSource : null);
+    }
+
+    for (const row of latestSourcedMessageByConversationId) {
+      const conversationId = row?._id?.toString?.();
+      if (!conversationId) {
+        continue;
+      }
+
+      if (row.sourcedTimestamp instanceof Date && !Number.isNaN(row.sourcedTimestamp.getTime())) {
+        latestSourcedMessageTimestampByConversationId.set(conversationId, row.sourcedTimestamp.toISOString());
+      }
+
+      if (typeof row.sourcedContent === 'string' && row.sourcedContent.length > 0) {
+        latestSourcedMessageContentByConversationId.set(conversationId, row.sourcedContent);
+      }
+
+      if (typeof row.sourcedSource === 'string' && row.sourcedSource.trim().length > 0) {
+        latestMessageSourceByConversationId.set(conversationId, row.sourcedSource.trim());
+      }
+    }
+
+    const webhookSourceIds = Array.from(new Set(
+      conversations
+        .map((conversation) => {
+          if (!conversation.metadata || typeof conversation.metadata !== 'object' || Array.isArray(conversation.metadata)) {
+            return null;
+          }
+
+          const sourceId = (conversation.metadata as Record<string, unknown>).webhookInboxSourceId;
+          return typeof sourceId === 'string' && mongoose.Types.ObjectId.isValid(sourceId)
+            ? sourceId
+            : null;
+        })
+        .filter((value): value is string => Boolean(value))
+    ));
+
+    const webhookSourceNameById = new Map<string, string>();
+    if (webhookSourceIds.length > 0) {
+      const webhookSources = await WebhookInboxSourceModel.find({
+        agencyId: session.actor.agencyId,
+        tenantId: selectedTenantId,
+        _id: { $in: webhookSourceIds.map((id) => new mongoose.Types.ObjectId(id)) }
+      })
+        .select({ _id: 1, name: 1 })
+        .lean();
+
+      for (const source of webhookSources) {
+        webhookSourceNameById.set(source._id.toString(), source.name);
       }
     }
 
@@ -708,16 +883,60 @@ export async function GET(request: Request) {
         typeof tag.label === 'string' && tag.label.trim().toLowerCase() === 'lead'
       ),
       unreadCount: conversation.unreadCount,
+      channel: inferConversationChannel(
+        latestMessageSourceByConversationId.get(conversation._id.toString()) ?? null,
+        conversation.metadata,
+        conversation.contactId
+      ),
+      sourceName: (() => {
+        if (!conversation.metadata || typeof conversation.metadata !== 'object' || Array.isArray(conversation.metadata)) {
+          return null;
+        }
+        const sourceId = (conversation.metadata as Record<string, unknown>).webhookInboxSourceId;
+        if (typeof sourceId !== 'string') {
+          return null;
+        }
+        return webhookSourceNameById.get(sourceId) ?? null;
+      })(),
+      sourceLabel: (() => {
+        if (!conversation.metadata || typeof conversation.metadata !== 'object' || Array.isArray(conversation.metadata)) {
+          return null;
+        }
+        const sourceId = (conversation.metadata as Record<string, unknown>).webhookInboxSourceId;
+        if (typeof sourceId !== 'string') {
+          return null;
+        }
+        return webhookSourceNameById.get(sourceId) ?? null;
+      })(),
+      isArchived: isArchivedConversation(conversation.status, conversation.metadata),
+      lastMessageSource: latestMessageSourceByConversationId.get(conversation._id.toString()) ?? null,
       status: conversation.status,
       assignedTo: conversation.assignedTo ? conversation.assignedTo.toString() : null,
-      lastMessage: conversation.lastMessageContent && conversation.lastMessageAt ? {
-        content: conversation.lastMessageContent,
-        createdAt: conversation.lastMessageAt.toISOString()
-      } : null,
+      lastMessage: (() => {
+        const conversationId = conversation._id.toString();
+        const sourcedTimestamp = latestSourcedMessageTimestampByConversationId.get(conversationId);
+        if (sourcedTimestamp) {
+          return {
+            content: latestSourcedMessageContentByConversationId.get(conversationId)
+              ?? conversation.lastMessageContent
+              ?? '',
+            createdAt: sourcedTimestamp
+          };
+        }
+
+        if (conversation.lastMessageContent && conversation.lastMessageAt) {
+          return {
+            content: conversation.lastMessageContent,
+            createdAt: conversation.lastMessageAt.toISOString()
+          };
+        }
+
+        return null;
+      })(),
       latestProviderMessageId: latestProviderMessageIdByConversationId.get(conversation._id.toString()) ?? null
     }));
 
-    if (!query && !status && engineChats.length > 0) {
+    if (shouldBackfillHistory && engineChats.length > 0) {
       const existingConversationIds = new Set(summaries.map((conversation) => conversation._id));
       const existingConversationContacts = new Set(summaries.map((conversation) => conversation.contactId));
 
@@ -793,6 +1012,11 @@ export async function GET(request: Request) {
           avatarUrl: extractAvatarUrlFromMetadata(persistedConversation?.metadata),
           leadSaved: false,
           unreadCount: 0,
+          channel: 'whatsapp',
+          sourceName: 'WhatsApp',
+          sourceLabel: 'WhatsApp',
+          isArchived: false,
+          lastMessageSource: null,
           status: 'open',
           assignedTo: null,
           lastMessage: chat.lastMessage && chat.updatedAt
@@ -816,7 +1040,7 @@ export async function GET(request: Request) {
       }
     }
 
-    if (!query && !status && engineConversationOrder.length > 0) {
+    if (shouldBackfillHistory && engineConversationOrder.length > 0) {
       const orderByConversationId = new Map<string, number>();
       engineChats.forEach((chat, index) => {
         orderByConversationId.set(chat.id, index);
@@ -834,8 +1058,25 @@ export async function GET(request: Request) {
       });
     }
 
+    const sourceFilteredSummaries = sourceFilter === 'all'
+      ? summaries
+      : summaries.filter((summary) => summary.channel === sourceFilter);
+
+    const statusFilteredSummaries = sourceFilteredSummaries.filter((summary) => {
+      if (!statusFilter || statusFilter === 'active') {
+        return !summary.isArchived;
+      }
+      if (statusFilter === 'archived') {
+        return summary.isArchived;
+      }
+      if (statusFilter === 'all') {
+        return true;
+      }
+      return summary.status === statusFilter;
+    });
+
     const collapsedSummaries = collapseDuplicateSummaries(
-      summaries.slice().sort((left, right) => compareSummaryPriority(left, right))
+      statusFilteredSummaries.slice().sort((left, right) => compareSummaryPriority(left, right))
     );
     collapsedSummaries.sort(
       (left, right) => toMillis(right.lastMessage?.createdAt) - toMillis(left.lastMessage?.createdAt)

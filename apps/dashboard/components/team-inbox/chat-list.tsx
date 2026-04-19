@@ -1,17 +1,90 @@
 'use client';
 
 import { MessageSquareDashed, RefreshCcw, Search, UserRound } from 'lucide-react';
-import type { ChatSummary } from './types';
+import type { ChatSummary, InboxConversationChannel } from './types';
+
+type SourceFilterValue = 'all' | InboxConversationChannel;
+type StatusFilterValue = 'active' | 'archived' | 'all' | 'open' | 'assigned' | 'handoff' | 'resolved' | 'closed' | 'deleted';
+
+type VisibleInboxFilter = 'all' | 'whatsapp' | 'webhook' | 'archived';
 
 interface ChatListProps {
   chats: ChatSummary[];
   selectedConversationId: string | null;
   liveConversationIds?: string[];
   searchQuery: string;
+  sourceFilter: SourceFilterValue;
+  statusFilter: StatusFilterValue;
   isLoading: boolean;
   onSearchQueryChange: (value: string) => void;
+  onSourceFilterChange: (value: SourceFilterValue) => void;
+  onStatusFilterChange: (value: StatusFilterValue) => void;
   onSelectConversation: (conversationId: string) => void;
   onRefresh: () => void;
+}
+
+function formatChannelLabel(channel: InboxConversationChannel | undefined): string {
+  if (channel === 'webhook') {
+    return 'Webhook';
+  }
+  if (channel === 'whatsapp') {
+    return 'WhatsApp';
+  }
+  return 'Unknown';
+}
+
+function channelBadgeClass(channel: InboxConversationChannel | undefined): string {
+  if (channel === 'webhook') {
+    return 'bg-secondary/10 text-secondary';
+  }
+  if (channel === 'whatsapp') {
+    return 'bg-primary/10 text-primary';
+  }
+  return 'bg-surface-card text-on-surface-subtle';
+}
+
+function visibleFilterFromState(sourceFilter: SourceFilterValue, statusFilter: StatusFilterValue): VisibleInboxFilter {
+  if (statusFilter === 'archived') {
+    return 'archived';
+  }
+  if (sourceFilter === 'whatsapp' || sourceFilter === 'webhook') {
+    return sourceFilter;
+  }
+  return 'all';
+}
+
+function applyVisibleFilter(
+  filter: VisibleInboxFilter,
+  onSourceFilterChange: (value: SourceFilterValue) => void,
+  onStatusFilterChange: (value: StatusFilterValue) => void
+): void {
+  if (filter === 'archived') {
+    onSourceFilterChange('all');
+    onStatusFilterChange('archived');
+    return;
+  }
+
+  onStatusFilterChange('active');
+  onSourceFilterChange(filter === 'all' ? 'all' : filter);
+}
+
+function filterButtonClassName(active: boolean): string {
+  return [
+    'inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl border px-3 text-[11px] font-semibold transition-all active:scale-[0.98]',
+    active
+      ? 'border-primary/30 bg-primary/10 text-primary shadow-primary-glow'
+      : 'border-border-ghost bg-surface-base text-on-surface-muted hover:border-primary/30 hover:text-primary'
+  ].join(' ');
+}
+
+function formatSourceSecondaryLabel(chat: ChatSummary): string | null {
+  if (chat.channel === 'webhook') {
+    return chat.sourceName?.trim() ? chat.sourceName.trim() : 'Webhook source';
+  }
+  if (chat.channel === 'whatsapp') {
+    return chat.contactPhone?.trim() ? chat.contactPhone.trim() : 'WhatsApp thread';
+  }
+  return null;
 }
 
 function formatPreviewTime(value: string | null): string {
@@ -70,12 +143,17 @@ export function ChatList({
   selectedConversationId,
   liveConversationIds = [],
   searchQuery,
+  sourceFilter,
+  statusFilter,
   isLoading,
   onSearchQueryChange,
+  onSourceFilterChange,
+  onStatusFilterChange,
   onSelectConversation,
   onRefresh
 }: ChatListProps) {
   const liveConversationIdSet = new Set(liveConversationIds);
+  const activeFilter = visibleFilterFromState(sourceFilter, statusFilter);
 
   return (
     <aside className="flex h-full w-full shrink-0 flex-col border-r border-border-ghost bg-surface-section glass-panel rounded-none md:w-[360px] md:rounded-l-2xl md:border-r">
@@ -101,6 +179,25 @@ export function ChatList({
             className="h-11 w-full rounded-xl border border-border-ghost bg-surface-base pl-10 pr-3 text-[13px] text-on-surface placeholder:text-on-surface-subtle focus:outline-none focus:border-primary/40"
           />
         </label>
+
+        <div className="grid grid-cols-2 gap-2">
+          {(['all', 'whatsapp', 'webhook', 'archived'] as VisibleInboxFilter[]).map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => applyVisibleFilter(filter, onSourceFilterChange, onStatusFilterChange)}
+              className={filterButtonClassName(activeFilter === filter)}
+            >
+              {filter === 'all'
+                ? 'All'
+                : filter === 'whatsapp'
+                  ? 'WhatsApp'
+                  : filter === 'webhook'
+                    ? 'Webhook'
+                    : 'Archived'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -114,7 +211,7 @@ export function ChatList({
               </div>
               <p className="text-[13px] font-semibold text-on-surface">No conversations found</p>
               <p className="mt-1 text-[12px] leading-5 text-on-surface-muted">
-                Send a WhatsApp message to this connected number or refresh inbox sync.
+                No conversations match your filters. Try changing source or status.
               </p>
               <div className="mt-4 flex items-center justify-center gap-2">
                 <button
@@ -178,6 +275,21 @@ export function ChatList({
                             Live
                           </span>
                         ) : null}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${channelBadgeClass(chat.channel)}`}>
+                            {chat.sourceLabel ?? formatChannelLabel(chat.channel)}
+                          </span>
+                          {chat.isArchived ? (
+                            <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning">
+                              Archived
+                            </span>
+                          ) : null}
+                          {formatSourceSecondaryLabel(chat) ? (
+                            <span className="truncate text-[10px] text-on-surface-subtle">
+                              {formatSourceSecondaryLabel(chat)}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <p className="shrink-0 text-[11px] text-on-surface-subtle">
                         {formatPreviewTime(chat.lastMessage?.createdAt ?? null)}

@@ -6,10 +6,12 @@ import {
   ConversationModel,
   MessageModel,
   TenantModel,
+  WebhookInboxSourceModel,
   WorkflowDefinitionModel
 } from '@noxivo/database';
 import { GET as listConversations } from '../app/api/team-inbox/route.js';
 import { GET as listMessages, POST as sendMessage } from '../app/api/team-inbox/[conversationId]/messages/route.js';
+import { POST as runConversationAction } from '../app/api/team-inbox/[conversationId]/actions/route.js';
 import { GET as listLeads } from '../app/api/team-inbox/leads/route.js';
 import { POST as runMessageAction } from '../app/api/team-inbox/[conversationId]/messages/[messageId]/actions/route.js';
 import { GET as getLeadState, POST as saveLead, DELETE as deleteLead } from '../app/api/team-inbox/[conversationId]/lead/route.js';
@@ -193,6 +195,384 @@ describe('team inbox routes', () => {
     expect(payload[0]?.contactProfile.lastInboundAt).toBeTruthy();
     expect(payload[0]?.contactProfile.lastOutboundAt).toBeNull();
   }, 60000);
+
+  it('supports source-aware inbox filters and excludes archived conversations by default', async () => {
+    await seedInbox();
+
+    const webhookSourceId = new mongoose.Types.ObjectId();
+    const webhookConversationId = new mongoose.Types.ObjectId();
+    const archivedConversationId = new mongoose.Types.ObjectId();
+
+    await WebhookInboxSourceModel.create({
+      _id: webhookSourceId,
+      agencyId,
+      tenantId,
+      name: 'Website Chat',
+      status: 'active',
+      inboundPath: 'website-chat',
+      inboundSecretHash: 'hashed-secret',
+      outboundUrl: 'https://example.com/outbound',
+      outboundHeaders: {}
+    });
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          metadata: {
+            messagingChatId: '15550001111@c.us'
+          }
+        }
+      }
+    ).exec();
+
+    await ConversationModel.create([
+      {
+        _id: webhookConversationId,
+        agencyId,
+        tenantId,
+        contactId: 'webhook-contact-123',
+        contactName: 'Website Visitor',
+        contactPhone: null,
+        status: 'open',
+        unreadCount: 1,
+        lastMessageContent: 'Need help from the website',
+        lastMessageAt: new Date('2026-04-19T12:00:00.000Z'),
+        metadata: {
+          webhookInboxSourceId: webhookSourceId.toString(),
+          webhookContactId: 'webhook-contact-123'
+        }
+      },
+      {
+        _id: archivedConversationId,
+        agencyId,
+        tenantId,
+        contactId: '15550009999@c.us',
+        contactName: 'Archived Customer',
+        contactPhone: '+1 555-000-9999',
+        status: 'open',
+        unreadCount: 0,
+        lastMessageContent: 'Older archived thread',
+        lastMessageAt: new Date('2026-04-19T11:00:00.000Z'),
+        metadata: {
+          messagingChatId: '15550009999@c.us',
+          isArchived: true
+        }
+      }
+    ]);
+
+    await MessageModel.create([
+      {
+        conversationId,
+        role: 'assistant',
+        content: 'Reply from operator',
+        metadata: { source: 'dashboard.internal-inbox' },
+        timestamp: new Date('2026-04-19T09:00:00.000Z')
+      },
+      {
+        conversationId: webhookConversationId,
+        role: 'user',
+        content: 'Need help from the website',
+        metadata: { source: 'webhook.inbound' },
+        timestamp: new Date('2026-04-19T12:00:00.000Z')
+      },
+      {
+        conversationId: archivedConversationId,
+        role: 'user',
+        content: 'Older archived thread',
+        metadata: { source: 'messaging.webhook' },
+        timestamp: new Date('2026-04-19T11:00:00.000Z')
+      }
+    ]);
+
+    const defaultResponse = await listConversations(new Request('http://localhost/api/team-inbox'));
+    const defaultPayload = await defaultResponse.json() as Array<{
+      _id: string;
+      channel?: string;
+      isArchived?: boolean;
+      sourceName?: string | null;
+    }>;
+
+    expect(defaultResponse.status).toBe(200);
+    expect(defaultPayload.map((conversation) => conversation._id)).toEqual([
+      webhookConversationId.toString(),
+      conversationId.toString()
+    ]);
+    expect(defaultPayload.find((conversation) => conversation._id === conversationId.toString())?.channel).toBe('whatsapp');
+    expect(defaultPayload.find((conversation) => conversation._id === webhookConversationId.toString())?.channel).toBe('webhook');
+    expect(defaultPayload.find((conversation) => conversation._id === webhookConversationId.toString())?.sourceName).toBe('Website Chat');
+    expect(defaultPayload.some((conversation) => conversation.isArchived)).toBe(false);
+
+    const whatsappResponse = await listConversations(
+      new Request('http://localhost/api/team-inbox?source=whatsapp&status=active')
+    );
+    const whatsappPayload = await whatsappResponse.json() as Array<{ _id: string }>;
+    expect(whatsappPayload.map((conversation) => conversation._id)).toEqual([conversationId.toString()]);
+
+    const webhookResponse = await listConversations(
+      new Request('http://localhost/api/team-inbox?source=webhook&status=active')
+    );
+    const webhookPayload = await webhookResponse.json() as Array<{ _id: string; sourceName?: string | null }>;
+    expect(webhookPayload.map((conversation) => conversation._id)).toEqual([webhookConversationId.toString()]);
+    expect(webhookPayload[0]?.sourceName).toBe('Website Chat');
+
+    const archivedResponse = await listConversations(
+      new Request('http://localhost/api/team-inbox?status=archived')
+    );
+    const archivedPayload = await archivedResponse.json() as Array<{ _id: string; isArchived?: boolean }>;
+    expect(archivedPayload.map((conversation) => conversation._id)).toEqual([archivedConversationId.toString()]);
+    expect(archivedPayload[0]?.isArchived).toBe(true);
+  }, 60000);
+
+  it('archives and unarchives webhook conversations using local dashboard state only', async () => {
+    await seedInbox();
+
+    const webhookSourceId = new mongoose.Types.ObjectId();
+    await WebhookInboxSourceModel.create({
+      _id: webhookSourceId,
+      agencyId,
+      tenantId,
+      name: 'Website Chat',
+      status: 'active',
+      inboundPath: 'website-chat-local',
+      inboundSecretHash: 'hashed-secret',
+      outboundUrl: 'https://example.com/outbound',
+      outboundHeaders: {}
+    });
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          contactId: 'webhook-contact-123',
+          contactName: 'Website Visitor',
+          contactPhone: null,
+          metadata: {
+            webhookInboxSourceId: webhookSourceId.toString(),
+            webhookContactId: 'webhook-contact-123'
+          }
+        }
+      }
+    ).exec();
+
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: 'unexpected remote call' }), { status: 500 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const archiveResponse = await runConversationAction(
+      new Request('http://localhost/api/team-inbox/actions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' })
+      }),
+      { params: Promise.resolve({ conversationId: conversationId.toString() }) }
+    );
+    const archivePayload = await archiveResponse.json() as { success: boolean; isArchived?: boolean };
+
+    const archivedConversation = await ConversationModel.findById(conversationId).lean().exec() as {
+      metadata?: { isArchived?: boolean };
+    } | null;
+
+    expect(archiveResponse.status).toBe(200);
+    expect(archivePayload.success).toBe(true);
+    expect(archivePayload.isArchived).toBe(true);
+    expect(archivedConversation?.metadata?.isArchived).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const defaultResponse = await listConversations(new Request('http://localhost/api/team-inbox'));
+    const defaultPayload = await defaultResponse.json() as Array<{ _id: string }>;
+    expect(defaultPayload).toHaveLength(0);
+
+    const unarchiveResponse = await runConversationAction(
+      new Request('http://localhost/api/team-inbox/actions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'unarchive' })
+      }),
+      { params: Promise.resolve({ conversationId: conversationId.toString() }) }
+    );
+    const unarchivePayload = await unarchiveResponse.json() as { success: boolean; isArchived?: boolean };
+
+    const unarchivedConversation = await ConversationModel.findById(conversationId).lean().exec() as {
+      metadata?: { isArchived?: boolean };
+    } | null;
+
+    expect(unarchiveResponse.status).toBe(200);
+    expect(unarchivePayload.success).toBe(true);
+    expect(unarchivePayload.isArchived).toBe(false);
+    expect(unarchivedConversation?.metadata?.isArchived).toBe(false);
+
+    const restoredResponse = await listConversations(new Request('http://localhost/api/team-inbox'));
+    const restoredPayload = await restoredResponse.json() as Array<{ _id: string }>;
+    expect(restoredPayload.map((conversation) => conversation._id)).toEqual([conversationId.toString()]);
+  }, 60000);
+
+  it('keeps WhatsApp archive actions proxied while persisting local archive state', async () => {
+    await seedInbox();
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          metadata: {
+            messagingChatId: '15550001111@c.us'
+          }
+        }
+      }
+    ).exec();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/api/v1/sessions/by-tenant?')) {
+        return new Response(JSON.stringify({
+          id: '67ab1234567890abcdef9999',
+          name: 'tenant-main'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.includes('/api/v1/tenant-main/chats/15550001111%40c.us/archive')) {
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unhandled request: ${url}` }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await runConversationAction(
+      new Request('http://localhost/api/team-inbox/actions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' })
+      }),
+      { params: Promise.resolve({ conversationId: conversationId.toString() }) }
+    );
+    const payload = await response.json() as { success: boolean; isArchived?: boolean };
+
+    const archivedConversation = await ConversationModel.findById(conversationId).lean().exec() as {
+      metadata?: { isArchived?: boolean };
+    } | null;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.isArchived).toBe(true);
+    expect(archivedConversation?.metadata?.isArchived).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes('/api/v1/tenant-main/chats/15550001111%40c.us/archive'))
+    ).toBe(true);
+  }, 60000);
+
+  it('filters conversations by source channel using latest message metadata', async () => {
+    await seedInbox();
+
+    const webhookConversationId = new mongoose.Types.ObjectId();
+    await ConversationModel.create({
+      _id: webhookConversationId,
+      agencyId,
+      tenantId,
+      contactId: 'webhook:order-1001',
+      contactName: 'Webhook Buyer',
+      contactPhone: null,
+      status: 'open',
+      lastMessageContent: 'Order created from landing page',
+      lastMessageAt: new Date(),
+      unreadCount: 1,
+      metadata: { webhookInboxSourceId: 'source_123' }
+    });
+
+    await MessageModel.create({
+      conversationId: webhookConversationId,
+      role: 'user',
+      content: 'Order created from landing page',
+      metadata: { source: 'webhook.inbox-source.orders' }
+    });
+
+    const webhookResponse = await listConversations(new Request('http://localhost/api/team-inbox?source=webhook'));
+    const webhookPayload = await webhookResponse.json() as Array<{ _id: string; channel?: string }>;
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookPayload).toHaveLength(1);
+    expect(webhookPayload[0]?._id).toBe(webhookConversationId.toString());
+    expect(webhookPayload[0]?.channel).toBe('webhook');
+
+    const whatsappResponse = await listConversations(new Request('http://localhost/api/team-inbox?source=whatsapp'));
+    const whatsappPayload = await whatsappResponse.json() as Array<{ _id: string; channel?: string }>;
+    expect(whatsappResponse.status).toBe(200);
+    expect(whatsappPayload.some((conversation) => conversation._id === conversationId.toString())).toBe(true);
+    expect(whatsappPayload.some((conversation) => conversation._id === webhookConversationId.toString())).toBe(false);
+  });
+
+  it('treats archived filter as closed/deleted and excludes archived by default', async () => {
+    await seedInbox();
+
+    const archivedConversationId = new mongoose.Types.ObjectId();
+    await ConversationModel.create({
+      _id: archivedConversationId,
+      agencyId,
+      tenantId,
+      contactId: '15550002222',
+      contactName: 'Archived Contact',
+      contactPhone: '+1 555-000-2222',
+      status: 'closed',
+      lastMessageContent: 'Archived thread',
+      lastMessageAt: new Date(),
+      unreadCount: 0
+    });
+
+    const defaultResponse = await listConversations(new Request('http://localhost/api/team-inbox'));
+    const defaultPayload = await defaultResponse.json() as Array<{ _id: string }>;
+    expect(defaultResponse.status).toBe(200);
+    expect(defaultPayload.some((conversation) => conversation._id === archivedConversationId.toString())).toBe(false);
+
+    const archivedResponse = await listConversations(new Request('http://localhost/api/team-inbox?status=archived'));
+    const archivedPayload = await archivedResponse.json() as Array<{ _id: string; status: string }>;
+    expect(archivedResponse.status).toBe(200);
+    expect(archivedPayload).toHaveLength(1);
+    expect(archivedPayload[0]?._id).toBe(archivedConversationId.toString());
+    expect(archivedPayload[0]?.status).toBe('closed');
+  });
+
+  it('archives non-whatsapp conversations locally without requiring messaging session', async () => {
+    await seedInbox();
+
+    const webhookConversationId = new mongoose.Types.ObjectId();
+    await ConversationModel.create({
+      _id: webhookConversationId,
+      agencyId,
+      tenantId,
+      contactId: 'webhook:event-1002',
+      contactName: 'Webhook Contact',
+      contactPhone: null,
+      status: 'open',
+      unreadCount: 0,
+      metadata: { webhookInboxSourceId: 'source_abc' }
+    });
+
+    const response = await runConversationAction(
+      new Request(`http://localhost/api/team-inbox/${webhookConversationId.toString()}/actions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' })
+      }),
+      { params: Promise.resolve({ conversationId: webhookConversationId.toString() }) }
+    );
+    const payload = await response.json() as { success: boolean; status?: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.status).toBe('closed');
+
+    const archived = await ConversationModel.findById(webhookConversationId).lean();
+    expect(archived?.status).toBe('closed');
+  });
 
   it('saves a conversation contact as lead and exposes lead state in inbox summaries', async () => {
     await seedInbox();

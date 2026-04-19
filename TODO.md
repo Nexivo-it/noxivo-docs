@@ -51,6 +51,7 @@
 - [x] Extend dashboard credential persistence to mirror Shop providers into `DataSourceModel`
 - [x] Integrate workflow-engine `search_store` tool with live Shopify and WooCommerce data sources via `DataSourceModel` resolution.
 - [x] Implement normalized product adapters for Shopify (Admin API) and WooCommerce (REST API).
+- [x] Add dashboard tenant settings APIs and integrations UI for webhook inbox sources (create/list/update/disable with hashed inbound secrets).
 - [x] Fix `AuthSession validation failed: tenantId: Cast to ObjectId failed` bug when logging in as a Platform Owner without tenant context.
 - [x] Fix `Failed to recover WhatsApp session` bug and racing QR code generation for new sessions.
 - [x] **Stabilize workspace test suites (Root `pnpm test` now green):**
@@ -71,11 +72,7 @@
 - [x] Multi-dashboard architecture documentation
 
 ## Next Action
-- Deploy the latest dashboard inbox recovery patch, then verify with a live inbound WhatsApp message that: (1) the sidebar row updates within the dashboard poll window, and (2) an already-open conversation picks up the inbound message without manual refresh.
-- Correct production MessagingProvider env wiring so it points at MessagingProvider, not the workflow-engine itself, then validate inbox infinite-scroll behavior in a real MessagingProvider-connected environment (`@lid` and `@c.us` contacts).
-- Run a code-level gap audit of `apps/workflow-engine` against Voicetree context summaries (compiler/executor/worker/server boundaries).
-- Implement `get_product_details` tool to allow the AI Sales Agent to fetch specific product data (descriptions, specific variants) after finding candidates via `search_store`.
-- Connect the Spa Tique frontend to the new agency-scoped `/api/v1/spa/*` endpoints and replace its direct Supabase-backed data flows.
+- Finalize commit hygiene for inbox source-awareness changes, then open PR (or keep direct-to-main flow) with verification evidence attached.
 
 ## Commands Still Relevant
 
@@ -101,7 +98,10 @@
 - `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-shop-route.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/settings-webhook-inbox-sources-route.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts test/settings-shop-route.test.ts` ✅
 - `pnpm --filter @noxivo/workflow-engine lint` ✅
+- `pnpm --filter @noxivo/database build` ✅
 - `pnpm --filter @noxivo/dashboard build` ✅
 - `pnpm --filter @noxivo/dashboard lint` ⚠️ pre-existing `.next/types/**/*.ts` include mismatch; still fails independently of this inbox fix
 - `pnpm --filter @noxivo/workflow-engine build` ✅

@@ -12,6 +12,7 @@ type TeamInboxActionResponse = {
   conversationId?: string;
   messageId?: string;
   status?: string;
+  isArchived?: boolean;
   updatedAt?: string;
   error?: {
     code: string;
@@ -60,6 +61,43 @@ function resolveChatId(metadata: unknown, fallbackContactId: string): string {
     : '';
 
   return chatId.length > 0 ? chatId : fallbackContactId;
+}
+
+function inferConversationChannel(metadata: unknown, contactId: string): 'whatsapp' | 'webhook' | 'internal' | 'unknown' {
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    const record = metadata as Record<string, unknown>;
+    const source = typeof record.lastMessageSource === 'string' ? record.lastMessageSource.trim().toLowerCase() : '';
+
+    if (typeof record.webhookInboxSourceId === 'string') {
+      return 'webhook';
+    }
+    if (typeof record.messagingChatId === 'string' && record.messagingChatId.trim().length > 0) {
+      return 'whatsapp';
+    }
+    if (source.includes('webhook')) {
+      return 'webhook';
+    }
+    if (source.includes('dashboard.internal-inbox') || source.includes('dashboard.engine-client')) {
+      return 'internal';
+    }
+  }
+
+  const normalizedContactId = contactId.trim().toLowerCase();
+  if (
+    normalizedContactId.includes('@c.us')
+    || normalizedContactId.includes('@s.whatsapp.net')
+    || normalizedContactId.includes('@lid')
+  ) {
+    return 'whatsapp';
+  }
+
+  const [localPart] = normalizedContactId.split('@');
+  const digits = (localPart ?? '').replace(/\D/g, '');
+  if (digits.length >= 7) {
+    return 'whatsapp';
+  }
+
+  return 'unknown';
 }
 
 function resolveMessagingSessionPath(binding: { id: string; name?: string }): string {
@@ -114,6 +152,25 @@ export async function POST(
 
   const tenantId = conversation.tenantId.toString();
   const chatId = resolveChatId(conversation.metadata, conversation.contactId);
+  const conversationChannel = inferConversationChannel(conversation.metadata, conversation.contactId);
+
+  if ((action === 'archive' || action === 'unarchive') && conversationChannel !== 'whatsapp') {
+    const nextStatus = action === 'archive' ? 'closed' : 'open';
+    const isArchived = action === 'archive';
+    const updatedConversation = await ConversationModel.findByIdAndUpdate(
+      conversation._id,
+      { $set: { status: nextStatus, 'metadata.isArchived': isArchived } },
+      { new: true }
+    ).lean();
+
+    return NextResponse.json({
+      success: true,
+      conversationId,
+      status: updatedConversation?.status ?? nextStatus,
+      isArchived,
+      updatedAt: new Date().toISOString()
+    } satisfies TeamInboxActionResponse);
+  }
 
   const binding = await engineClient
     .getSessionByTenant(session.actor.agencyId, tenantId)
@@ -127,6 +184,7 @@ export async function POST(
   const sessionPath = resolveMessagingSessionPath(binding);
   const encodedSessionId = encodeURIComponent(sessionPath);
   const encodedChatId = encodeURIComponent(chatId);
+  let actionStatus = 'ok';
 
   try {
     switch (action) {
@@ -143,6 +201,11 @@ export async function POST(
           path: `${encodedSessionId}/chats/${encodedChatId}/archive`,
           method: 'POST'
         });
+        await ConversationModel.updateOne(
+          { _id: conversation._id },
+          { $set: { status: 'closed', 'metadata.isArchived': true } }
+        ).exec();
+        actionStatus = 'closed';
         break;
       }
       case 'unarchive': {
@@ -150,6 +213,11 @@ export async function POST(
           path: `${encodedSessionId}/chats/${encodedChatId}/unarchive`,
           method: 'POST'
         });
+        await ConversationModel.updateOne(
+          { _id: conversation._id },
+          { $set: { status: 'open', 'metadata.isArchived': false } }
+        ).exec();
+        actionStatus = 'open';
         break;
       }
       case 'unread': {
@@ -300,7 +368,8 @@ export async function POST(
   return NextResponse.json({
     success: true,
     conversationId,
-    status: 'ok',
+    status: actionStatus,
+    isArchived: actionStatus === 'closed',
     updatedAt: new Date().toISOString()
   } satisfies TeamInboxActionResponse);
 }

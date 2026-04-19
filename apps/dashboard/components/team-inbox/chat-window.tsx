@@ -88,6 +88,41 @@ function dedupeMessagesForRender(messages: ChatMessage[]): ChatMessage[] {
   return deduped;
 }
 
+function formatChannelLabel(channel: ChatSummary['channel']): string {
+  if (channel === 'webhook') {
+    return 'Webhook';
+  }
+  if (channel === 'internal') {
+    return 'Internal';
+  }
+  if (channel === 'unknown') {
+    return 'Unknown';
+  }
+  return 'WhatsApp';
+}
+
+function sourceBadgeClassName(channel: ChatSummary['channel']): string {
+  if (channel === 'webhook') {
+    return 'bg-secondary/10 text-secondary';
+  }
+  if (channel === 'whatsapp') {
+    return 'bg-primary/10 text-primary';
+  }
+  return 'bg-surface-card text-on-surface-subtle';
+}
+
+function formatConversationContext(conversation: ChatSummary): string {
+  if (conversation.channel === 'webhook') {
+    return `Contact ID: ${conversation.contactId}`;
+  }
+
+  if (conversation.contactPhone?.trim()) {
+    return conversation.contactPhone.trim();
+  }
+
+  return `Chat ID: ${conversation.contactId}`;
+}
+
 export function ChatWindow({
   conversation,
   messages,
@@ -255,8 +290,26 @@ export function ChatWindow({
               <h2 className="truncate text-[15px] font-semibold text-on-surface">
                 {conversation.contactName ?? conversation.contactPhone ?? conversation.contactId}
               </h2>
-              <p className="text-[11px] text-on-surface-subtle">
-                {conversation.assignedTo ? 'Human assigned' : 'AI automation active'}
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${sourceBadgeClassName(conversation.channel)}`}>
+                  {conversation.sourceLabel ?? formatChannelLabel(conversation.channel)}
+                </span>
+                {conversation.sourceName ? (
+                  <span className="truncate text-[11px] text-on-surface-subtle">
+                    {conversation.sourceName}
+                  </span>
+                ) : null}
+                {conversation.isArchived || conversation.status === 'closed' || conversation.status === 'deleted' ? (
+                  <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+                    Archived
+                  </span>
+                ) : null}
+                <p className="text-[11px] text-on-surface-subtle">
+                  {conversation.assignedTo ? 'Human assigned' : 'AI automation active'}
+                </p>
+              </div>
+              <p className="mt-1 text-[11px] text-on-surface-subtle">
+                {formatConversationContext(conversation)}
               </p>
             </div>
 
@@ -301,31 +354,33 @@ export function ChatWindow({
                         Mark Unread
                       </button>
 
-                      <button
-                        type="button"
-                        disabled={isRunningConversationAction}
-                        onClick={() => {
-                          onConversationAction('archive');
-                          setIsConvActionMenuOpen(false);
-                        }}
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border-ghost bg-surface-base px-2 text-[11px] font-semibold text-on-surface hover:border-primary/30 hover:text-primary transition-all disabled:opacity-60"
-                      >
-                        <Archive className="h-3.5 w-3.5" />
-                        Archive
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isRunningConversationAction}
-                        onClick={() => {
-                          onConversationAction('unarchive');
-                          setIsConvActionMenuOpen(false);
-                        }}
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border-ghost bg-surface-base px-2 text-[11px] font-semibold text-on-surface hover:border-primary/30 hover:text-primary transition-all disabled:opacity-60"
-                      >
-                        <ArchiveRestore className="h-3.5 w-3.5" />
-                        Unarchive
-                      </button>
+                      {conversation.isArchived || conversation.status === 'closed' || conversation.status === 'deleted' ? (
+                        <button
+                          type="button"
+                          disabled={isRunningConversationAction}
+                          onClick={() => {
+                            onConversationAction('unarchive');
+                            setIsConvActionMenuOpen(false);
+                          }}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border-ghost bg-surface-base px-2 text-[11px] font-semibold text-on-surface hover:border-primary/30 hover:text-primary transition-all disabled:opacity-60"
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5" />
+                          Unarchive
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={isRunningConversationAction}
+                          onClick={() => {
+                            onConversationAction('archive');
+                            setIsConvActionMenuOpen(false);
+                          }}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border-ghost bg-surface-base px-2 text-[11px] font-semibold text-on-surface hover:border-primary/30 hover:text-primary transition-all disabled:opacity-60"
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                          Archive
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -399,8 +454,13 @@ export function ChatWindow({
                       {conversation.contactPhone}
                     </p>
                   ) : null}
+                  {conversation.sourceName ? (
+                    <p className="mt-0.5 text-[12px] text-on-surface-muted">
+                      Source: {conversation.sourceName}
+                    </p>
+                  ) : null}
                   <p className="mt-0.5 text-[11px] text-on-surface-subtle">
-                    ID: {conversation.contactId}
+                    {formatConversationContext(conversation)}
                   </p>
                   <div className="mt-2 flex items-center gap-1.5">
                     <span
@@ -410,6 +470,14 @@ export function ChatWindow({
                     >
                       {conversation.assignedTo ? 'Human assigned' : 'AI active'}
                     </span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${sourceBadgeClassName(conversation.channel)}`}>
+                      {conversation.sourceLabel ?? formatChannelLabel(conversation.channel)}
+                    </span>
+                    {conversation.isArchived || conversation.status === 'closed' || conversation.status === 'deleted' ? (
+                      <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
+                        Archived
+                      </span>
+                    ) : null}
                     {conversation.leadSaved ? (
                       <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
                         Lead saved

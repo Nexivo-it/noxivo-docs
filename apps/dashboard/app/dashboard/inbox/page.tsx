@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   ConversationActionType,
   ChatSummary,
+  InboxConversationChannel,
   InboxRealtimeEvent,
   MessageActionType,
   PaginatedMessagesResponse,
@@ -20,6 +21,9 @@ const MESSAGE_PAGE_LIMIT = 20;
 const INBOX_POLL_INTERVAL_MS = 2000;
 const SELECTED_MESSAGES_POLL_INTERVAL_MS = 1000;
 const LIVE_SIGNAL_WINDOW_MS = 30_000;
+
+type SourceFilterValue = 'all' | InboxConversationChannel;
+type StatusFilterValue = 'active' | 'archived' | 'all' | 'open' | 'assigned' | 'handoff' | 'resolved' | 'closed' | 'deleted';
 
 async function parseJsonSafe<T>(response: Response): Promise<T | null> {
   try {
@@ -51,7 +55,12 @@ function upsertConversation(chats: ChatSummary[], incoming: ChatSummary): ChatSu
     return [incoming, ...chats];
   }
 
-  return withUpdatedConversation(chats, incoming._id, () => incoming);
+  return withUpdatedConversation(chats, incoming._id, (current) => ({
+    ...current,
+    ...incoming,
+    channel: incoming.channel ?? current.channel ?? 'unknown',
+    lastMessageSource: incoming.lastMessageSource ?? current.lastMessageSource ?? null
+  }));
 }
 
 function moveConversationToTop(chats: ChatSummary[], conversationId: string): ChatSummary[] {
@@ -280,12 +289,38 @@ function isPaginatedMessagesResponse(value: unknown): value is PaginatedMessages
     && (typeof record.nextCursor === 'string' || record.nextCursor === null);
 }
 
+function matchesConversationFilters(
+  conversation: ChatSummary,
+  sourceFilter: SourceFilterValue,
+  statusFilter: StatusFilterValue
+): boolean {
+  if (sourceFilter !== 'all' && conversation.channel !== sourceFilter) {
+    return false;
+  }
+
+  if (statusFilter === 'archived') {
+    return conversation.isArchived === true;
+  }
+
+  if (statusFilter === 'all') {
+    return true;
+  }
+
+  if (statusFilter === 'active') {
+    return conversation.isArchived !== true;
+  }
+
+  return conversation.status === statusFilter;
+}
+
 export default function InboxPage() {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [liveConversationActivity, setLiveConversationActivity] = useState<Record<string, number>>({});
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('active');
   const [draft, setDraft] = useState('');
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -415,6 +450,12 @@ export default function InboxPage() {
       if (searchQuery.trim()) {
         params.set('query', searchQuery.trim());
       }
+      if (sourceFilter !== 'all') {
+        params.set('source', sourceFilter);
+      }
+      if (statusFilter !== 'active') {
+        params.set('status', statusFilter);
+      }
 
       const response = await fetch(`/api/team-inbox?${params.toString()}`);
       const payload = await parseJsonSafe<ChatSummary[] | { error?: string }>(response);
@@ -512,6 +553,10 @@ export default function InboxPage() {
         throw new Error((payload as { error?: string } | null)?.error ?? 'Unable to load messages');
       }
 
+      if (payload.conversation) {
+        updateChats((current) => mergeIncomingConversation(current, payload.conversation!));
+      }
+
       if (activeConversationRef.current !== conversationId) {
         return;
       }
@@ -579,7 +624,7 @@ export default function InboxPage() {
 
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+  }, [searchQuery, sourceFilter, statusFilter]);
 
   useEffect(() => {
     void loadChats(false);
@@ -675,7 +720,7 @@ export default function InboxPage() {
         }
 
         const conversationId = payload.conversationId;
-        const incomingConversation = payload.conversation
+        const incomingConversation: ChatSummary | null = payload.conversation
           ? {
               _id: payload.conversation._id,
               contactId: payload.conversation.contactId,
@@ -686,13 +731,18 @@ export default function InboxPage() {
               unreadCount: payload.conversation.unreadCount,
               status: payload.conversation.status,
               assignedTo: payload.conversation.assignedTo,
+              channel: payload.conversation.channel ?? 'unknown',
+              sourceName: payload.conversation.sourceName ?? null,
+              sourceLabel: payload.conversation.sourceLabel ?? null,
+              isArchived: payload.conversation.isArchived ?? false,
+              lastMessageSource: payload.conversation.lastMessageSource ?? null,
               lastMessage: payload.conversation.lastMessage
-            } satisfies ChatSummary
+            }
           : null;
 
         updateChats((current) => {
           let next = current.slice();
-          let anchorConversation = incomingConversation;
+          let anchorConversation: ChatSummary | null = incomingConversation;
 
           if (incomingConversation) {
             next = mergeIncomingConversation(next, incomingConversation);
@@ -855,7 +905,7 @@ export default function InboxPage() {
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+  }, [searchQuery, sourceFilter, statusFilter]);
 
   useEffect(() => {
     if (!selectedConversationId) {
@@ -1069,6 +1119,31 @@ export default function InboxPage() {
         throw new Error(result?.error?.message ?? 'Conversation action failed');
       }
 
+      if (action === 'archive' || action === 'unarchive') {
+        const nextIsArchived = result.isArchived ?? (action === 'archive');
+        const nextStatus = result.status ?? (nextIsArchived ? 'closed' : 'open');
+        let nextSelectedConversationId: string | null = selectedConversation._id;
+
+        updateChats((current) => {
+          const updated = withUpdatedConversation(current, selectedConversation._id, (chat) => ({
+            ...chat,
+            status: nextStatus,
+            isArchived: nextIsArchived
+          }));
+          const filtered = updated.filter((chat) => matchesConversationFilters(chat, sourceFilter, statusFilter));
+
+          if (!filtered.some((chat) => chat._id === selectedConversation._id)) {
+            nextSelectedConversationId = filtered[0]?._id ?? null;
+          }
+
+          return filtered;
+        });
+
+        if (nextSelectedConversationId !== selectedConversation._id) {
+          setSelectedConversationId(nextSelectedConversationId);
+        }
+      }
+
       toast.success('Conversation action completed');
       refreshSelectedMessagesSilently();
       await loadChats(true, { silent: true });
@@ -1172,40 +1247,6 @@ export default function InboxPage() {
     }
   }
 
-  async function handleDeleteLead(): Promise<void> {
-    if (!selectedConversation || isMutatingLead) {
-      return;
-    }
-
-    setIsMutatingLead(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/team-inbox/${selectedConversation._id}/lead`, {
-        method: 'DELETE'
-      });
-      const payload = await parseJsonSafe<{ success?: boolean; error?: string }>(response);
-
-      if (!response.ok || payload?.success !== true) {
-        throw new Error(payload?.error ?? 'Unable to remove contact from leads');
-      }
-
-      updateChats((current) =>
-        withUpdatedConversation(current, selectedConversation._id, (chat) => ({
-          ...chat,
-          leadSaved: false
-        }))
-      );
-      toast.success('Contact removed from leads');
-    } catch (deleteError) {
-      const errorMessage = deleteError instanceof Error ? deleteError.message : 'Unable to remove contact from leads';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsMutatingLead(false);
-    }
-  }
-
   function handleSelectConversation(conversationId: string): void {
     const requestedConversation = chatsRef.current.find((chat) => chat._id === conversationId) ?? null;
     if (!requestedConversation) {
@@ -1227,8 +1268,12 @@ export default function InboxPage() {
               selectedConversationId={selectedConversationId}
               liveConversationIds={liveConversationIds}
               searchQuery={searchQuery}
+              sourceFilter={sourceFilter}
+              statusFilter={statusFilter}
               isLoading={isLoadingChats}
               onSearchQueryChange={setSearchQuery}
+              onSourceFilterChange={setSourceFilter}
+              onStatusFilterChange={setStatusFilter}
               onSelectConversation={handleSelectConversation}
               onRefresh={() => void loadChats(true)}
             />
