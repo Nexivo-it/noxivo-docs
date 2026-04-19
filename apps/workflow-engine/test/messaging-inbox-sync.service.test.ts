@@ -84,6 +84,85 @@ describe('messaging inbox sync service', () => {
     expect(conversation?.unreadCount).toBe(3);
   });
 
+  it('canonicalizes @lid recent chats onto a single @c.us conversation', async () => {
+    const { agencyId, tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
+
+    const legacyConversation = await ConversationModel.create({
+      agencyId,
+      tenantId,
+      contactId: '15550001111@lid',
+      contactName: 'Unknown',
+      status: 'open',
+      unreadCount: 0,
+      metadata: {
+        messagingChatId: '15550001111@lid',
+        messagingAliases: ['15550001111@lid']
+      }
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.includes('/chats/overview?')) {
+        return new Response(JSON.stringify([
+          {
+            id: '15550001111@lid',
+            name: 'Alice Smith',
+            lastMessage: { body: 'Hello from lid', timestamp: 1710000000, fromMe: false },
+            _chat: { unreadCount: 2 }
+          }
+        ]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.endsWith('/api/tenant-main/contacts/15550001111%40lid')) {
+        return new Response(JSON.stringify({
+          id: '15550001111@lid',
+          number: '15550001111',
+          name: 'Alice Smith'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.endsWith('/api/tenant-main/lids/15550001111')) {
+        return new Response(JSON.stringify({
+          lid: '15550001111@lid',
+          pn: '15550001111@c.us'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = new MessagingInboxSyncService();
+    const result = await service.syncRecentChats({ agencyId, tenantId, limit: 20 });
+
+    const conversations = await ConversationModel.find({ tenantId }).lean().exec();
+    expect(result).toEqual({ syncedConversations: 1, syncedMessages: 0, sessionName: 'tenant-main' });
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0]?._id.toString()).toBe(legacyConversation._id.toString());
+    expect(conversations[0]?.contactId).toBe('15550001111@c.us');
+    expect(conversations[0]?.contactName).toBe('Alice Smith');
+    expect(conversations[0]?.contactPhone).toBe('15550001111');
+    expect(conversations[0]?.metadata).toEqual(expect.objectContaining({
+      messagingCanonicalContactId: '15550001111@c.us',
+      messagingChatId: '15550001111@lid',
+      messagingAliases: expect.arrayContaining(['15550001111@lid', '15550001111@c.us'])
+    }));
+  });
+
   it('syncs MessagingProvider chat messages into inbox messages without duplicating provider ids', async () => {
     const { agencyId, tenantId } = await seedBinding();
     process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';

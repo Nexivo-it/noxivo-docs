@@ -325,7 +325,7 @@ Normalized stale Voicetree references in workflow-engine context docs so graph l
 
 ### Completed Changes
 - Replaced stale workflow-engine node path `workflow-engine/messaging_integration.md` with `workflow-engine/messaging_integration.md` in context snapshots and link lists.
-- Replaced stale path prefix `.../Developer/messaging/noxivo-saas/...` with current `.../Developer/messaging/nexusflow-saas/...` where those paths were intended as active references.
+- Replaced stale path prefix `.../Developer/messaging/noxivo-saas/...` with current `.../Developer/messaging/noxivo-saas/...` where those paths were intended as active references.
 - Updated stale references to deleted context node `apps_workflow_engine_context_1776393302834.md` to current workflow-engine context snapshots.
 
 ### Files Changed (2026-04-19)

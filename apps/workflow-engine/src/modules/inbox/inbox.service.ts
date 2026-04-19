@@ -127,6 +127,27 @@ export class InboxService {
       messagingAliases: Array.from(new Set([...metadataAliases, ...aliasCandidates]))
     };
 
+    // Deduplicate and canonicalize related conversations
+    await ConversationModel.updateMany(
+      {
+        agencyId: input.agencyId,
+        tenantId: input.tenantId,
+        _id: { $ne: selectedConversation._id },
+        $or: [
+          { contactId: { $in: Array.from(aliasCandidates) } },
+          { 'metadata.messagingChatId': { $in: Array.from(aliasCandidates) } },
+          { 'metadata.messagingAliases': { $in: Array.from(aliasCandidates) } },
+          { 'metadata.messagingCanonicalContactId': canonicalContactId }
+        ]
+      },
+      {
+        $set: {
+          'metadata.messagingCanonicalContactId': canonicalContactId,
+          'metadata.messagingAliases': Array.from(aliasCandidates)
+        }
+      }
+    ).exec();
+
     if (input.contactName && input.contactName.trim().length > 0) {
       selectedConversation.contactName = input.contactName;
     }

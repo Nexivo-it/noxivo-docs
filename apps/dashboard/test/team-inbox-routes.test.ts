@@ -477,6 +477,54 @@ describe('team inbox routes', () => {
     expect(payload[0]?._id).toBe(conversationId.toString());
   }, 60000);
 
+  it('merges duplicate contact rows using canonical identity metadata and prefers the known contact name', async () => {
+    await seedInbox();
+
+    const siblingConversationId = new mongoose.Types.ObjectId();
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          contactId: '84961566302@c.us',
+          contactName: 'Unknown',
+          contactPhone: '84961566302',
+          metadata: {
+            messagingCanonicalContactId: '84961566302@c.us',
+            messagingAliases: ['84961566302@c.us', '50805738631354@lid'],
+            messagingChatId: '84961566302@c.us'
+          }
+        }
+      }
+    ).exec();
+
+    await ConversationModel.create({
+      _id: siblingConversationId,
+      agencyId,
+      tenantId,
+      contactId: '50805738631354@lid',
+      contactName: 'Salmen Khelifi',
+      contactPhone: '84961566302',
+      status: 'open',
+      unreadCount: 0,
+      lastMessageContent: 'from lid',
+      lastMessageAt: new Date('2026-04-19T12:00:00.000Z'),
+      metadata: {
+        messagingCanonicalContactId: '84961566302@c.us',
+        messagingAliases: ['84961566302@c.us', '50805738631354@lid'],
+        messagingChatId: '50805738631354@lid'
+      }
+    });
+
+    const response = await listConversations(new Request('http://localhost/api/team-inbox'));
+    const payload = await response.json() as Array<{ contactId: string; contactName: string | null }>;
+
+    expect(response.status).toBe(200);
+    expect(payload).toHaveLength(1);
+    expect(payload[0]?.contactId).toBe('84961566302@c.us');
+    expect(payload[0]?.contactName).toBe('Salmen Khelifi');
+  }, 60000);
+
   it('resolves slug tenant context to canonical tenant id for inbox queries', async () => {
     await seedInbox();
 

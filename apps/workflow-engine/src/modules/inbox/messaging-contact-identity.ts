@@ -10,6 +10,8 @@ type MessagingContactPayload = {
 type MessagingLidPayload = {
   lid?: unknown;
   pn?: unknown;
+  phone?: unknown;
+  name?: unknown;
 };
 
 export type ResolvedMessagingIdentity = {
@@ -66,14 +68,14 @@ export function buildMessagingAliasCandidates(values: Array<string | null | unde
   return Array.from(aliases);
 }
 
-function readContactName(payload: MessagingContactPayload | null): string | null {
+function readContactName(payload: MessagingContactPayload | MessagingLidPayload | null): string | null {
   if (!payload) {
     return null;
   }
 
   const name = typeof payload.name === 'string' && payload.name.trim().length > 0
     ? payload.name.trim()
-    : typeof payload.pushname === 'string' && payload.pushname.trim().length > 0
+    : 'pushname' in payload && typeof payload.pushname === 'string' && payload.pushname.trim().length > 0
       ? payload.pushname.trim()
       : null;
 
@@ -116,7 +118,11 @@ export async function resolveMessagingContactIdentity(input: {
       )
     : null;
 
-  const phoneFromLid = typeof phoneByLid?.pn === 'string' ? extractPhoneDigits(phoneByLid.pn) : null;
+  const phoneFromLid = typeof phoneByLid?.pn === 'string'
+    ? extractPhoneDigits(phoneByLid.pn)
+    : typeof phoneByLid?.phone === 'string'
+      ? extractPhoneDigits(phoneByLid.phone)
+      : null;
   const lidFromPhone = typeof lidByPhone?.lid === 'string' ? normalizeChatId(lidByPhone.lid) : null;
   const canonicalPhone = numberFromPayload ?? phoneFromLid ?? (rawContactId.endsWith('@c.us') ? rawDigits : null);
   const canonicalContactId = canonicalPhone ? `${canonicalPhone}@c.us` : rawContactId;
@@ -129,11 +135,12 @@ export async function resolveMessagingContactIdentity(input: {
       contactIdFromPayload,
       canonicalContactId,
       lidFromPhone,
-      phoneByLid?.pn as string | undefined,
+      (typeof phoneByLid?.pn === 'string' ? phoneByLid.pn : undefined),
+      (typeof phoneByLid?.phone === 'string' ? phoneByLid.phone : undefined),
       rawDigits
     ]),
     contactPhone: canonicalPhone,
-    contactName: readContactName(contactPayload),
+    contactName: readContactName(contactPayload) ?? readContactName(phoneByLid),
     messagingChatId: rawContactId
   };
 }
