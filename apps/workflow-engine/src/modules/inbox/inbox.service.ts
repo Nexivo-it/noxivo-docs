@@ -6,6 +6,9 @@ export interface AddMessageInput {
   agencyId: string;
   tenantId: string;
   contactId: string;
+  canonicalContactId?: string;
+  rawContactId?: string;
+  contactAliases?: string[];
   contactName?: string | null;
   contactPhone?: string | null;
   role: MessageRole;
@@ -22,6 +25,30 @@ export interface AddMessageInput {
   deliveryEventSource?: InboxDeliveryEventSource;
 }
 
+function normalizePhoneDigits(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  const digits = trimmed.replace(/\D/g, '');
+  return digits.length > 0 ? digits : null;
+}
+
+function normalizeChatId(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase() ?? '';
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (trimmed.includes('@')) {
+    return trimmed;
+  }
+
+  const digits = normalizePhoneDigits(trimmed);
+  return digits ? `${digits}@c.us` : trimmed;
+}
+
 function summarizeAttachments(attachments: InboxAttachment[]): string {
   const primary = attachments[0];
   if (!primary) return '';
@@ -30,6 +57,109 @@ function summarizeAttachments(attachments: InboxAttachment[]): string {
 
 export class InboxService {
   constructor(private readonly deliveryLifecycleService: DeliveryLifecycleService = new DeliveryLifecycleService()) {}
+
+  async upsertConversationIdentity(input: Pick<AddMessageInput, 'agencyId' | 'tenantId' | 'contactId' | 'canonicalContactId' | 'rawContactId' | 'contactAliases' | 'contactName' | 'contactPhone'>) {
+    const canonicalContactId = (input.canonicalContactId?.trim().length ?? 0) > 0
+      ? input.canonicalContactId!.trim().toLowerCase()
+      : input.contactId;
+    const aliasCandidates = new Set<string>([
+      canonicalContactId,
+      ...(input.contactAliases ?? []).map((value) => normalizeChatId(value)).filter((value): value is string => Boolean(value)),
+      ...[input.contactId, input.rawContactId].map((value) => normalizeChatId(value)).filter((value): value is string => Boolean(value))
+    ]);
+    const phoneDigits = normalizePhoneDigits(input.contactPhone);
+    const orClauses: Array<Record<string, unknown>> = [
+      {
+        contactId: {
+          $in: Array.from(aliasCandidates)
+        }
+      },
+      {
+        'metadata.messagingCanonicalContactId': canonicalContactId
+      },
+      {
+        'metadata.messagingChatId': {
+          $in: Array.from(aliasCandidates)
+        }
+      },
+      {
+        'metadata.messagingAliases': {
+          $in: Array.from(aliasCandidates)
+        }
+      }
+    ];
+
+    if (phoneDigits) {
+      orClauses.push({
+        contactPhone: {
+          $regex: phoneDigits
+        }
+      });
+    }
+
+    const conversations = await ConversationModel.find({
+      agencyId: input.agencyId,
+      tenantId: input.tenantId,
+      $or: orClauses
+    }).sort({ updatedAt: -1 }).exec();
+
+    const canonicalConversation = conversations.find((conversation) => conversation.contactId === canonicalContactId);
+    const selectedConversation = canonicalConversation ?? conversations[0] ?? new ConversationModel({
+      agencyId: input.agencyId,
+      tenantId: input.tenantId,
+      contactId: canonicalContactId,
+      status: 'open',
+      unreadCount: 0
+    });
+
+    if (selectedConversation.contactId !== canonicalContactId) {
+      selectedConversation.contactId = canonicalContactId;
+    }
+
+    const metadata = selectedConversation.metadata && typeof selectedConversation.metadata === 'object' && !Array.isArray(selectedConversation.metadata)
+      ? selectedConversation.metadata as Record<string, unknown>
+      : {};
+    const metadataAliases = Array.isArray(metadata.messagingAliases)
+      ? metadata.messagingAliases.filter((value): value is string => typeof value === 'string')
+      : [];
+    selectedConversation.metadata = {
+      ...metadata,
+      messagingCanonicalContactId: canonicalContactId,
+      messagingChatId: normalizeChatId(input.rawContactId ?? input.contactId) ?? canonicalContactId,
+      messagingAliases: Array.from(new Set([...metadataAliases, ...aliasCandidates]))
+    };
+
+    await ConversationModel.updateMany(
+      {
+        agencyId: input.agencyId,
+        tenantId: input.tenantId,
+        _id: { $ne: selectedConversation._id },
+        $or: [
+          { contactId: { $in: Array.from(aliasCandidates) } },
+          { 'metadata.messagingChatId': { $in: Array.from(aliasCandidates) } },
+          { 'metadata.messagingAliases': { $in: Array.from(aliasCandidates) } },
+          { 'metadata.messagingCanonicalContactId': canonicalContactId }
+        ]
+      },
+      {
+        $set: {
+          'metadata.messagingCanonicalContactId': canonicalContactId,
+          'metadata.messagingAliases': Array.from(aliasCandidates)
+        }
+      }
+    ).exec();
+
+    if (input.contactName && input.contactName.trim().length > 0) {
+      selectedConversation.contactName = input.contactName;
+    }
+
+    if (input.contactPhone && input.contactPhone.trim().length > 0) {
+      selectedConversation.contactPhone = input.contactPhone;
+    }
+
+    await selectedConversation.save();
+    return selectedConversation;
+  }
 
   async recordMessage(input: AddMessageInput): Promise<{ conversation: { _id: unknown }; message: { _id: unknown; deliveryStatus: string | null } }> {
     const content = input.content?.trim() ?? '';
@@ -41,20 +171,10 @@ export class InboxService {
 
     const conversationSummary = content.length > 0 ? content : summarizeAttachments(attachments);
 
-    let conversation = await ConversationModel.findOne({
-      tenantId: input.tenantId,
-      contactId: input.contactId
-    });
-
-    if (!conversation) {
-      conversation = new ConversationModel({
-        agencyId: input.agencyId,
-        tenantId: input.tenantId,
-        contactId: input.contactId,
-        status: 'open',
-        unreadCount: 0
-      });
-    }
+    const canonicalContactId = (input.canonicalContactId?.trim().length ?? 0) > 0
+      ? input.canonicalContactId!.trim().toLowerCase()
+      : input.contactId;
+    const conversation = await this.upsertConversationIdentity(input);
 
     conversation.lastMessageContent = conversationSummary;
     conversation.lastMessageAt = new Date();
@@ -66,14 +186,6 @@ export class InboxService {
       }
     } else {
       conversation.unreadCount = 0;
-    }
-
-    if (input.contactName && input.contactName.trim().length > 0) {
-      conversation.contactName = input.contactName;
-    }
-
-    if (input.contactPhone && input.contactPhone.trim().length > 0) {
-      conversation.contactPhone = input.contactPhone;
     }
 
     await conversation.save();
@@ -112,7 +224,7 @@ export class InboxService {
     await projectContactProfileFromMessage({
       agencyId: input.agencyId,
       tenantId: input.tenantId,
-      contactId: input.contactId,
+      contactId: canonicalContactId,
       contactName: input.contactName ?? conversation.contactName ?? null,
       contactPhone: input.contactPhone ?? conversation.contactPhone ?? null,
       role: input.role,

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import mongoose from 'mongoose';
 import {
   ConversationModel,
@@ -21,6 +21,9 @@ describe('messaging webhook route', () => {
 
   afterEach(async () => {
     delete process.env.MESSAGING_PROVIDER_WEBHOOK_SECRET;
+    delete process.env.MESSAGING_PROVIDER_BASE_URL;
+    delete process.env.MESSAGING_PROVIDER_API_KEY;
+    vi.restoreAllMocks();
     await resetWorkflowEngineTestDb();
   });
 
@@ -113,6 +116,169 @@ describe('messaging webhook route', () => {
           source: 'webhook_message'
         })
       ]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('canonicalizes inbound @lid messages onto an existing @c.us conversation', async () => {
+    const { agencyId, tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_WEBHOOK_SECRET = 'webhook-secret';
+    process.env.MESSAGING_PROVIDER_BASE_URL = 'https://messaging.test';
+    process.env.MESSAGING_PROVIDER_API_KEY = 'messaging-token';
+
+    const existingConversation = await ConversationModel.create({
+      agencyId,
+      tenantId,
+      contactId: '15550001111@c.us',
+      contactName: 'Alice Smith',
+      contactPhone: '15550001111',
+      status: 'open',
+      unreadCount: 0,
+      metadata: {
+        messagingCanonicalContactId: '15550001111@c.us',
+        messagingAliases: ['15550001111@c.us']
+      }
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.endsWith('/api/tenant-main/contacts/15550001111%40lid')) {
+        return new Response(JSON.stringify({
+          id: '15550001111@lid',
+          number: '15550001111',
+          name: 'Alice Smith'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.endsWith('/api/tenant-main/lids/15550001111')) {
+        return new Response(JSON.stringify({
+          lid: '15550001111@lid',
+          pn: '15550001111@c.us'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const server = await buildServer({ logger: false });
+
+    try {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/webhooks/messaging',
+        headers: {
+          'x-messaging-webhook-secret': 'webhook-secret'
+        },
+        payload: {
+          event: 'message',
+          session: 'tenant-main',
+          payload: {
+            id: 'wamid-webhook-lid-1',
+            from: '15550001111@lid',
+            to: '15550002222@c.us',
+            fromMe: false,
+            body: 'Hello from lid',
+            ack: 0,
+            ackName: 'PENDING'
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(202);
+      const conversations = await ConversationModel.find({ tenantId }).lean().exec();
+      const message = await MessageModel.findOne({ providerMessageId: 'wamid-webhook-lid-1' }).lean().exec();
+
+      expect(conversations).toHaveLength(1);
+      expect(conversations[0]?._id.toString()).toBe(existingConversation._id.toString());
+      expect(conversations[0]?.contactId).toBe('15550001111@c.us');
+      expect(conversations[0]?.metadata).toEqual(expect.objectContaining({
+        messagingCanonicalContactId: '15550001111@c.us',
+        messagingChatId: '15550001111@lid',
+        messagingAliases: expect.arrayContaining(['15550001111@lid', '15550001111@c.us'])
+      }));
+      expect(message?.conversationId.toString()).toBe(existingConversation._id.toString());
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('canonicalizes @lid messages from WAHA lid phone/name payloads even when contacts lookup lacks number', async () => {
+    const { agencyId, tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_WEBHOOK_SECRET = 'webhook-secret';
+    process.env.MESSAGING_PROVIDER_BASE_URL = 'https://messaging.test';
+    process.env.MESSAGING_PROVIDER_API_KEY = 'messaging-token';
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.endsWith('/api/tenant-main/contacts/50805738631354%40lid')) {
+        return new Response(JSON.stringify({
+          id: '50805738631354@lid'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.endsWith('/api/tenant-main/lids/50805738631354')) {
+        return new Response(JSON.stringify({
+          lid: '50805738631354',
+          phone: '84961566302@c.us',
+          name: 'Salmen Khelifi'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const server = await buildServer({ logger: false });
+
+    try {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/webhooks/messaging',
+        headers: {
+          'x-messaging-webhook-secret': 'webhook-secret'
+        },
+        payload: {
+          event: 'message',
+          session: 'tenant-main',
+          payload: {
+            id: 'wamid-webhook-lid-2',
+            from: '50805738631354@lid',
+            to: '15550002222@c.us',
+            fromMe: false,
+            body: 'Hello from lid phone payload',
+            ack: 0,
+            ackName: 'PENDING'
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(202);
+      const conversation = await ConversationModel.findOne({ tenantId }).lean().exec();
+      expect(conversation?.contactId).toBe('84961566302@c.us');
+      expect(conversation?.contactName).toBe('Salmen Khelifi');
+      expect(conversation?.contactPhone).toBe('84961566302');
     } finally {
       await server.close();
     }

@@ -39,6 +39,8 @@ type InboxSummary = {
   contactId: string;
   contactName: string | null;
   contactPhone: string | null;
+  canonicalContactId?: string | null;
+  contactAliases?: string[];
   avatarUrl: string | null;
   leadSaved: boolean;
   unreadCount: number;
@@ -111,6 +113,34 @@ function sameContactIdentity(leftContactId: string, rightContactId: string): boo
   return leftLocal === rightLocal;
 }
 
+function extractCanonicalContactId(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const value = (metadata as { messagingCanonicalContactId?: unknown }).messagingCanonicalContactId;
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim().toLowerCase() : null;
+}
+
+function extractContactAliases(metadata: unknown): string[] {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return [];
+  }
+
+  const aliases = (metadata as { messagingAliases?: unknown }).messagingAliases;
+  if (!Array.isArray(aliases)) {
+    return [];
+  }
+
+  return aliases
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim().toLowerCase());
+}
+
+function isUnknownContactName(value: string | null | undefined): boolean {
+  return (value ?? '').trim().toLowerCase() === 'unknown';
+}
+
 function shouldMergeSummaries(left: InboxSummary, right: InboxSummary): boolean {
   const leftContactId = left.contactId.trim().toLowerCase();
   const rightContactId = right.contactId.trim().toLowerCase();
@@ -124,6 +154,21 @@ function shouldMergeSummaries(left: InboxSummary, right: InboxSummary): boolean 
 
   if (leftPhoneDigits.length > 0 && leftPhoneDigits === rightPhoneDigits) {
     return true;
+  }
+
+  const leftCanonical = left.canonicalContactId?.trim().toLowerCase() ?? '';
+  const rightCanonical = right.canonicalContactId?.trim().toLowerCase() ?? '';
+
+  if (leftCanonical.length > 0 && leftCanonical === rightCanonical) {
+    return true;
+  }
+
+  const leftAliases = new Set(left.contactAliases ?? []);
+  const rightAliases = new Set(right.contactAliases ?? []);
+  for (const alias of leftAliases) {
+    if (rightAliases.has(alias)) {
+      return true;
+    }
   }
 
   const leftLatestProviderMessageId = left.latestProviderMessageId?.trim() ?? '';
@@ -206,6 +251,11 @@ function collapseDuplicateSummaries(summaries: InboxSummary[]): InboxSummary[] {
 
     collapsed[duplicateIndex] = {
       ...primary,
+      contactName: !isUnknownContactName(primary.contactName) && primary.contactName
+        ? primary.contactName
+        : secondary.contactName,
+      canonicalContactId: primary.canonicalContactId ?? secondary.canonicalContactId ?? null,
+      contactAliases: Array.from(new Set([...(primary.contactAliases ?? []), ...(secondary.contactAliases ?? [])])),
       avatarUrl: primary.avatarUrl ?? secondary.avatarUrl ?? null,
       leadSaved: primary.leadSaved || secondary.leadSaved,
       unreadCount: Math.max(primary.unreadCount, secondary.unreadCount),
@@ -632,6 +682,8 @@ export async function GET(request: Request) {
       contactId: conversation.contactId,
       contactName: conversation.contactName ?? null,
       contactPhone: conversation.contactPhone ?? null,
+      canonicalContactId: extractCanonicalContactId(conversation.metadata),
+      contactAliases: extractContactAliases(conversation.metadata),
       avatarUrl: extractAvatarUrlFromMetadata(conversation.metadata),
       leadSaved: (contactProfilesByContactId.get(conversation.contactId)?.crmTags ?? []).some((tag) =>
         typeof tag.label === 'string' && tag.label.trim().toLowerCase() === 'lead'
@@ -717,6 +769,8 @@ export async function GET(request: Request) {
           contactId: chat.contactId,
           contactName: chat.contactName || null,
           contactPhone: inferPhoneFromContactId(chat.contactId),
+          canonicalContactId: null,
+          contactAliases: [],
           avatarUrl: extractAvatarUrlFromMetadata(persistedConversation?.metadata),
           leadSaved: false,
           unreadCount: 0,
