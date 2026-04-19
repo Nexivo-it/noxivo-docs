@@ -62,6 +62,8 @@ const SpaWebhookSchema = new Schema({
 
 SpaWebhookSchema.index({ agencyId: 1, isActive: 1 });
 
-export type SpaWebhook = InferSchemaType<typeof SpaWebhookSchema> & { _id: mongoose.Types.ObjectId };
+export type SpaWebhook = InferSchemaType<typeof SpaWebhookSchema>;
 
-export const SpaWebhookModel: Model<SpaWebhook> = models.SpaWebhook ?? model('SpaWebhook', SpaWebhookSchema);
+export const SpaWebhookModel =
+  (models.SpaWebhook as Model<SpaWebhook> | undefined) ||
+  model<SpaWebhook>('SpaWebhook', SpaWebhookSchema);
