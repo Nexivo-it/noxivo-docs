@@ -6,7 +6,6 @@ const DashboardConfigSchema = new Schema({
     type: String,
     required: true,
     unique: true,
-    index: true,
     description: 'Unique agency identifier from the dashboard'
   },
   dashboardName: {

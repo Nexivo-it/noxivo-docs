@@ -5,8 +5,7 @@ const ApiKeySchema = new Schema({
   key: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   agencyId: {
     type: Schema.Types.ObjectId,

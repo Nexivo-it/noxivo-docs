@@ -59,8 +59,6 @@ const WebhookInboxActivationSchema = new Schema({
 });
 
 WebhookInboxActivationSchema.index({ agencyId: 1, tenantId: 1 });
-WebhookInboxActivationSchema.index({ apiKey: 1 });
-WebhookInboxActivationSchema.index({ webhookUrl: 1 });
 
 WebhookInboxActivationSchema.statics.activate = async function(
   agencyId: string,
