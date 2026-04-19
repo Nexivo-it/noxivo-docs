@@ -49,8 +49,7 @@ test-results/
 artifacts
 .sisyphus
 mcp_server_node.log
-v1.json
-v2.json
+v*.json
 temp
 tmp
 .mcp.json
@@ -61,6 +60,8 @@ voicetree-*/
 apps/dashboard/.env.local
 apps/workflow-engine/messaging-openapi.json
 docs/internal/
+build_log*.txt
+*_HANDOFF_*.md
 
 .env.bak
 .env.engine

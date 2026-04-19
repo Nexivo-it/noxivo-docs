@@ -2,6 +2,7 @@
 
 ## Active Sprint
 
+- [x] Add Spa backend source-of-truth APIs for auth, catalog, bookings, customers, settings, gallery, media-provider config, and AI concierge config
 - [x] Fix workflow-engine inbox sync TypeScript alias normalization so Docker/package builds stop failing on `normalizeChatIdCandidates` calls
 - [x] Fix dashboard inbox inbound recovery when dashboard and workflow-engine run on different Mongo/Redis planes (refresh remote summaries for existing conversations + recover newest engine-side message into dense paginated history)
 - [x] Fix Voicetree context drift for workflow-engine docs (stale `messaging_integration.md` links and stale `.../messaging/noxivo-saas/...` paths)
@@ -74,9 +75,16 @@
 - Correct production MessagingProvider env wiring so it points at MessagingProvider, not the workflow-engine itself, then validate inbox infinite-scroll behavior in a real MessagingProvider-connected environment (`@lid` and `@c.us` contacts).
 - Run a code-level gap audit of `apps/workflow-engine` against Voicetree context summaries (compiler/executor/worker/server boundaries).
 - Implement `get_product_details` tool to allow the AI Sales Agent to fetch specific product data (descriptions, specific variants) after finding candidates via `search_store`.
+- Connect the Spa Tique frontend to the new agency-scoped `/api/v1/spa/*` endpoints and replace its direct Supabase-backed data flows.
 
 ## Commands Still Relevant
 
+- `pnpm --filter @noxivo/contracts build` ✅
+- `pnpm --filter @noxivo/database build` ✅
+- `pnpm --filter @noxivo/workflow-engine test -- test/spa-media-url.service.test.ts test/spa-auth-routes.test.ts test/spa-catalog-routes.test.ts test/spa-bookings-routes.test.ts test/spa-admin-routes.test.ts` ✅
+- `pnpm --filter @noxivo/workflow-engine test` ✅
+- `pnpm --filter @noxivo/workflow-engine lint` ✅
+- `pnpm --filter @noxivo/workflow-engine build` ✅
 - `rg -n "messaging_integration\\.md|messaging/noxivo-saas|apps_workflow_engine_context_1776393302834\\.md" voicetree-14-4` ✅ (returns no matches)
 - `rg -n 'MESSAGING_WEBHOOK_SECRET|MessagingRouteService|explicitly \`sendText\`' voicetree-14-4/workflow-engine/*.md voicetree-14-4/workflowenginecontextanalysis20260417.md voicetree-14-4/ctx-nodes/workflowenginecontextanalysis20260417_context_1776566400045.md voicetree-14-4/ctx-nodes/workflowenginecontextanalysis20260417_context_1776568437318.md` ✅ (returns no matches)
 - `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts` ✅

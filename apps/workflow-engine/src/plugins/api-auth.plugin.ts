@@ -87,6 +87,7 @@ export const apiAuthPlugin = fp(async (fastify: FastifyInstance) => {
     // Admin routes and internal dashboard routes are guarded by PSK or session middleware.
     const isPublicV1 = requestPath.startsWith('/api/v1/') || requestPath.startsWith('/v1/');
     const isExcluded = requestPath.startsWith('/api/v1/admin/') || 
+                     requestPath.startsWith('/api/v1/spa/') ||
                      requestPath.startsWith('/v1/internal/') || 
                      requestPath.startsWith('/v1/webhooks/');
 
