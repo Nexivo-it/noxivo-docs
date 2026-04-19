@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '../../../../lib/auth/session';
 
+interface ServiceResult {
+  name: string;
+  price: number;
+  duration: number;
+  description: string;
+  category: string;
+}
+
 export async function POST(request: NextRequest) {
   const session = await getCurrentSession();
   if (!session) {
@@ -33,6 +41,8 @@ export async function POST(request: NextRequest) {
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf';
     
+    const aiAnalysis: ServiceResult[] = [];
+    
     return NextResponse.json({ 
       url: publicUrl,
       filename: file.name,
@@ -40,7 +50,9 @@ export async function POST(request: NextRequest) {
       size: file.size,
       isImage,
       isPdf,
-      needsReview: true
+      needsReview: true,
+      aiAnalysis,
+      serviceCount: 0
     });
   } catch (error) {
     console.error('Upload error:', error);

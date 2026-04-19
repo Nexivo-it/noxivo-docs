@@ -3,6 +3,8 @@ import { ConversationModel, MessageModel } from '@noxivo/database';
 import { DeliveryLifecycleService } from '../inbox/delivery-lifecycle.service.js';
 import { InboxEventsPublisher } from '../inbox/inbox-events.publisher.js';
 import { type AddMessageInput } from '../inbox/inbox.service.js';
+import { proxyToMessaging } from '../../lib/messaging-proxy-utils.js';
+import { resolveMessagingContactIdentity } from '../inbox/messaging-contact-identity.js';
 
 const MessagingSessionBindingInterface = z.object({
   id: z.string(),
@@ -405,10 +407,21 @@ export class MessagingRouteService {
         return resolution;
       }
 
+      const resolvedIdentity = await resolveMessagingContactIdentity({
+        requester: (path) => proxyToMessaging(path),
+        sessionName: parsedPayload.session,
+        rawContactId: contactId
+      });
+
       const recordResult = await this.inboxService.recordMessage({
         agencyId: resolution.agencyId,
         tenantId: resolution.tenantId,
-        contactId,
+        contactId: resolvedIdentity.canonicalContactId,
+        canonicalContactId: resolvedIdentity.canonicalContactId,
+        rawContactId: resolvedIdentity.rawContactId,
+        contactAliases: resolvedIdentity.contactAliases,
+        contactName: resolvedIdentity.contactName,
+        contactPhone: resolvedIdentity.contactPhone,
         role: fromMe ? 'assistant' : 'user',
         content: msg.body ?? '',
         messagingMessageId: providerMessageId,
@@ -421,6 +434,9 @@ export class MessagingRouteService {
         deliveryEventSource: 'webhook_message',
         metadata: {
           messagingEvent: parsedPayload.event,
+          messagingCanonicalContactId: resolvedIdentity.canonicalContactId,
+          messagingAliases: resolvedIdentity.contactAliases,
+          messagingChatId: resolvedIdentity.messagingChatId,
           timestamp: msg.timestamp ?? null,
           source: msg.source ?? null,
           ...(quotedMessageMetadata ? { quotedMessage: quotedMessageMetadata } : {})
@@ -441,7 +457,7 @@ export class MessagingRouteService {
             agencyId: resolution.agencyId,
             tenantId: resolution.tenantId,
             conversationId,
-            contactId,
+            contactId: resolvedIdentity.canonicalContactId,
             content: msg.body ?? '',
             receivedAt: msg.timestamp ? new Date(msg.timestamp * 1000) : new Date()
           });

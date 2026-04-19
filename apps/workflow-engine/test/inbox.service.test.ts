@@ -132,4 +132,49 @@ describe('InboxService contact profile projection', () => {
       attachments: []
     })).rejects.toThrow('Inbox message requires content or attachments');
   }, 60000);
+
+  it('reuses and normalizes an alias conversation onto the canonical @c.us identity', async () => {
+    const agencyId = new mongoose.Types.ObjectId().toString();
+    const tenantId = new mongoose.Types.ObjectId().toString();
+
+    const legacyConversation = await ConversationModel.create({
+      agencyId,
+      tenantId,
+      contactId: '15550001111@lid',
+      contactName: 'Legacy LID',
+      status: 'open',
+      unreadCount: 0,
+      metadata: {
+        messagingChatId: '15550001111@lid',
+        messagingAliases: ['15550001111@lid']
+      }
+    });
+
+    const result = await inboxService.recordMessage({
+      agencyId,
+      tenantId,
+      contactId: '15550001111@c.us',
+      canonicalContactId: '15550001111@c.us',
+      rawContactId: '15550001111@lid',
+      contactAliases: ['15550001111@lid', '15550001111@c.us'],
+      contactName: 'Alice Smith',
+      contactPhone: '15550001111',
+      role: 'user',
+      content: 'Hello from canonical identity'
+    });
+
+    const conversations = await ConversationModel.find({ tenantId }).lean().exec();
+    const updatedConversation = await ConversationModel.findById(result.conversation._id).lean().exec();
+
+    expect(conversations).toHaveLength(1);
+    expect(String(updatedConversation?._id)).toBe(String(legacyConversation._id));
+    expect(updatedConversation?.contactId).toBe('15550001111@c.us');
+    expect(updatedConversation?.contactName).toBe('Alice Smith');
+    expect(updatedConversation?.contactPhone).toBe('15550001111');
+    expect(updatedConversation?.metadata).toEqual(expect.objectContaining({
+      messagingCanonicalContactId: '15550001111@c.us',
+      messagingChatId: '15550001111@lid',
+      messagingAliases: expect.arrayContaining(['15550001111@lid', '15550001111@c.us'])
+    }));
+  }, 60000);
 });

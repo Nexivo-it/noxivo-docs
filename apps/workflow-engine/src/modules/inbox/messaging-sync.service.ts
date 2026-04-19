@@ -2,6 +2,7 @@ import { ConversationModel, MessageModel, MessagingClusterModel, MessagingSessio
 import { InboxService, type AddMessageInput } from './inbox.service.js';
 import { InboxEventsPublisher } from './inbox-events.publisher.js';
 import { getConfiguredMessagingBaseUrl, normalizeMessagingBaseUrl } from '../../lib/messaging-base-url.js';
+import { buildMessagingAliasCandidates, resolveMessagingContactIdentity } from './messaging-contact-identity.js';
 
 type MessagingAttachmentKind = 'image' | 'video' | 'audio' | 'document';
 
@@ -134,31 +135,7 @@ function toIsoPhone(contactId: string): string | null {
   return digits.length > 0 ? digits : null;
 }
 
-function normalizeChatIdCandidates(input: string | null | undefined): string[] {
-  const raw = (input ?? '').trim();
-  if (raw.length === 0) {
-    return [];
-  }
-
-  const normalized = raw.toLowerCase();
-  const [localPart] = normalized.split('@');
-  const digits = normalized.replace(/\D/g, '');
-  const candidates = new Set<string>([normalized]);
-
-  if (localPart && localPart.length > 0) {
-    candidates.add(`${localPart}@c.us`);
-    candidates.add(`${localPart}@lid`);
-  }
-
-  if (digits.length > 0) {
-    candidates.add(digits);
-    candidates.add(`${digits}@c.us`);
-    candidates.add(`${digits}@s.whatsapp.net`);
-    candidates.add(`${digits}@lid`);
-  }
-
-  return Array.from(candidates);
-}
+const normalizeChatIdCandidates = buildMessagingAliasCandidates;
 
 function extractMessagingChatIdFromMetadata(metadata: ConversationMetadata): string | null {
   const value = metadata.messagingChatId;
@@ -429,31 +406,38 @@ export class MessagingInboxSyncService {
           ? new Date(chat.lastMessage.timestamp * 1000)
           : undefined;
 
-        await ConversationModel.findOneAndUpdate(
-          {
-            agencyId: input.agencyId,
-            tenantId: input.tenantId,
-            contactId: chat.id
-          },
+        const resolvedIdentity = await resolveMessagingContactIdentity({
+          requester: (path) => fetchJson(`${session.baseUrl}${path}`, token),
+          sessionName: session.sessionName,
+          rawContactId: chat.id
+        });
+
+        const conversationRecord = await this.inboxService.upsertConversationIdentity({
+          agencyId: input.agencyId,
+          tenantId: input.tenantId,
+          contactId: resolvedIdentity.canonicalContactId,
+          canonicalContactId: resolvedIdentity.canonicalContactId,
+          rawContactId: resolvedIdentity.rawContactId,
+          contactAliases: resolvedIdentity.contactAliases,
+          contactName: resolvedIdentity.contactName ?? chat.name ?? null,
+          contactPhone: resolvedIdentity.contactPhone ?? toIsoPhone(chat.id)
+        });
+
+        await ConversationModel.updateOne(
+          { _id: conversationRecord._id },
           {
             $set: {
-              contactName: chat.name ?? null,
-              contactPhone: toIsoPhone(chat.id),
-              'metadata.messagingChatId': chat.id,
+              'metadata.messagingChatId': resolvedIdentity.messagingChatId,
+              'metadata.messagingCanonicalContactId': resolvedIdentity.canonicalContactId,
+              'metadata.messagingAliases': resolvedIdentity.contactAliases,
               ...(typeof chat.picture === 'string' && chat.picture.trim().length > 0
                 ? { 'metadata.contactPicture': chat.picture.trim() }
                 : {}),
               ...(lastMessageSummary ? { lastMessageContent: lastMessageSummary } : {}),
               ...(lastMessageAt ? { lastMessageAt } : {}),
               unreadCount: chat._chat?.unreadCount ?? 0
-            },
-            $setOnInsert: {
-              agencyId: input.agencyId,
-              tenantId: input.tenantId,
-              status: 'open'
             }
-          },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
+          }
         ).exec();
 
         syncedConversations += 1;
@@ -518,10 +502,15 @@ export class MessagingInboxSyncService {
         : {};
       const metadataChatId = extractMessagingChatIdFromMetadata(metadata);
 
+      const metadataAliases = Array.isArray(metadata.messagingAliases)
+        ? metadata.messagingAliases.filter((value): value is string => typeof value === 'string')
+        : [];
       const initialChatCandidates = new Set<string>([
         ...normalizeChatIdCandidates(conversation.contactId),
         ...normalizeChatIdCandidates(conversation.contactPhone ?? null),
-        ...(metadataChatId ? [metadataChatId] : [])
+        ...normalizeChatIdCandidates(metadataChatId),
+        ...normalizeChatIdCandidates(metadata.messagingCanonicalContactId as string | null | undefined),
+        ...metadataAliases.flatMap((value) => normalizeChatIdCandidates(value))
       ]);
 
       const expandedChatCandidates = new Set<string>();
