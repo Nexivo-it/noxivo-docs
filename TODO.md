@@ -3,6 +3,7 @@
 ## Active Sprint
 
 - [x] Fix workflow-engine inbox sync TypeScript alias normalization so Docker/package builds stop failing on `normalizeChatIdCandidates` calls
+- [x] Fix dashboard inbox inbound recovery when dashboard and workflow-engine run on different Mongo/Redis planes (refresh remote summaries for existing conversations + recover newest engine-side message into dense paginated history)
 - [x] Fix Voicetree context drift for workflow-engine docs (stale `messaging_integration.md` links and stale `.../messaging/noxivo-saas/...` paths)
 - [x] Sync Voicetree workflow-engine context docs with live code (webhook secret var, webhook service naming, action support statement, CRM specialized mapping note)
 - [x] AI-Powered Reply Suggestions
@@ -69,6 +70,7 @@
 - [x] Multi-dashboard architecture documentation
 
 ## Next Action
+- Deploy the latest dashboard inbox recovery patch, then verify with a live inbound WhatsApp message that: (1) the sidebar row updates within the dashboard poll window, and (2) an already-open conversation picks up the inbound message without manual refresh.
 - Correct production MessagingProvider env wiring so it points at MessagingProvider, not the workflow-engine itself, then validate inbox infinite-scroll behavior in a real MessagingProvider-connected environment (`@lid` and `@c.us` contacts).
 - Run a code-level gap audit of `apps/workflow-engine` against Voicetree context summaries (compiler/executor/worker/server boundaries).
 - Implement `get_product_details` tool to allow the AI Sales Agent to fetch specific product data (descriptions, specific variants) after finding candidates via `search_store`.
@@ -88,10 +90,11 @@
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/api-keys-routes.test.ts` ✅ (covers bootstrap + missing-tenant + live-session recovery)
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/messages-route.test.ts` ✅ (covers no-binding + missing-cluster fallback)
 - `pnpm --filter @noxivo/dashboard exec vitest run test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-shop-route.test.ts` ✅
 - `pnpm --filter @noxivo/workflow-engine lint` ✅
 - `pnpm --filter @noxivo/dashboard build` ✅
-- `pnpm --filter @noxivo/dashboard lint` ✅
+- `pnpm --filter @noxivo/dashboard lint` ⚠️ pre-existing `.next/types/**/*.ts` include mismatch; still fails independently of this inbox fix
 - `pnpm --filter @noxivo/workflow-engine build` ✅
 - Swagger spec: `https://api-workflow-engine.khelifi-salmen.com/json`

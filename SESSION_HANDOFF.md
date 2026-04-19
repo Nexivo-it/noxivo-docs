@@ -1,5 +1,48 @@
 # Session Handoff - 2026-04-18
 
+## Update - 2026-04-19 (Dashboard inbound recovery across split dashboard/engine data planes)
+
+### Summary
+Fixed the dashboard-side inbox recovery gap that left inbound WhatsApp messages invisible when the workflow-engine and dashboard were not reading the same Mongo/Redis plane. Outbound looked healthy because the dashboard writes/broadcasts locally, but inbound could stay stale because the dashboard only did a best-effort sync call and then kept reading its own local DB.
+
+### Root Cause
+- `docker-compose.dashboard.yml` uses its own dashboard Mongo/Redis defaults (`noxivo_dashboard` + local Redis), while the workflow-engine stack uses `noxivo` + its own Redis.
+- Workflow-engine webhook ingestion already persisted inbound messages and published realtime events on the engine side.
+- Dashboard inbox routes still read local `ConversationModel` / `MessageModel` collections after `syncInboxState()`, but `syncInboxState()` only POSTs to `/v1/internal/inbox/sync` and ignores the response.
+- Existing dashboard recovery logic only imported remote MessagingProvider chat summaries when the local inbox was completely empty, and paginated message history only backfilled when the current page was sparse.
+- Result: existing sidebar rows stayed stale, and open conversations with dense local history never imported the newest inbound engine-side message.
+
+### Completed Changes
+- **Dashboard inbox summary reconciliation**
+  - Updated `apps/dashboard/app/api/team-inbox/route.ts` to always reconcile remote workflow-engine MessagingProvider chat summaries for the selected tenant when listing the inbox, not only when local conversations are empty.
+  - Persisted refreshed remote summary state (`lastMessageContent`, `lastMessageAt`, `unreadCount`, picture, and a new `metadata.workflowEngineSummaryUpdatedAt`) into the dashboard DB so the sidebar poll can see inbound updates even when dashboard/engine DBs are split.
+- **Dense-history inbound recovery**
+  - Updated `apps/dashboard/app/api/team-inbox/[conversationId]/messages/route.ts` so the paginated history route backfills from workflow-engine when a conversation summary refreshed from workflow-engine is newer than the newest locally persisted message, even if the first local page is already full.
+  - Relaxed `resolveEngineConversationId()` so it honors non-ObjectId engine conversation identifiers stored in metadata.
+- **Regression coverage**
+  - Added dashboard route coverage proving:
+    - stale existing sidebar rows refresh from workflow-engine inbox chats
+    - dense local history still recovers the newest inbound engine-side message
+
+### Files Changed (2026-04-19)
+- `apps/dashboard/app/api/team-inbox/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/messages/route.ts`
+- `apps/dashboard/test/team-inbox-routes.test.ts`
+- `TODO.md`
+- `SESSION_HANDOFF.md`
+
+### Verification
+- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
+- `pnpm --filter @noxivo/dashboard build` ✅
+- `lsp_diagnostics` on changed dashboard route/test files ✅
+- `pnpm --filter @noxivo/dashboard lint` ⚠️ still fails on the pre-existing `.next/types/**/*.ts` include mismatch; this fix did not introduce that problem.
+
+### Next Step
+- Deploy the dashboard patch and validate against a real inbound WhatsApp message:
+  1. new inbound updates the sidebar row within the 2s inbox poll window
+  2. an already-open conversation imports the new inbound message via the 1s selected-thread refresh path without manual page reload
+  3. if inbound still fails after deploy, the remaining issue is likely production ingress/session wiring rather than dashboard reconciliation logic
+
 ## Update - 2026-04-19 (Workflow-Engine Build Fix for inbox sync alias normalization)
 
 ### Summary
