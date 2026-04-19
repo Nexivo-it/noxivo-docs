@@ -534,6 +534,92 @@ describe('team inbox routes', () => {
     );
   }, 60000);
 
+  it('refreshes existing conversation summaries from workflow-engine inbox chats when local rows are stale', async () => {
+    await seedInbox();
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          lastMessageContent: 'Old local summary',
+          lastMessageAt: new Date('2026-04-12T09:00:00.000Z'),
+          unreadCount: 0
+        }
+      }
+    ).exec();
+
+    process.env.WORKFLOW_ENGINE_INTERNAL_BASE_URL = 'http://workflow-engine.internal';
+    process.env.WORKFLOW_ENGINE_INTERNAL_PSK = 'internal-psk';
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.includes('/v1/internal/inbox/sync')) {
+        return new Response(JSON.stringify({
+          syncedConversations: 1,
+          syncedMessages: 1,
+          sessionName: 'tenant-main'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.includes('/api/v1/chats?')) {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.includes('/v1/inbox/chats?')) {
+        return new Response(JSON.stringify({
+          chats: [
+            {
+              id: '15550001111',
+              name: 'Alice Smith',
+              picture: null,
+              lastMessage: {
+                id: 'remote-inbound-1',
+                body: 'New inbound from engine',
+                timestamp: 1712916000,
+                fromMe: false
+              },
+              unreadCount: 3
+            }
+          ],
+          total: 1,
+          hasMore: false
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unhandled request: ${url}` }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await listConversations(new Request('http://localhost/api/team-inbox'));
+    const payload = await response.json() as Array<{
+      _id: string;
+      unreadCount: number;
+      lastMessage: { content: string; createdAt: string } | null;
+    }>;
+
+    const persistedConversation = await ConversationModel.findById(conversationId).lean().exec();
+
+    expect(response.status).toBe(200);
+    expect(payload[0]?.lastMessage?.content).toBe('New inbound from engine');
+    expect(payload[0]?.unreadCount).toBe(3);
+    expect(persistedConversation?.lastMessageContent).toBe('New inbound from engine');
+    expect(persistedConversation?.unreadCount).toBe(3);
+  }, 60000);
+
   it('prefers persisted contact profiles before falling back to message aggregation', async () => {
     await seedInbox();
 
@@ -926,6 +1012,98 @@ describe('team inbox routes', () => {
     expect(response.status).toBe(200);
     const duplicatedProviderRows = payload.messages.filter((message) => message.providerMessageId === 'dup-provider-1');
     expect(duplicatedProviderRows).toHaveLength(1);
+  }, 60000);
+
+  it('recovers newest inbound messages from workflow-engine when paginated local history is already dense', async () => {
+    await seedInbox();
+
+    await MessageModel.deleteMany({ conversationId }).exec();
+    await MessageModel.create(
+      Array.from({ length: 20 }, (_, index) => ({
+        conversationId,
+        role: 'user' as const,
+        content: `Local message ${index + 1}`,
+        providerMessageId: `local-provider-${index + 1}`,
+        timestamp: new Date(Date.UTC(2026, 3, 12, 9, index + 1, 0))
+      }))
+    );
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          lastMessageContent: 'Remote inbound newest',
+          lastMessageAt: new Date('2026-04-12T10:41:00.000Z'),
+          metadata: {
+            engineConversationId: 'engine-chat-1',
+            messagingChatId: '15550001111@c.us',
+            workflowEngineSummaryUpdatedAt: '2026-04-12T10:41:00.000Z'
+          }
+        }
+      }
+    ).exec();
+
+    process.env.WORKFLOW_ENGINE_INTERNAL_BASE_URL = 'http://workflow-engine.internal';
+    process.env.WORKFLOW_ENGINE_INTERNAL_PSK = 'internal-psk';
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.includes('/v1/internal/inbox/sync')) {
+        return new Response(JSON.stringify({
+          syncedConversations: 1,
+          syncedMessages: 1,
+          sessionName: 'tenant-main'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.includes('/v1/inbox/conversations/engine-chat-1/messages?')) {
+        return new Response(JSON.stringify({
+          messages: [
+            {
+              id: 'remote-inbound-1',
+              fromMe: false,
+              body: 'Remote inbound newest',
+              timestamp: 1775990460,
+              ack: 2,
+              ackName: 'DEVICE',
+              hasMedia: false,
+              media: null
+            }
+          ],
+          hasMore: false
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unhandled request: ${url}` }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await listMessages(
+      new Request('http://localhost/api/team-inbox/1/messages?paginated=1&limit=20&syncPages=4'),
+      { params: Promise.resolve({ conversationId: conversationId.toString() }) }
+    );
+    const payload = await response.json() as {
+      messages: Array<{ content: string }>;
+      hasMore: boolean;
+      nextCursor: string | null;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.messages.some((message) => message.content === 'Remote inbound newest')).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes('/v1/inbox/conversations/engine-chat-1/messages?'))
+    ).toBe(true);
   }, 60000);
 
   it('does not merge sibling @lid history when chats only match by display name', async () => {

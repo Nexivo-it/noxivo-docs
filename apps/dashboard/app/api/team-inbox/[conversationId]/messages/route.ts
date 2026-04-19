@@ -749,7 +749,7 @@ async function resolveEngineConversationId(
     ? metadata.engineConversationId.trim()
     : null;
 
-  if (metadataConversationId && metadataConversationId.length > 0 && mongoose.Types.ObjectId.isValid(metadataConversationId)) {
+  if (metadataConversationId && metadataConversationId.length > 0) {
     return metadataConversationId;
   }
 
@@ -1480,7 +1480,28 @@ export async function GET(
 
   let page = await readMessagePage();
   // Block on bounded recovery whenever the requested page is sparse so cursor pagination can keep walking older history.
-  const shouldAttemptRecovery = syncPages > 1 && page.length < pageLimit;
+  const latestPersistedTimestamp = page[0]?.timestamp
+    ? new Date(page[0].timestamp).getTime()
+    : 0;
+  const conversationLastMessageTimestamp = conversation.lastMessageAt
+    ? new Date(conversation.lastMessageAt).getTime()
+    : 0;
+  const conversationMetadata = conversation.metadata
+    && typeof conversation.metadata === 'object'
+    && !Array.isArray(conversation.metadata)
+    ? conversation.metadata as Record<string, unknown>
+    : null;
+  const workflowEngineSummaryUpdatedAt = typeof conversationMetadata?.workflowEngineSummaryUpdatedAt === 'string'
+    ? new Date(conversationMetadata.workflowEngineSummaryUpdatedAt).getTime()
+    : 0;
+  const shouldAttemptRecovery = syncPages > 1 && (
+    page.length < pageLimit
+    || (
+      !cursorParam
+      && workflowEngineSummaryUpdatedAt > 0
+      && conversationLastMessageTimestamp > latestPersistedTimestamp
+    )
+  );
 
   if (shouldAttemptRecovery) {
     try {

@@ -367,6 +367,62 @@ export async function GET(request: Request) {
       });
     };
 
+    const mapMessagingChatsToEngineChats = (messagingChats: Awaited<ReturnType<typeof fetchMessagingChatsWithSync>>) => {
+      return messagingChats.map((chat) => ({
+        id: chat.id,
+        contactId: chat.id,
+        contactName: chat.name ?? '',
+        lastMessage: chat.lastMessage?.body ?? null,
+        updatedAt: chat.lastMessage ? new Date(chat.lastMessage.timestamp * 1000).toISOString() : null
+      }));
+    };
+
+    const hydrateConversationsFromMessagingChats = async (
+      candidateTenantId: string,
+      messagingChats: Awaited<ReturnType<typeof fetchMessagingChatsWithSync>>
+    ) => {
+      for (const chat of messagingChats) {
+        const lastMessage = chat.lastMessage?.body?.trim();
+        const lastMessageAt = chat.lastMessage
+          ? new Date(chat.lastMessage.timestamp * 1000)
+          : null;
+
+        try {
+          await ConversationModel.findOneAndUpdate(
+            {
+              agencyId: session.actor.agencyId,
+              tenantId: candidateTenantId,
+              contactId: chat.id
+            },
+            {
+              $set: {
+                contactName: chat.name ?? null,
+                contactPhone: inferPhoneFromContactId(chat.id),
+                unreadCount: chat.unreadCount ?? 0,
+                'metadata.messagingChatId': chat.id,
+                'metadata.workflowEngineSummaryUpdatedAt': new Date().toISOString(),
+                ...(chat.picture && chat.picture.length > 0 ? { 'metadata.contactPicture': chat.picture } : {}),
+                ...(lastMessage && lastMessage.length > 0 ? { lastMessageContent: lastMessage } : {}),
+                ...(lastMessageAt && !Number.isNaN(lastMessageAt.getTime()) ? { lastMessageAt } : {})
+              },
+              $setOnInsert: {
+                agencyId: session.actor.agencyId,
+                tenantId: candidateTenantId,
+                status: 'open'
+              }
+            },
+            { upsert: true, setDefaultsOnInsert: true }
+          ).exec();
+        } catch (error) {
+          if (!isDuplicateKeyError(error)) {
+            throw error;
+          }
+        }
+      }
+
+      return fetchConversations(candidateTenantId);
+    };
+
     const fetchConversations = async (candidateTenantId: string) => {
       return ConversationModel.find({
         ...filterBase,
@@ -412,54 +468,17 @@ export async function GET(request: Request) {
         }
 
         selectedTenantId = candidateTenantId;
-        engineChats = messagingChats.map((chat) => ({
-          id: chat.id,
-          contactId: chat.id,
-          contactName: chat.name ?? '',
-          lastMessage: chat.lastMessage?.body ?? null,
-          updatedAt: chat.lastMessage ? new Date(chat.lastMessage.timestamp * 1000).toISOString() : null
-        }));
-
-        for (const chat of messagingChats) {
-          const lastMessage = chat.lastMessage?.body?.trim();
-          const lastMessageAt = chat.lastMessage
-            ? new Date(chat.lastMessage.timestamp * 1000)
-            : null;
-
-          try {
-            await ConversationModel.findOneAndUpdate(
-              {
-                agencyId: session.actor.agencyId,
-                tenantId: selectedTenantId,
-                contactId: chat.id
-              },
-              {
-                $set: {
-                  contactName: chat.name ?? null,
-                  contactPhone: inferPhoneFromContactId(chat.id),
-                  unreadCount: chat.unreadCount ?? 0,
-                  'metadata.messagingChatId': chat.id,
-                  ...(chat.picture && chat.picture.length > 0 ? { 'metadata.contactPicture': chat.picture } : {}),
-                  ...(lastMessage && lastMessage.length > 0 ? { lastMessageContent: lastMessage } : {}),
-                  ...(lastMessageAt && !Number.isNaN(lastMessageAt.getTime()) ? { lastMessageAt } : {})
-                },
-                $setOnInsert: {
-                  agencyId: session.actor.agencyId,
-                  tenantId: selectedTenantId,
-                  status: 'open'
-                }
-              },
-              { upsert: true, setDefaultsOnInsert: true }
-            ).exec();
-          } catch (error) {
-            if (!isDuplicateKeyError(error)) {
-              throw error;
-            }
-          }
-        }
-
-        conversations = await fetchConversations(selectedTenantId);
+        engineChats = mapMessagingChatsToEngineChats(messagingChats);
+        conversations = await hydrateConversationsFromMessagingChats(selectedTenantId, messagingChats);
         break;
+      }
+    }
+
+    if (!query && !status) {
+      const messagingChats = await fetchMessagingChatsWithSync(selectedTenantId);
+      if (messagingChats.length > 0) {
+        engineChats = mapMessagingChatsToEngineChats(messagingChats);
+        conversations = await hydrateConversationsFromMessagingChats(selectedTenantId, messagingChats);
       }
     }
 
