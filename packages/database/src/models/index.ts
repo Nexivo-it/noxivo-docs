@@ -43,3 +43,4 @@ export * from './spa-service.js';
 export * from './spa-site-settings.js';
 export * from './webhook.js';
 export * from './webhook-inbox-source.js';
+export * from './webhook-inbox-activation.js';
