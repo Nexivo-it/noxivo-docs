@@ -24,7 +24,7 @@ import {
   SpaServiceCategoryModel,
   SpaServiceModel,
   SpaSessionModel,
-  SpaWebhookModel,
+  WebhookModel,
 } from '@noxivo/database';
 import {
   createSpaMember,
@@ -36,7 +36,7 @@ import {
 import { getSpaMemberFromRequest, requireSpaAdmin, requireSpaMember, SPA_SESSION_COOKIE_NAME } from '../../modules/spa/http-auth.js';
 import { serializeSpaService } from '../../modules/spa/serializers.js';
 import { upsertSpaCustomerProjectionFromBooking } from '../../modules/spa/customer-profile.service.js';
-import { triggerBookingCreated } from '../../modules/spa/webhook.service.js';
+import { triggerBookingCreated } from '../../modules/agency/webhook.service.js';
 
 function redactMediaConfig(config: {
   _id?: unknown;
@@ -153,8 +153,8 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     triggerBookingCreated(agency._id, {
       id: String(booking._id),
       customerName: booking.customerName,
-      customerEmail: booking.customerEmail ?? null,
-      customerPhone: booking.customerPhone ?? null,
+      customerEmail: booking.customerEmail || null,
+      customerPhone: booking.customerPhone || null,
       appointmentDateLabel: booking.appointmentDateLabel,
       appointmentTime: booking.appointmentTime,
       services: booking.selectedServices,
@@ -629,14 +629,14 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     return reply.status(200).send(config ?? {});
   });
 
-  fastify.get('/api/v1/spa/admin/webhooks', async (request, reply) => {
+  fastify.get('/api/v1/agency/webhooks', async (request, reply) => {
     await dbConnect();
     const admin = await requireSpaAdmin(request, reply);
     if (!admin) {
       return;
     }
 
-    const webhooks = await SpaWebhookModel.find({ agencyId: admin.agencyId }).sort({ createdAt: -1 }).lean();
+    const webhooks = await WebhookModel.find({ agencyId: admin.agencyId }).sort({ createdAt: -1 }).lean();
     return reply.status(200).send(webhooks.map((webhook) => ({
       id: String(webhook._id),
       name: webhook.name,
@@ -650,7 +650,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     })));
   });
 
-  fastify.post('/api/v1/spa/admin/webhooks', async (request, reply) => {
+  fastify.post('/api/v1/agency/webhooks', async (request, reply) => {
     await dbConnect();
     const admin = await requireSpaAdmin(request, reply);
     if (!admin) {
@@ -658,7 +658,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     }
 
     const input = SpaWebhookInputSchema.parse(request.body);
-    const webhook = await SpaWebhookModel.create({
+    const webhook = await WebhookModel.create({
       agencyId: admin.agencyId,
       name: input.name,
       url: input.url,
@@ -676,7 +676,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.put('/api/v1/spa/admin/webhooks/:webhookId', async (request, reply) => {
+  fastify.put('/api/v1/agency/webhooks/:webhookId', async (request, reply) => {
     await dbConnect();
     const admin = await requireSpaAdmin(request, reply);
     if (!admin) {
@@ -686,7 +686,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     const { webhookId } = request.params as { webhookId: string };
     const input = SpaWebhookUpdateSchema.parse(request.body);
 
-    const existing = await SpaWebhookModel.findOne({
+    const existing = await WebhookModel.findOne({
       _id: webhookId,
       agencyId: admin.agencyId,
     }).lean();
@@ -695,7 +695,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Webhook not found' });
     }
 
-    await SpaWebhookModel.findByIdAndUpdate(webhookId, {
+    await WebhookModel.findByIdAndUpdate(webhookId, {
       $set: {
         name: input.name,
         url: input.url,
@@ -714,7 +714,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.delete('/api/v1/spa/admin/webhooks/:webhookId', async (request, reply) => {
+  fastify.delete('/api/v1/agency/webhooks/:webhookId', async (request, reply) => {
     await dbConnect();
     const admin = await requireSpaAdmin(request, reply);
     if (!admin) {
@@ -723,7 +723,7 @@ export async function registerSpaRoutes(fastify: FastifyInstance) {
 
     const { webhookId } = request.params as { webhookId: string };
 
-    const result = await SpaWebhookModel.deleteOne({
+    const result = await WebhookModel.deleteOne({
       _id: webhookId,
       agencyId: admin.agencyId,
     });

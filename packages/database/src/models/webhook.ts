@@ -2,7 +2,7 @@ import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 const { Schema, model, models } = mongoose;
 
-const SpaWebhookSchema = new Schema({
+const WebhookSchema = new Schema({
   agencyId: {
     type: Schema.Types.ObjectId,
     ref: 'Agency',
@@ -60,10 +60,10 @@ const SpaWebhookSchema = new Schema({
   timestamps: true,
 });
 
-SpaWebhookSchema.index({ agencyId: 1, isActive: 1 });
+WebhookSchema.index({ agencyId: 1, isActive: 1 });
 
-export type SpaWebhook = InferSchemaType<typeof SpaWebhookSchema>;
+export type Webhook = InferSchemaType<typeof WebhookSchema>;
 
-export const SpaWebhookModel =
-  (models.SpaWebhook as Model<SpaWebhook> | undefined) ||
-  model<SpaWebhook>('SpaWebhook', SpaWebhookSchema);
+export const WebhookModel =
+  (models.Webhook as Model<Webhook> | undefined) ||
+  model<Webhook>('Webhook', WebhookSchema);

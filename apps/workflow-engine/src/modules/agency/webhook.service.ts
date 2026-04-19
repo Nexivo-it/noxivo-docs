@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { createHmac } from 'crypto';
-import { SpaWebhookModel, type SpaWebhook } from '@noxivo/database';
+import { WebhookModel, type Webhook } from '@noxivo/database';
 
 export interface WebhookPayload {
   event: string;
@@ -24,7 +24,7 @@ export async function triggerWebhooks(
   event: string,
   data: Record<string, unknown>,
 ): Promise<WebhookTriggerResult[]> {
-  const webhooks = await SpaWebhookModel.find({
+  const webhooks = await WebhookModel.find({
     agencyId,
     isActive: true,
     events: event,
@@ -71,7 +71,7 @@ export async function triggerWebhooks(
           error = `HTTP ${status}: ${errorText.slice(0, 200)}`;
         }
 
-        await SpaWebhookModel.findByIdAndUpdate(webhook._id, {
+        await WebhookModel.findByIdAndUpdate(webhook._id, {
           $set: {
             lastTriggeredAt: new Date(),
             lastStatus: success ? 'success' : 'failed',
@@ -88,7 +88,7 @@ export async function triggerWebhooks(
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 
-        await SpaWebhookModel.findByIdAndUpdate(webhook._id, {
+        await WebhookModel.findByIdAndUpdate(webhook._id, {
           $set: {
             lastTriggeredAt: new Date(),
             lastStatus: 'failed',

@@ -7,10 +7,13 @@ import {
   EyeOff,
   Globe,
   Lock,
+  Plus,
   QrCode,
   RefreshCw,
   Save,
   ShieldCheck,
+  Trash2,
+  Webhook,
   Zap,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -41,6 +44,17 @@ interface FetchQrResult {
   ok: boolean;
   status: QRStatus | null;
   error: string | null;
+}
+
+interface WebhookConfig {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  lastTriggeredAt: string | null;
+  lastStatus: string | null;
+  lastError: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -308,6 +322,13 @@ export function SettingsClient() {
   const [apiKeyState, setApiApiKey] = useState<string | null>(null);
   const [isApiEnabled, setIsApiEnabled] = useState(false);
   const [isTogglingApi, setIsTogglingApi] = useState(false);
+
+  // Webhook State
+  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
+  const [isLoadingWebhooks, setIsLoadingWebhooks] = useState(false);
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [editingWebhook, setEditingWebhook] = useState<WebhookConfig | null>(null);
+  const [isSavingWebhook, setIsSavingWebhook] = useState(false);
   const [qrState, setQrState] = useState<QRState>({
     status: 'loading',
     qrValue: null,
@@ -662,6 +683,65 @@ export function SettingsClient() {
     }
   };
 
+  const fetchWebhooks = async () => {
+    setIsLoadingWebhooks(true);
+    try {
+      const res = await fetch('/api/v1/agency/webhooks');
+      if (res.ok) {
+        const data = await res.json();
+        setWebhooks(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch webhooks:', err);
+    } finally {
+      setIsLoadingWebhooks(false);
+    }
+  };
+
+  const saveWebhook = async (webhook: Partial<WebhookConfig> & { name: string; url: string; events: string[] }) => {
+    setIsSavingWebhook(true);
+    try {
+      const method = webhook.id && !webhook.id.includes('new') ? 'PUT' : 'POST';
+      const url = method === 'PUT' && webhook.id 
+? `/api/v1/agency/webhooks/${webhook.id}`
+      : '/api/v1/agency/webhooks';
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...webhook,
+          isActive: webhook.isActive ?? true,
+          secret: '',
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save webhook');
+      
+      toast.success(webhook.id && !webhook.id.includes('new') ? 'Webhook updated!' : 'Webhook created!');
+      setShowWebhookModal(false);
+      setEditingWebhook(null);
+      fetchWebhooks();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSavingWebhook(false);
+    }
+  };
+
+  const deleteWebhook = async (webhookId: string) => {
+    if (!confirm('Delete this webhook?')) return;
+    
+    try {
+      const res = await fetch(`/api/v1/agency/webhooks/${webhookId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      toast.success('Webhook deleted');
+      fetchWebhooks();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   useEffect(() => {
     if (qrState.status !== 'provisioning' && qrState.status !== 'available') {
       return;
@@ -677,6 +757,10 @@ export function SettingsClient() {
   useEffect(() => {
     setProfileImageFailed(false);
   }, [qrState.profile]);
+
+  useEffect(() => {
+    fetchWebhooks();
+  }, []);
 
   const isMessagingProviderConnected = qrState.status === 'connected';
   const connectedDisplayName = getConnectedProfileDisplayName(qrState.profile);
@@ -889,6 +973,85 @@ export function SettingsClient() {
                     </span>
                   </button>
                 </div>
+              </div>
+            </WorkspacePanel>
+
+            <WorkspacePanel
+              title="Webhooks"
+              description="Configure webhooks to receive real-time events for bookings, orders, and inventory updates."
+              delayIndex={2}
+            >
+              <div className="space-y-6">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      setEditingWebhook({ id: 'new', name: '', url: '', events: [], isActive: true, lastTriggeredAt: null, lastStatus: null, lastError: null });
+                      setShowWebhookModal(true);
+                    }}
+                    className="flex items-center gap-2 rounded-[1.5rem] bg-primary px-6 py-3 text-sm font-bold text-white shadow-primary-glow transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Plus className="size-4" />
+                    Add Webhook
+                  </button>
+                </div>
+
+                {isLoadingWebhooks ? (
+                  <div className="p-8 text-center text-on-surface-subtle">Loading...</div>
+                ) : webhooks.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border-ghost p-10 text-center">
+                    <Webhook className="mx-auto mb-4 size-8 text-on-surface-subtle" />
+                    <p className="text-sm font-medium text-on-surface-subtle">No webhooks configured</p>
+                    <p className="mt-2 text-xs text-on-surface-muted">Add a webhook to receive events from your business</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {webhooks.map((webhook) => (
+                      <div key={webhook.id} className="group rounded-2xl border border-border-ghost bg-surface-base/40 p-5 transition-all hover:bg-surface-base">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <Webhook className="size-4 text-primary" />
+                              <span className="font-bold text-on-surface">{webhook.name}</span>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${webhook.isActive ? 'bg-green-500/20 text-green-500' : 'bg-surface-card text-on-surface-subtle'}`}>
+                                {webhook.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-on-surface-muted">{webhook.url}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {webhook.events.map((event) => (
+                                <span key={event} className="rounded-full bg-surface-card px-2 py-1 text-[10px] font-medium text-on-surface-subtle">
+                                  {event}
+                                </span>
+                              ))}
+                            </div>
+                            {webhook.lastStatus && (
+                              <p className={`text-[11px] ${webhook.lastStatus === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                                {webhook.lastStatus === 'success' ? 'Last delivery: OK' : `Last error: ${webhook.lastError}`}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingWebhook(webhook);
+                                setShowWebhookModal(true);
+                              }}
+                              className="rounded-lg border border-border-ghost bg-surface-base px-3 py-2 text-xs font-bold text-on-surface-subtle transition-all hover:border-primary/30 hover:text-primary"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteWebhook(webhook.id)}
+                              className="rounded-lg border border-border-ghost bg-surface-base p-2 text-red-500 transition-all hover:bg-red-500/10"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </WorkspacePanel>
 
