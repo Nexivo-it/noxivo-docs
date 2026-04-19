@@ -1,0 +1,74 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "NexusFlow" [level=1] [ref=e5]
+      - paragraph [ref=e6]: Create your agency account
+    - generic [ref=e7]:
+      - heading "Get started" [level=2] [ref=e8]
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]: Full Name
+          - generic [ref=e12]:
+            - generic:
+              - img
+            - textbox "Full Name" [ref=e13]:
+              - /placeholder: John Doe
+        - generic [ref=e14]:
+          - generic [ref=e15]: Agency Name
+          - generic [ref=e16]:
+            - generic:
+              - img
+            - textbox "Agency Name" [ref=e17]:
+              - /placeholder: Acme Inc.
+        - generic [ref=e18]:
+          - generic [ref=e19]: Work Email
+          - generic [ref=e20]:
+            - generic:
+              - img
+            - textbox "Work Email" [ref=e21]:
+              - /placeholder: you@agency.com
+        - generic [ref=e22]:
+          - generic [ref=e23]: Password
+          - generic [ref=e24]:
+            - generic:
+              - img
+            - textbox "Password" [ref=e25]:
+              - /placeholder: ••••••••
+        - generic [ref=e26]:
+          - generic [ref=e27]: Confirm Password
+          - generic [ref=e28]:
+            - generic:
+              - img
+            - textbox "Confirm Password" [ref=e29]:
+              - /placeholder: ••••••••
+        - button "Create account" [ref=e30] [cursor=pointer]:
+          - text: Create account
+          - img [ref=e31]
+      - paragraph [ref=e34]:
+        - text: Already have an account?
+        - link "Sign in" [ref=e35] [cursor=pointer]:
+          - /url: /auth/login
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - button "Select element":
+                      - img
+                - generic:
+                  - generic:
+                    - button "Open comments":
+                      - generic:
+                        - img
+                - generic:
+                  - generic:
+                    - button "Copy all comments":
+                      - img
+              - generic:
+                - button "Disable React Grab" [pressed]
+          - button "Collapse toolbar":
+            - img

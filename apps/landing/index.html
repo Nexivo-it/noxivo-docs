@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Noxivo — Enterprise WhatsApp & Social Automation Platform</title>
+  <meta name="description" content="Noxivo powers WhatsApp and social media at scale. Multi-tenant automation, unified calendars, headless engine API, and real-time CRM sync — built for agencies that ship." />
+  <meta property="og:title" content="Noxivo — Enterprise WhatsApp & Social Automation" />
+  <meta property="og:description" content="Multi-tenant WhatsApp & social scheduling. Omnichannel inbox. AI workflows. Headless Engine API. Built for agencies." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script type="module">
+    if (import.meta.env.DEV) {
+      import("react-grab");
+    }
+  </script>
+
+  <script>
+    const NOXIVO_SAAS_URL = window.NOXIVO_SAAS_URL || 'https://app.noxivo.ai';
+    const NOXIVO_SESSION_COOKIE = 'next-auth.session-token';
+    function detectSession() {
+      const hasCookie = document.cookie.split(';').some(c => {
+        const name = c.trim().split('=')[0];
+        return name === NOXIVO_SESSION_COOKIE ||
+               name === '__Secure-next-auth.session-token' ||
+               name === 'nf_session';
+      });
+      const hasLocalSession = !!localStorage.getItem('nf_auth_token') ||
+                              !!sessionStorage.getItem('nf_auth_token');
+      if (hasCookie || hasLocalSession) {
+        window.location.replace(NOXIVO_SAAS_URL + '/dashboard');
+      }
+    }
+    detectSession();
+  </script>
+
+  <style>
+    /* ── Design Tokens ──────────────────────────────────────────────────── */
+    :root {
+      /* Brand — energetic green palette */
+      --primary:          #25D366;
+      --primary-mid:      #128C7E;
+      --primary-light:    #075E54;
+      --primary-glow:     rgba(37, 211, 102, 0.40);
+      --primary-glow-lg:  rgba(37, 211, 102, 0.22);
+      --primary-subtle:   rgba(37, 211, 102, 0.09);
+      --success:          #07CA6B;
+      --success-glow:     rgba(7, 202, 107, 0.20);
+      --accent-purple:    #7B3FE4;
+      --accent-glow:      rgba(123, 63, 228, 0.28);
+
+      /* Glass system */
+      --glass-bg:           rgba(10, 14, 35, 0.58);
+      --glass-bg-hover:     rgba(14, 20, 50, 0.72);
+      --glass-bg-strong:    rgba(6, 10, 28, 0.80);
+      --glass-border:       rgba(255, 255, 255, 0.07);
+      --glass-border-mid:   rgba(255, 255, 255, 0.13);
+      --glass-border-bright:rgba(255, 255, 255, 0.24);
+      --glass-border-primary: rgba(37, 211, 102, 0.55);
+      --glass-shadow:       0 8px 48px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.30);
+      --glass-shadow-primary: 0 12px 64px rgba(37, 211, 102, 0.28), 0 4px 16px rgba(37, 211, 102, 0.14);
+      --blur:               blur(28px) saturate(180%);
+      --blur-sm:            blur(14px) saturate(160%);
+      --blur-lg:            blur(44px) saturate(200%);
+
+      /* Shimmer */
+      --shimmer:      rgba(255,255,255,0.10);
+      --shimmer-dim:  rgba(255,255,255,0.05);
+
+      /* Text */
+      --text:       #EEEEF8;
+      --text-muted: rgba(238,238,248,0.52);
+      --text-dim:   rgba(238,238,248,0.26);
+
+      /* Background */
+      --bg: #05081C;
+
+      /* Typography */
+      --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+      /* Radii */
+      --radius-sm: 12px;
+      --radius:    18px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: var(--primary-mid); text-decoration: none; }
+
+    /* ── Ambient Background ─────────────────────────────────────────────── */
+    .bg-mesh {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    /* Faint grid */
+    .bg-mesh::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.011) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.011) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse 85% 80% at 50% 35%, black 0%, transparent 100%);
+    }
+    /* Radial nebula */
+    .bg-mesh::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 75% 55% at 18%  8%,  rgba(37,211,102,0.10) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 45% at 82%  75%, rgba(123,63,228,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 55% at 55%  40%, rgba(18,140,126,0.05)  0%, transparent 50%);
+    }
+
+    .blob {
+      position: absolute; border-radius: 50%;
+      filter: blur(130px);
+    }
+    .blob-1 {
+      width: 920px; height: 920px;
+      background: radial-gradient(circle at 40% 40%, #25D366 0%, #075E54 45%, transparent 70%);
+      opacity: 0.13;
+      top: -260px; left: -220px;
+      animation: drift-a 22s ease-in-out infinite alternate;
+    }
+    .blob-2 {
+      width: 680px; height: 680px;
+      background: radial-gradient(circle at 55% 55%, #7B3FE4 0%, #341580 45%, transparent 70%);
+      opacity: 0.10;
+      top: 38%; right: -160px;
+      animation: drift-b 27s ease-in-out infinite alternate-reverse;
+    }
+    .blob-3 {
+      width: 560px; height: 560px;
+      background: radial-gradient(circle, #128C7E 0%, transparent 70%);
+      opacity: 0.08;
+      bottom: 10%; left: 28%;
+      animation: drift-a 24s ease-in-out infinite alternate 4s;
+    }
+    .blob-4 {
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, #25D366 0%, transparent 70%);
+      opacity: 0.06;
+      top: 65%; left: 8%;
+      animation: drift-b 19s ease-in-out infinite alternate 7s;
+    }
+    @keyframes drift-a {
+      from { transform: translate(0,    0)    scale(1);    }
+      to   { transform: translate(48px, 36px) scale(1.10); }
+    }
+    @keyframes drift-b {
+      from { transform: translate(0,     0)    scale(1.04); }
+      to   { transform: translate(-38px, 28px) scale(0.94); }
+    }
+
+    /* ── Glass primitives ───────────────────────────────────────────────── */
+    /* Reusable mixin-like class */
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+
+    /* Top-edge luminous shimmer */
+    .shimmer-top::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--shimmer-dim) 25%,
+        var(--shimmer) 50%,
+        var(--shimmer-dim) 75%,
+        transparent 100%
+      );
+      border-radius: inherit;
+    }
+    /* Interior tint */
+    .inner-tint::after {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+      background: linear-gradient(145deg, rgba(255,255,255,0.028) 0%, transparent 52%);
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .page      { position: relative; z-index: 1; }
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+
+    /* ── Nav ─────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(5, 8, 28, 0.68);
+      backdrop-filter: var(--blur-lg);
+      -webkit-backdrop-filter: var(--blur-lg);
+      border-bottom: 1px solid var(--glass-border);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.04),
+        0 4px 32px rgba(0,0,0,0.45);
+    }
+    .nav-inner {
+      max-width: 1120px; margin: 0 auto; padding: 0 28px;
+      height: 66px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: var(--font-sans); font-weight: 800; font-size: 1.08rem;
+      letter-spacing: -0.03em; color: var(--text);
+    }
+    .logo span { color: var(--primary-mid); }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a {
+      font-size: 0.82rem; font-weight: 500; color: var(--text-muted);
+      transition: color 0.18s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      font-family: var(--font-sans); font-size: 0.82rem; font-weight: 600;
+      padding: 9px 22px; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #25D366 0%, #1db954 100%);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 4px 20px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.20);
+      transition: opacity 0.18s, box-shadow 0.18s, transform 0.18s;
+      display: inline-block;
+    }
+    .nav-cta:hover {
+      opacity: 0.90; color: #fff;
+      box-shadow: 0 6px 32px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.20);
+      transform: translateY(-1px);
+    }
+    @media (max-width: 640px) { .nav-links { display: none; } }
+
+    /* ── Hero ────────────────────────────────────────────────────────────── */
+    .hero { padding: 118px 28px 92px; }
+
+    .hero-prefix {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.13em;
+      color: var(--primary-mid);
+      background: linear-gradient(135deg, rgba(37,211,102,0.12), rgba(29,185,84,0.05));
+      border: 1px solid rgba(37,211,102,0.30);
+      border-radius: 100px; padding: 6px 16px; margin-bottom: 26px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 22px var(--primary-glow-lg), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .hero-prefix::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--primary-mid);
+      box-shadow: 0 0 10px var(--primary-mid), 0 0 22px rgba(37,211,102,0.55);
+      display: inline-block; flex-shrink: 0;
+      animation: pulse-dot 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; box-shadow: 0 0 10px var(--primary-mid), 0 0 22px rgba(37,211,102,0.55); }
+      50%      { opacity: 0.65; box-shadow: 0 0 5px var(--primary-mid), 0 0 10px rgba(37,211,102,0.25); }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.8rem, 5.8vw, 5rem);
+      font-weight: 800; line-height: 1.07; letter-spacing: -0.036em;
+      color: var(--text); margin-bottom: 26px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(125deg, #25D366 0%, #1db954 55%, #25D366 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 0 28px rgba(37,211,102,0.45));
+    }
+    .hero p {
+      font-size: 1.06rem; font-weight: 400; color: var(--text-muted);
+      max-width: 545px; line-height: 1.78; margin-bottom: 48px;
+    }
+    .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 72px; }
+
+    /* Buttons */
+    .btn-primary {
+      font-family: var(--font-sans); font-size: 0.9rem; font-weight: 700;
+      padding: 15px 36px; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #25D366 0%, #1db954 60%, #25D366 100%);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.20);
+      box-shadow:
+        0 6px 32px var(--primary-glow),
+        0 2px 8px rgba(0,0,0,0.28),
+        inset 0 1px 0 rgba(255,255,255,0.24);
+      transition: opacity 0.18s, box-shadow 0.20s, transform 0.18s;
+      display: inline-block; cursor: pointer;
+    }
+    .btn-primary:hover {
+      opacity: 0.91; color: #fff;
+      box-shadow:
+        0 10px 52px var(--primary-glow),
+        0 4px 16px rgba(0,0,0,0.28),
+        inset 0 1px 0 rgba(255,255,255,0.24);
+      transform: translateY(-2px);
+    }
+    .btn-ghost {
+      font-family: var(--font-sans); font-size: 0.9rem; font-weight: 600;
+      padding: 14px 36px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.045);
+      color: var(--text-muted);
+      border: 1px solid var(--glass-border-mid);
+      backdrop-filter: var(--blur-sm);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 16px rgba(0,0,0,0.22);
+      transition: all 0.20s;
+      display: inline-block; cursor: pointer;
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--glass-border-bright);
+      color: var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 6px 24px rgba(0,0,0,0.28);
+      transform: translateY(-2px);
+    }
+
+    /* ── Hero Metrics strip ─────────────────────────────────────────────── */
+    .hero-metrics {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-radius: var(--radius-lg); overflow: hidden;
+      border: 1px solid var(--glass-border-mid);
+      box-shadow: var(--glass-shadow);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      background: rgba(8,12,30,0.62);
+      position: relative;
+    }
+    /* Top iridescent line */
+    .hero-metrics::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px; z-index: 2;
+      background: linear-gradient(90deg,
+        transparent 0%, rgba(37,211,102,0.55) 30%,
+        rgba(123,63,228,0.40) 70%, transparent 100%
+      );
+    }
+    @media (max-width: 700px) { .hero-metrics { grid-template-columns: repeat(2, 1fr); } }
+
+    .metric {
+      background: transparent;
+      padding: 28px 20px; text-align: center;
+      border-right: 1px solid var(--glass-border);
+      transition: background 0.22s;
+    }
+    .metric:last-child { border-right: none; }
+    .metric:hover { background: rgba(255,255,255,0.022); }
+    .metric-val {
+      font-family: var(--font-sans); font-size: 1.75rem; font-weight: 800;
+      background: linear-gradient(135deg, #fff 20%, var(--primary-mid) 80%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 6px; letter-spacing: -0.03em;
+    }
+    .metric-label { font-size: 0.7rem; color: var(--text-dim); font-weight: 500; }
+
+    /* ── Sections ───────────────────────────────────────────────────────── */
+    .section { padding: 100px 28px; }
+    .section-header { margin-bottom: 52px; }
+    .section-prefix {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.13em;
+      color: var(--primary-mid); background: var(--primary-subtle);
+      border: 1px solid rgba(37,211,102,0.22); border-radius: 100px;
+      padding: 5px 14px; margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(2rem, 3.8vw, 3rem); font-weight: 800;
+      letter-spacing: -0.028em; line-height: 1.16; color: var(--text);
+    }
+    .section-sub {
+      font-size: 0.97rem; color: var(--text-muted); margin-top: 14px;
+      max-width: 520px; line-height: 1.72; font-weight: 400;
+    }
+
+    /* ── Product Cards ──────────────────────────────────────────────────── */
+    .products-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+    }
+    @media (max-width: 900px) { .products-grid { grid-template-columns: 1fr; } }
+
+    .product-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 38px 30px;
+      position: relative; overflow: hidden;
+      transition: background 0.30s cubic-bezier(0.22,1,0.36,1),
+                  border-color 0.30s, box-shadow 0.30s, transform 0.30s;
+      box-shadow: var(--glass-shadow);
+    }
+    /* Top shimmer */
+    .product-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--shimmer), transparent);
+      pointer-events: none;
+    }
+    /* Interior tint */
+    .product-card::after {
+      content: '';
+      position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      background: linear-gradient(145deg, rgba(255,255,255,0.030) 0%, transparent 50%);
+    }
+    .product-card:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-mid);
+      box-shadow: var(--glass-shadow-primary), inset 0 0 70px rgba(37,211,102,0.03);
+      transform: translateY(-5px);
+    }
+    .product-card:hover::before {
+      background: linear-gradient(90deg, transparent, rgba(37,211,102,0.45), transparent);
+    }
+
+    .product-num {
+      font-family: var(--font-mono); font-size: 3.8rem; font-weight: 700;
+      line-height: 1; color: rgba(37,211,102,0.08); position: absolute;
+      top: 16px; right: 20px; letter-spacing: -0.04em;
+    }
+    .product-tag {
+      display: inline-block; font-family: var(--font-mono); font-size: 0.52rem;
+      letter-spacing: 0.14em; padding: 5px 12px; border-radius: 100px;
+      margin-bottom: 24px; font-weight: 600;
+    }
+    .product-tag.active {
+      background: rgba(7,202,107,0.08); color: var(--success);
+      border: 1px solid rgba(7,202,107,0.28);
+      box-shadow: 0 0 14px var(--success-glow);
+    }
+    .product-tag.soon {
+      background: rgba(123,63,228,0.08); color: #A78BFA;
+      border: 1px solid rgba(123,63,228,0.30);
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+    .product-name {
+      font-size: 1.38rem; font-weight: 800; color: var(--text);
+      margin-bottom: 14px; line-height: 1.18; letter-spacing: -0.025em;
+    }
+    .product-desc {
+      font-size: 0.82rem; color: var(--text-muted); line-height: 1.72;
+      margin-bottom: 26px; font-weight: 400;
+    }
+    .product-features { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .feat-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.78rem; color: var(--text-muted); font-weight: 400;
+    }
+    .feat-icon {
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      background: linear-gradient(135deg, rgba(37,211,102,0.14), rgba(37,211,102,0.05));
+      border: 1px solid rgba(37,211,102,0.28);
+      box-shadow: 0 0 10px rgba(37,211,102,0.12);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .feat-icon::after { content: '→'; color: var(--primary-mid); font-size: 0.48rem; }
+
+    /* ── Terminal ───────────────────────────────────────────────────────── */
+    .terminal {
+      background: rgba(0,0,0,0.52);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      font-family: var(--font-mono); font-size: 0.7rem;
+      line-height: 1.8; margin-top: 18px; color: var(--text-muted);
+      position: relative; overflow: hidden;
+      box-shadow: inset 0 2px 12px rgba(0,0,0,0.45);
+    }
+    .terminal::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(37,211,102,0.55), rgba(123,63,228,0.40), transparent);
+    }
+    /* Scanline */
+    .terminal::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(0deg,
+        rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 1px,
+        transparent 1px, transparent 2px
+      );
+    }
+    .terminal .comment { color: var(--text-dim); }
+    .terminal .cmd     { color: #5CDB95; }
+    .terminal .out     { color: var(--text); }
+    .terminal .key     { color: #7BB8FF; }
+
+    /* ── Bento Grid ─────────────────────────────────────────────────────── */
+    .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+    .col-4  { grid-column: span 4;  }
+    .col-6  { grid-column: span 6;  }
+    .col-8  { grid-column: span 8;  }
+    .col-12 { grid-column: span 12; }
+    @media (max-width: 900px) { .col-4, .col-6, .col-8 { grid-column: span 12; } }
+
+    .bento-cell {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 30px;
+      transition: background 0.28s cubic-bezier(0.22,1,0.36,1),
+                  border-color 0.28s, transform 0.28s, box-shadow 0.28s;
+      position: relative; overflow: hidden;
+    }
+    .bento-cell::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--shimmer-dim), transparent);
+    }
+    .bento-cell::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(145deg, rgba(255,255,255,0.024) 0%, transparent 50%);
+    }
+    .bento-cell:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-mid);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 44px rgba(0,0,0,0.42), 0 0 36px rgba(37,211,102,0.06);
+    }
+    .bento-cell:hover::before {
+      background: linear-gradient(90deg, transparent, rgba(37,211,102,0.32), transparent);
+    }
+
+    .cell-label {
+      font-family: var(--font-mono); font-size: 0.53rem; color: var(--text-dim);
+      letter-spacing: 0.14em; margin-bottom: 14px; font-weight: 500;
+    }
+    .cell-title { font-size: 1.06rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .cell-body  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.70; font-weight: 400; }
+    .cell-badge {
+      display: inline-block; font-family: var(--font-mono); font-size: 0.52rem;
+      letter-spacing: 0.10em; padding: 4px 12px; border-radius: 100px;
+      border: 1px solid var(--glass-border-mid); color: var(--text-dim);
+      margin-top: 18px; font-weight: 500;
+    }
+    .cell-badge.pro {
+      border-color: rgba(37,211,102,0.40); color: var(--primary-mid);
+      background: var(--primary-subtle);
+      box-shadow: 0 0 12px rgba(37,211,102,0.12);
+    }
+
+    /* ── Divider ────────────────────────────────────────────────────────── */
+    .divider {
+      border: none; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--glass-border-mid), transparent);
+    }
+
+    /* ── Plan Cards ─────────────────────────────────────────────────────── */
+    .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 768px) { .plan-grid { grid-template-columns: 1fr; } }
+
+    .plan-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 38px 30px;
+      position: relative; overflow: hidden;
+      transition: all 0.28s cubic-bezier(0.22,1,0.36,1);
+      box-shadow: var(--glass-shadow);
+    }
+    .plan-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--shimmer-dim), transparent);
+      pointer-events: none;
+    }
+    .plan-card.highlight {
+      background: rgba(12,20,52,0.78);
+      border-color: var(--glass-border-primary);
+      box-shadow:
+        var(--glass-shadow-primary),
+        inset 0 0 80px rgba(37,211,102,0.04),
+        0 0 0 1px rgba(37,211,102,0.10);
+    }
+    .plan-card.highlight::before {
+      background: linear-gradient(90deg,
+        transparent, rgba(37,211,102,0.60), rgba(123,63,228,0.40), transparent
+      );
+    }
+    /* Radial highlight glow */
+    .plan-card.highlight .plan-highlight-glow {
+      position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+      background: radial-gradient(ellipse 75% 50% at 50% 0%, rgba(37,211,102,0.12) 0%, transparent 65%);
+    }
+    .plan-card:not(.highlight):hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-mid);
+      transform: translateY(-4px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.48), 0 0 30px rgba(37,211,102,0.07);
+    }
+
+    .plan-popular {
+      position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+      font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.12em;
+      color: #fff;
+      background: linear-gradient(90deg, #25D366 0%, #1db954 100%);
+      padding: 5px 18px; border-radius: 0 0 12px 12px; font-weight: 700;
+      box-shadow: 0 4px 20px var(--primary-glow);
+    }
+    .plan-name {
+      font-family: var(--font-mono); font-size: 0.60rem; letter-spacing: 0.14em;
+      color: var(--text-dim); margin-bottom: 12px; font-weight: 500;
+    }
+    .plan-price {
+      font-size: 2.7rem; font-weight: 800; color: var(--text); margin-bottom: 6px;
+      letter-spacing: -0.036em;
+    }
+    .plan-price span { font-size: 0.9rem; font-weight: 400; color: var(--text-muted); }
+    .plan-desc { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 30px; line-height: 1.58; }
+    .plan-features { display: flex; flex-direction: column; gap: 11px; margin-bottom: 30px; }
+    .plan-feat { display: flex; gap: 10px; font-size: 0.78rem; color: var(--text-muted); align-items: center; }
+    .plan-feat-ico {
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.60rem; font-weight: 700;
+    }
+    .plan-feat.yes .plan-feat-ico {
+      background: rgba(7,202,107,0.10); color: var(--success);
+      border: 1px solid rgba(7,202,107,0.28);
+      box-shadow: 0 0 8px var(--success-glow);
+    }
+    .plan-feat.yes .plan-feat-ico::after { content: '✓'; }
+    .plan-feat.no { opacity: 0.36; }
+    .plan-feat.no .plan-feat-ico {
+      background: rgba(255,255,255,0.03); color: var(--text-dim);
+      border: 1px solid var(--glass-border);
+    }
+    .plan-feat.no .plan-feat-ico::after { content: '—'; }
+
+    .plan-btn {
+      display: block; text-align: center; width: 100%;
+      font-family: var(--font-sans); font-size: 0.84rem; font-weight: 600;
+      padding: 13px; border-radius: var(--radius-sm); cursor: pointer;
+      transition: all 0.20s; text-decoration: none;
+      border: 1px solid var(--glass-border-mid); color: var(--text-muted);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(8px);
+    }
+    .plan-btn:hover {
+      border-color: var(--glass-border-bright); color: var(--text);
+      background: rgba(255,255,255,0.08);
+      transform: translateY(-1px);
+    }
+    .plan-btn.primary {
+      background: linear-gradient(135deg, #25D366 0%, #1db954 100%);
+      color: #fff; border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 4px 24px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.20);
+    }
+    .plan-btn.primary:hover {
+      opacity: 0.91; color: #fff;
+      box-shadow: 0 8px 38px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.20);
+    }
+
+    /* ── Steps ──────────────────────────────────────────────────────────── */
+    .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 900px) { .steps-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .steps-grid { grid-template-columns: 1fr; } }
+
+    .step-cell {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 30px;
+      transition: all 0.28s cubic-bezier(0.22,1,0.36,1);
+      position: relative; overflow: hidden;
+    }
+    .step-cell::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--shimmer-dim), transparent);
+    }
+    .step-cell:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-mid);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.42), 0 0 28px rgba(37,211,102,0.08);
+    }
+    .step-cell:hover::before {
+      background: linear-gradient(90deg, transparent, rgba(37,211,102,0.35), transparent);
+    }
+    .step-num {
+      font-family: var(--font-mono); font-size: 2.5rem; font-weight: 700;
+      line-height: 1; margin-bottom: 18px;
+      background: linear-gradient(135deg, var(--primary-mid) 0%, rgba(37,211,102,0.28) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -0.04em;
+    }
+    .step-title { font-size: 0.96rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .step-body  { font-size: 0.78rem; color: var(--text-muted); line-height: 1.68; font-weight: 400; }
+
+    /* ── CTA Panel ──────────────────────────────────────────────────────── */
+    .cta-section {
+      margin: 0 28px 100px;
+      max-width: 1064px;
+      margin-left: auto; margin-right: auto;
+      background: rgba(10,16,44,0.74);
+      backdrop-filter: var(--blur-lg);
+      -webkit-backdrop-filter: var(--blur-lg);
+      border: 1px solid var(--glass-border-primary);
+      border-radius: var(--radius-xl);
+      padding: 96px 28px;
+      text-align: center;
+      position: relative; overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(37,211,102,0.08),
+        0 20px 80px rgba(37,211,102,0.20),
+        0 8px 32px rgba(0,0,0,0.52),
+        inset 0 0 120px rgba(37,211,102,0.032);
+    }
+    /* Radial inner glow */
+    .cta-section::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: radial-gradient(ellipse 65% 55% at 50% 0%, rgba(37,211,102,0.16) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    /* Iridescent top edge */
+    .cta-section::after {
+      content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg,
+        transparent, rgba(37,211,102,0.70), rgba(123,63,228,0.55),
+        rgba(37,211,102,0.70), transparent
+      );
+    }
+    .cta-section h2 {
+      font-size: clamp(2rem, 4.2vw, 3.4rem); font-weight: 800;
+      letter-spacing: -0.03em; margin-bottom: 18px; position: relative;
+    }
+    .cta-section p {
+      font-size: 0.97rem; color: var(--text-muted); max-width: 460px;
+      margin: 0 auto 44px; line-height: 1.72; position: relative;
+    }
+    .cta-chips {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+      margin-top: 24px; position: relative;
+    }
+    .chip {
+      font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.12em;
+      padding: 6px 16px; border-radius: 100px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--text-dim); font-weight: 500;
+      backdrop-filter: blur(8px);
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--glass-border);
+      background: rgba(5,8,28,0.72);
+      backdrop-filter: blur(14px);
+    }
+    .footer-inner { max-width: 1120px; margin: 0 auto; padding: 68px 28px 44px; }
+    .footer-grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 44px; margin-bottom: 52px;
+    }
+    @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
+    .footer-col-title {
+      font-family: var(--font-mono); font-size: 0.56rem; color: var(--text-dim);
+      letter-spacing: 0.14em; margin-bottom: 18px; font-weight: 500;
+    }
+    .footer-links { display: flex; flex-direction: column; gap: 11px; }
+    .footer-links a { font-size: 0.78rem; color: var(--text-muted); transition: color 0.18s; font-weight: 400; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-bottom {
+      border-top: 1px solid var(--glass-border); padding-top: 26px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .footer-copy   { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); }
+    .footer-status { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-dim); }
+    .footer-status span { color: var(--success); }
+
+    /* ── Scroll reveal ──────────────────────────────────────────────────── */
+    .reveal {
+      opacity: 0; transform: translateY(26px);
+      transition:
+        opacity 0.70s cubic-bezier(0.22,1,0.36,1),
+        transform 0.70s cubic-bezier(0.22,1,0.36,1);
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+
+<body>
+  <!-- Ambient mesh -->
+  <div class="bg-mesh" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+
+  <div class="page">
+    <!-- ── Nav ──────────────────────────────────────────────────────────── -->
+    <nav>
+      <div class="nav-inner">
+        <div class="logo">Nexus<span>Flow</span></div>
+        <div class="nav-links">
+          <a href="#products">Products</a>
+          <a href="#platform">Platform</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#how">How It Works</a>
+          <a href="/docs" target="_blank">Docs</a>
+        </div>
+        <a class="nav-cta" href="#" id="login-btn">Sign In</a>
+      </div>
+    </nav>
+
+    <!-- ── Hero ──────────────────────────────────────────────────────────── -->
+    <div class="container">
+      <div class="hero">
+        <div class="hero-prefix">ENTERPRISE_AUTOMATION_INFRASTRUCTURE</div>
+        <h1>
+          WhatsApp & Social.<br />
+          <em>Built for agencies.</em>
+        </h1>
+        <p>
+          One platform. Multi-tenant WhatsApp automation, omnichannel social scheduling, headless engine API, and unified inboxes. Run unlimited client workspaces on shared infrastructure — zero limits.
+        </p>
+        <div class="cta-row">
+          <a class="btn-primary" href="#" id="cta-trial">Start Free Trial</a>
+          <a class="btn-ghost" href="#products">Explore Products</a>
+        </div>
+        <div class="hero-metrics reveal">
+          <div class="metric">
+            <div class="metric-val">100+</div>
+            <div class="metric-label">Tenants per agency</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">10+</div>
+            <div class="metric-label">Social platforms synced</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">&lt; 5min</div>
+            <div class="metric-label">Time to first session</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">API-first</div>
+            <div class="metric-label">Headless engine available</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Products ───────────────────────────────────────────────────────── -->
+    <section class="section" id="products">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-prefix">THREE_PRODUCTS_UNDER_ONE_PLATFORM</div>
+          <h2 class="section-title">Everything your agency needs.</h2>
+          <p class="section-sub">Three tightly-integrated products. Use one or all three depending on how you ship.</p>
+        </div>
+        <div class="products-grid">
+          <!-- Product 1 -->
+          <div class="product-card reveal">
+            <div class="product-num">01</div>
+            <div class="product-tag active">AVAILABLE NOW</div>
+            <div class="product-name">Noxivo<br/>Platform</div>
+            <div class="product-desc">The full multi-tenant SaaS. Manage agencies, onboard clients, link WhatsApp sessions, run AI workflows, and monitor conversations through a unified omnichannel inbox.</div>
+            <div class="product-features">
+              <div class="feat-row"><div class="feat-icon"></div>Multi-tenant agency workspace with quota controls</div>
+              <div class="feat-row"><div class="feat-icon"></div>Omnichannel inbox with assignment &amp; handoff</div>
+              <div class="feat-row"><div class="feat-icon"></div>Visual DAG workflow builder with AI actions</div>
+              <div class="feat-row"><div class="feat-icon"></div>Plugin registry (calendar booking, Airtable, Sheets)</div>
+              <div class="feat-row"><div class="feat-icon"></div>White-label custom branding per tenant</div>
+              <div class="feat-row"><div class="feat-icon"></div>Shared cluster — no per-client infra</div>
+            </div>
+            <a class="btn-primary" href="#" id="p1-cta" style="font-size:0.82rem;padding:11px 24px">Get Started</a>
+          </div>
+
+          <!-- Product 2 -->
+          <div class="product-card reveal">
+            <div class="product-num">02</div>
+            <div class="product-tag active">AVAILABLE NOW</div>
+            <div class="product-name">Noxivo<br/>Engine API</div>
+            <div class="product-desc">A fully headless, standalone WhatsApp automation engine. Expose a clean white-labeled REST API to your own apps, CRMs, or custom chat UIs — without any Noxivo branding.</div>
+            <div class="product-features">
+              <div class="feat-row"><div class="feat-icon"></div>REST API: send messages, retrieve chats, manage sessions</div>
+              <div class="feat-row"><div class="feat-icon"></div>X-API-Key authentication — no cookie sessions</div>
+              <div class="feat-row"><div class="feat-icon"></div>Interactive Swagger docs at /docs</div>
+              <div class="feat-row"><div class="feat-icon"></div>Webhook event pipeline for inbound messages</div>
+              <div class="feat-row"><div class="feat-icon"></div>Admin console for QR pairing &amp; health monitoring</div>
+              <div class="feat-row"><div class="feat-icon"></div>Deploy independently via docker-compose</div>
+            </div>
+            <div class="terminal">
+              <div class="comment"># Send a message via Engine API</div>
+              <div class="cmd">curl -X POST https://engine.example.com/api/v1/messages/send \</div>
+              <div class="cmd" style="padding-left:1.2rem">-H "<span class="key">X-API-Key</span>: YOUR_KEY" \</div>
+              <div class="cmd" style="padding-left:1.2rem">-d '{"to":"15551234567","text":"Hello!"}'</div>
+              <div class="out" style="margin-top:6px">→ {"id":"msg_xxx","status":"sent"}</div>
+            </div>
+          </div>
+
+          <!-- Product 3 -->
+          <div class="product-card reveal">
+            <div class="product-num">03</div>
+            <div class="product-tag active">AVAILABLE NOW</div>
+            <div class="product-name">Omnichannel<br/>Social Suite</div>
+            <div class="product-desc">Plan, schedule, approve, and monitor content across 10+ platforms including Facebook, Instagram, LinkedIn, and TikTok. Built exclusively for agencies managing multiple client brands.</div>
+            <div class="product-features">
+              <div class="feat-row"><div class="feat-icon"></div>Visual calendar &amp; auto-assignment queues</div>
+              <div class="feat-row"><div class="feat-icon"></div>Passwordless client portal for post approvals</div>
+              <div class="feat-row"><div class="feat-icon"></div>Unified inbox for comments, mentions &amp; DMs</div>
+              <div class="feat-row"><div class="feat-icon"></div>Rich composer with per-platform media variants</div>
+              <div class="feat-row"><div class="feat-icon"></div>Direct first-party APIs — no aggregator lock-in</div>
+              <div class="feat-row"><div class="feat-icon"></div>Unlimited workspaces &amp; team members</div>
+            </div>
+            <a class="btn-ghost" href="#" id="p3-cta" style="display:inline-block;font-size:0.82rem;padding:11px 24px">Explore Social</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Platform Bento ──────────────────────────────────────────────────── -->
+    <hr class="divider" />
+    <section class="section" id="platform">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-prefix">PLATFORM_CAPABILITIES</div>
+          <h2 class="section-title">The infrastructure primitives.</h2>
+          <p class="section-sub">Every feature ships production-ready. Not a checkbox — actual running code.</p>
+        </div>
+        <div class="bento">
+          <div class="bento-cell col-8 reveal">
+            <div class="cell-label">// UNIFIED_OMNICHANNEL_INBOX</div>
+            <div class="cell-title">One inbox for WhatsApp &amp; Social interactions.</div>
+            <div class="cell-body">Manage WhatsApp chats, Instagram DMs, TikTok comments, Google Business reviews, and more in a single threaded view. Includes sentiment analysis, assignments, and historical backfill.</div>
+            <div class="cell-badge pro">ALL PLANS</div>
+          </div>
+          <div class="bento-cell col-4 reveal">
+            <div class="cell-label">// WHITE_LABEL</div>
+            <div class="cell-title">Sell it as your own.</div>
+            <div class="cell-body">Custom branding per tenant workspace. Your logo, your domain, your product. End-clients never see Noxivo.</div>
+            <div class="cell-badge pro">PRO+</div>
+          </div>
+          <div class="bento-cell col-4 reveal">
+            <div class="cell-label">// DAG_WORKFLOWS</div>
+            <div class="cell-title">Visual workflow engine.</div>
+            <div class="cell-body">Build automation graphs with a live DAG compiler and executor. Handle branches, delays, and conditional actions across any integration.</div>
+            <div class="cell-badge">ALL PLANS</div>
+          </div>
+          <div class="bento-cell col-4 reveal">
+            <div class="cell-label">// AI_ACTIONS</div>
+            <div class="cell-title">GPT inside the pipeline.</div>
+            <div class="cell-body">AI-suggested replies, intent classification, and data extraction as first-class workflow nodes. Gated per plan with token usage tracking.</div>
+            <div class="cell-badge pro">PRO+</div>
+          </div>
+          <div class="bento-cell col-4 reveal">
+            <div class="cell-label">// PLUGIN_REGISTRY</div>
+            <div class="cell-title">Extend with plugins.</div>
+            <div class="cell-body">Airtable, Google Sheets, Calendar Booking — installed per tenant, executed by the shared runtime. The SDK lets you publish custom integrations.</div>
+            <div class="cell-badge pro">PRO+</div>
+          </div>
+          <div class="bento-cell col-6 reveal">
+            <div class="cell-label">// SHARED_CLUSTER_ARCHITECTURE</div>
+            <div class="cell-title">Zero per-client infrastructure.</div>
+            <div class="cell-body">All tenants share a pool of WhatsApp session nodes. Session routing, health checks, and failover are handled automatically. Add 50 clients without touching your infra.</div>
+            <div class="cell-badge">ALL PLANS</div>
+          </div>
+          <div class="bento-cell col-6 reveal">
+            <div class="cell-label">// USAGE_METERING</div>
+            <div class="cell-title">Built-in billing posture.</div>
+            <div class="cell-body">Session counts, message volumes, AI token usage, and plugin executions are metered per tenant with configurable quota envelopes. Stripe sync worker ships out of the box.</div>
+            <div class="cell-badge">ALL PLANS</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Pricing ─────────────────────────────────────────────────────────── -->
+    <hr class="divider" />
+    <section class="section" id="pricing">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-prefix">PRICING_MATRIX</div>
+          <h2 class="section-title">Simple agency-tier pricing.</h2>
+          <p class="section-sub">One subscription covers your agency workspace. Your tenants pay you — not us.</p>
+        </div>
+        <div class="plan-grid">
+          <div class="plan-card reveal">
+            <div class="plan-name">// STARTER</div>
+            <div class="plan-price">$99<span>/mo</span></div>
+            <div class="plan-desc">For growing agencies testing the platform.</div>
+            <div class="plan-features">
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>5 tenant workspaces</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>25 active sessions</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Omnichannel inbox</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Workflow runtime</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Usage metering</div>
+              <div class="plan-feat no"><div class="plan-feat-ico"></div>Plugin registry</div>
+              <div class="plan-feat no"><div class="plan-feat-ico"></div>AI actions</div>
+              <div class="plan-feat no"><div class="plan-feat-ico"></div>White-label</div>
+              <div class="plan-feat no"><div class="plan-feat-ico"></div>Priority support</div>
+            </div>
+            <a class="plan-btn" href="#" id="plan-starter">Get Starter</a>
+          </div>
+
+          <div class="plan-card highlight reveal">
+            <div class="plan-highlight-glow"></div>
+            <div class="plan-popular">MOST POPULAR</div>
+            <div class="plan-name">// PRO RESELLER</div>
+            <div class="plan-price">$299<span>/mo</span></div>
+            <div class="plan-desc">For agencies running multiple active clients.</div>
+            <div class="plan-features">
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>20 tenant workspaces</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>100 active sessions</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Omnichannel inbox</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Workflow runtime</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Usage metering</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Plugin registry</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>AI actions</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>White-label</div>
+              <div class="plan-feat no"><div class="plan-feat-ico"></div>Priority support</div>
+            </div>
+            <a class="plan-btn primary" href="#" id="plan-pro">Get Pro</a>
+          </div>
+
+          <div class="plan-card reveal">
+            <div class="plan-name">// ENTERPRISE</div>
+            <div class="plan-price">Custom</div>
+            <div class="plan-desc">For established agencies at scale.</div>
+            <div class="plan-features">
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>100+ tenant workspaces</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>500+ active sessions</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Omnichannel inbox</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Workflow runtime</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Usage metering</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Plugin registry</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>AI actions</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>White-label</div>
+              <div class="plan-feat yes"><div class="plan-feat-ico"></div>Priority support</div>
+            </div>
+            <a class="plan-btn" href="mailto:enterprise@noxivo.ai">Contact Sales</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How It Works ────────────────────────────────────────────────────── -->
+    <hr class="divider" />
+    <section class="section" id="how">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="section-prefix">SYSTEM_ARCHITECTURE</div>
+          <h2 class="section-title">How it works.</h2>
+        </div>
+        <div class="steps-grid">
+          <div class="step-cell reveal">
+            <div class="step-num">01</div>
+            <div class="step-title">Create Agency</div>
+            <div class="step-body">Sign up, configure your workspace, set branding, invite team members, and set usage quotas per client tier.</div>
+          </div>
+          <div class="step-cell reveal">
+            <div class="step-num">02</div>
+            <div class="step-title">Onboard Tenants</div>
+            <div class="step-body">Create isolated tenant workspaces. Each gets their own data, sessions, plugins, and quota controls — managed from your agency panel.</div>
+          </div>
+          <div class="step-cell reveal">
+            <div class="step-num">03</div>
+            <div class="step-title">Link WhatsApp</div>
+            <div class="step-body">Pair each tenant's WhatsApp number via QR scan. Sessions run on shared cluster nodes — no separate infrastructure per client.</div>
+          </div>
+          <div class="step-cell reveal">
+            <div class="step-num">04</div>
+            <div class="step-title">Deploy Workflows</div>
+            <div class="step-body">Build DAG automation, install plugins, enable AI actions — all live in the shared runtime. Monitor everything from a single control plane.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ────────────────────────────────────────────────────────────── -->
+    <div class="cta-section reveal" id="cta">
+      <div style="font-family:var(--font-mono);font-size:0.60rem;color:var(--primary-mid);letter-spacing:0.14em;margin-bottom:20px;position:relative">BOOT_SEQUENCE</div>
+      <h2 style="position:relative">Ready to run WhatsApp at scale?</h2>
+      <p>14-day free trial. No credit card required. Go from zero to live session in under 5 minutes.</p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;position:relative">
+        <a class="btn-primary" href="#" id="cta-bottom">Start Free Trial</a>
+        <a class="btn-ghost" href="mailto:hello@noxivo.ai">Schedule a Demo</a>
+      </div>
+      <div class="cta-chips">
+        <span class="chip">NO_CC_REQUIRED</span>
+        <span class="chip">GDPR_COMPLIANT</span>
+        <span class="chip">14_DAY_TRIAL</span>
+      </div>
+    </div>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-grid">
+          <div>
+            <div class="logo" style="margin-bottom:14px">Nexus<span>Flow</span></div>
+            <p style="font-size:0.78rem;color:var(--text-muted);max-width:230px;line-height:1.65">
+              Enterprise WhatsApp automation infrastructure for modern agencies.
+            </p>
+          </div>
+          <div>
+            <div class="footer-col-title">PRODUCT</div>
+            <div class="footer-links">
+              <a href="#products">Features</a>
+              <a href="#pricing">Pricing</a>
+              <a href="#">Changelog</a>
+              <a href="#">Roadmap</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer-col-title">DOCS</div>
+            <div class="footer-links">
+              <a href="#">Getting Started</a>
+              <a href="#">API Reference</a>
+              <a href="#">Engine API</a>
+              <a href="#">Plugin SDK</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer-col-title">COMPANY</div>
+            <div class="footer-links">
+              <a href="#">About</a>
+              <a href="#">Blog</a>
+              <a href="mailto:hello@noxivo.ai">Contact</a>
+              <a href="#">Privacy</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span class="footer-copy">© 2026 Noxivo. All rights reserved.</span>
+          <span class="footer-status">[BUILD: STABLE] [STATUS: <span>ALL_SYSTEMS_OPERATIONAL</span>]</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Button links
+    const saasUrl  = typeof NOXIVO_SAAS_URL !== 'undefined' ? NOXIVO_SAAS_URL : 'https://app.noxivo.ai';
+    const loginUrl = saasUrl + '/auth/login';
+    const trialUrl = saasUrl + '/auth/register';
+    document.getElementById('login-btn').href    = loginUrl;
+    document.getElementById('cta-trial').href    = trialUrl;
+    document.getElementById('cta-bottom').href   = trialUrl;
+    document.getElementById('p1-cta').href       = trialUrl;
+    document.getElementById('p3-cta').href       = trialUrl;
+    document.getElementById('plan-starter').href = trialUrl;
+    document.getElementById('plan-pro').href     = trialUrl;
+
+    // Scroll reveal
+    const revealEls = document.querySelectorAll('.reveal');
+    const observer  = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } }),
+      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
+    );
+    revealEls.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

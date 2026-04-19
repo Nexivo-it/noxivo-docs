@@ -1,0 +1,29 @@
+{
+  "name": "noxivo-saas",
+  "private": true,
+  "packageManager": "pnpm@10.6.1",
+  "scripts": {
+    "dev": "turbo run dev --parallel --filter=@noxivo/workflow-engine --filter=@noxivo/dashboard --filter=@noxivo/service-catalog-canvas --filter=@noxivo/dashboard-admin --filter=@noxivo/stratic-flow",
+    "dev:all": "turbo run dev --parallel",
+    "dev:engine": "pnpm --filter @noxivo/workflow-engine dev",
+    "dev:dashboard": "pnpm --filter @noxivo/dashboard dev",
+    "dev:admin": "pnpm --filter @noxivo/dashboard-admin dev",
+    "dev:stratic": "pnpm --filter @noxivo/stratic-flow dev",
+    "dev:landing": "pnpm --filter @noxivo/landing dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:seed": "tsx packages/database/scripts/seed-dev.ts",
+    "db:seed:prod": "tsx packages/database/scripts/seed-prod.ts",
+    "db:migrate:messaging": "tsx packages/database/scripts/migrate-messaging-fields.ts",
+    "health:mesh": "tsx scripts/deep-health-check.ts",
+    "dev:auto": "NODE_OPTIONS='--import tsx --no-warnings' tsx scripts/dev-launcher.ts"
+  },
+  "devDependencies": {
+    "chrome-devtools-mcp": "^0.21.0",
+    "mongodb-memory-server": "^10.1.4",
+    "tsx": "^4.15.1",
+    "turbo": "^2.9.6",
+    "typescript": "^5.8.3"
+  }
+}

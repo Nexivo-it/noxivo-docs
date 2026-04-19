@@ -1,0 +1,8 @@
+app/api/workflows/[workflowId]/analytics/route.ts(3,35): error TS2307: Cannot find module '../../../../lib/auth/session' or its corresponding type declarations.
+app/api/workflows/[workflowId]/analytics/route.ts(4,36): error TS2307: Cannot find module '../../../../lib/auth/authorization' or its corresponding type declarations.
+app/api/workflows/[workflowId]/analytics/route.ts(5,23): error TS2307: Cannot find module '../../../../lib/mongodb' or its corresponding type declarations.
+app/api/workflows/[workflowId]/analytics/route.ts(6,43): error TS2307: Cannot find module '../../../../lib/workflows/scope' or its corresponding type declarations.
+components/workflows/visual-builder.tsx(130,23): error TS2339: Property 'delayMs' does not exist on type 'NodeConfig'.
+components/workflows/visual-builder.tsx(130,49): error TS2339: Property 'delayMs' does not exist on type 'NodeConfig'.
+test/team-inbox-crm-ui.test.tsx(68,3): error TS2322: Type '{ conversation: TeamInboxConversationSidebarContext | { readonly _id: "conversation-1"; readonly contactId: "15550001111@c.us"; readonly contactName: "Alice Smith"; readonly contactPhone: "+1 555-000-1111"; readonly status: "open"; readonly contactProfile: { ...; }; }; ... 24 more ...; onDeleteMemory?: (id: string) ...' is not assignable to type 'TeamInboxCrmPanelViewProps'.
+  Property 'activeTab' is optional in type '{ conversation: TeamInboxConversationSidebarContext | { readonly _id: "conversation-1"; readonly contactId: "15550001111@c.us"; readonly contactName: "Alice Smith"; readonly contactPhone: "+1 555-000-1111"; readonly status: "open"; readonly contactProfile: { ...; }; }; ... 24 more ...; onDeleteMemory?: (id: string) ...' but required in type 'TeamInboxCrmPanelViewProps'.

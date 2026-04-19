@@ -1,0 +1,27 @@
+# Dependencies
+**/node_modules
+**/.pnpm-store
+
+# Build outputs
+**/.next
+**/dist
+**/build
+**/out
+
+# IDE and OS
+.git
+.vscode
+.idea
+.DS_Store
+*.log
+
+# Project specific
+docs
+apps/docs
+scripts
+artifacts
+tasks
+scratch
+build_output_err.txt
+mcp_server_node.log
+vite_dev_logs*.txt

@@ -1,0 +1,102 @@
+version: "3.9"
+
+services:
+  # ── MongoDB ──────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-nexus}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:?MONGO_PASSWORD is required}
+      - MONGO_INITDB_DATABASE=noxivo
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - noxivo-network
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - noxivo-network
+
+  # ── Noxivo Workflow Engine ─────────────────────────────────────────────────
+  workflow-engine:
+    build:
+      context: .
+      dockerfile: apps/workflow-engine/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - MONGODB_URI=mongodb://${MONGO_USER:-nexus}:${MONGO_PASSWORD}@mongodb:27017/noxivo?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - MESSAGING_PROVIDER_BASE_URL=${MESSAGING_PROVIDER_BASE_URL:?MESSAGING_PROVIDER_BASE_URL is required}
+      - MESSAGING_PROVIDER_PROXY_BASE_URL=${MESSAGING_PROVIDER_PROXY_BASE_URL:?MESSAGING_PROVIDER_PROXY_BASE_URL is required}
+      - MESSAGING_PROVIDER_API_KEY=${MESSAGING_PROVIDER_API_KEY}
+      - MESSAGING_PROVIDER_WEBHOOK_SECRET=${MESSAGING_PROVIDER_WEBHOOK_SECRET}
+      - WORKFLOW_ENGINE_INTERNAL_PSK=${WORKFLOW_ENGINE_INTERNAL_PSK}
+      - ENGINE_API_KEY=${ENGINE_API_KEY}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - noxivo-network
+
+  # ── Noxivo Dashboard ───────────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - MONGODB_URI=mongodb://${MONGO_USER:-nexus}:${MONGO_PASSWORD}@mongodb:27017/noxivo?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+      - NEXT_PUBLIC_ENGINE_BASE_URL=http://localhost:4000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - WORKFLOW_ENGINE_INTERNAL_PSK=${WORKFLOW_ENGINE_INTERNAL_PSK}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      workflow-engine:
+        condition: service_started
+    networks:
+      - noxivo-network
+
+networks:
+  noxivo-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:

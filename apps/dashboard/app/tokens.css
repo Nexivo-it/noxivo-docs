@@ -1,0 +1,126 @@
+/* ============================================================
+   Noxivo — Design Token Source of Truth
+   "The Lucid Architect" — DESIGN (1).md
+
+   HOW TO USE:
+   - Change any value here to update the ENTIRE app
+   - Dark mode: add class="dark" to <html>
+   - Light mode: remove the dark class
+   ============================================================ */
+
+/* ──────────────────────────────────────────────────────────────
+   LIGHT MODE (default)
+   ────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Brand Colors (identical in both modes — brand never changes) */
+  --color-primary:         #25D366;
+  --color-primary-hover:   #1db954;
+  --color-primary-subtle:  rgba(37, 211, 102, 0.10);
+  --color-primary-ring:    rgba(37, 211, 102, 0.40);
+
+  --color-secondary:       #9333ea;
+  --color-secondary-hover: #7e22ce;
+  --color-secondary-subtle:rgba(147, 51, 234, 0.10);
+
+  --color-success:         #059669;
+  --color-success-subtle:  rgba(5, 150, 105, 0.10);
+
+  --color-warning:         #d97706;
+  --color-warning-subtle:  rgba(217, 119, 6, 0.10);
+
+  --color-error:           #dc2626;
+  --color-error-subtle:    rgba(220, 38, 38, 0.10);
+
+  /* ── Signature Gradient (Green → Purple) */
+  --gradient-brand:        linear-gradient(135deg, #25D366, #9333ea);
+  --gradient-brand-text:   linear-gradient(135deg, #25D366, #9333ea);
+  --gradient-hero:         linear-gradient(160deg, #f7f9fb 0%, #eceef0 100%);
+
+  /* ── Surfaces — "Tonal Stacking" (No-Line Rule) */
+  --surface-base:           #f7f9fb;   /* Page background */
+  --surface-section:        #eceef0;   /* Sidebar, section blocks */
+  --surface-low:            #f2f4f6;   /* Subtle inset */
+  --surface-card:           #ffffff;   /* Cards — create "lift" */
+  --surface-overlay:        rgba(255, 255, 255, 0.80); /* Glass modals */
+
+  /* ── Text */
+  --on-surface:             #191c1e;   /* Primary text (never pure black) */
+  --on-surface-muted:       #4a5568;   /* Secondary text */
+  --on-surface-subtle:      #94a3b8;   /* Placeholders, hints */
+  --on-surface-inverse:     #f0f4ff;   /* Text on dark/colored surfaces */
+
+  /* ── Borders (Ghost Border Rule — 15% opacity max) */
+  --border-ghost:           rgba(25, 28, 30, 0.10);
+  --border-focus:           rgba(37, 211, 102, 0.40);
+  --border-input:           rgba(25, 28, 30, 0.12);
+
+  /* ── Shadows (Ambient, not drop) */
+  --shadow-ambient:         0 20px 50px rgba(37, 211, 102, 0.05);
+  --shadow-card:            0 4px 24px rgba(0, 0, 0, 0.06);
+  --shadow-float:           0 25px 50px rgba(0, 0, 0, 0.10);
+  --shadow-primary-glow:    0 8px 32px rgba(37, 211, 102, 0.20);
+
+  /* ── Backdrop Blur (Glass Rule) */
+  --blur-glass:             blur(24px) saturate(160%);
+
+  /* ── Radius */
+  --radius-xs:   0.375rem;  /* 6px  */
+  --radius-sm:   0.5rem;    /* 8px  */
+  --radius-md:   0.75rem;   /* 12px — button default */
+  --radius-lg:   1rem;      /* 16px — card default */
+  --radius-xl:   1.25rem;   /* 20px */
+  --radius-2xl:  1.5rem;    /* 24px */
+  --radius-full: 9999px;
+
+  /* ── Spacing Scale */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Typography */
+  --font-display: 'Plus Jakarta Sans', 'Manrope', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Transitions */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   DARK MODE — override surfaces & text only
+   Brand colors stay exactly the same
+   ────────────────────────────────────────────────────────────── */
+.dark {
+  /* Surfaces */
+  --surface-base:           #070a14;   /* Page background */
+  --surface-section:        #0f1523;   /* Sidebar, section panels */
+  --surface-low:            #0d1220;   /* Subtle inset */
+  --surface-card:           #131b2e;   /* Cards */
+  --surface-overlay:        rgba(7, 10, 20, 0.80); /* Glass modals */
+
+  /* Text */
+  --on-surface:             #f0f4ff;   /* Primary text */
+  --on-surface-muted:       #94a3b8;   /* Secondary text */
+  --on-surface-subtle:      #475569;   /* Placeholders, hints */
+  --on-surface-inverse:     #191c1e;   /* Text on light surfaces */
+
+  /* Borders */
+  --border-ghost:           rgba(255, 255, 255, 0.08);
+  --border-focus:           rgba(37, 211, 102, 0.50);
+  --border-input:           rgba(255, 255, 255, 0.10);
+
+  /* Shadows */
+  --shadow-ambient:         0 20px 50px rgba(37, 211, 102, 0.08);
+  --shadow-card:            0 4px 24px rgba(0, 0, 0, 0.40);
+  --shadow-float:           0 25px 50px rgba(0, 0, 0, 0.60);
+  --shadow-primary-glow:    0 8px 32px rgba(37, 211, 102, 0.30);
+
+  /* Hero gradient */
+  --gradient-hero:          linear-gradient(160deg, #070a14 0%, #0f1523 100%);
+}

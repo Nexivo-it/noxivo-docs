@@ -1,0 +1,61 @@
+category	method	path	status	body
+Health	GET	/health	200	{"service":"workflow-engine","timestamp":"2026-04-16T09:43:54.822Z","checks":{"mongodb":"healthy","redis":"healthy","messagingProvider":"healthy"}}
+Sessions	GET	/api/v1/sessions	200	[{"id":"agency-ae2de1d8-tenant-960b69e4-whatsapp","name":"agency-ae2de1d8-tenant-960b69e4-whatsapp","status":"SCAN_QR_CODE","phone":"","accountName":"Unknown User","platform":"MessagingProvider","server":"MessagingProvider","metadata":{"agencyId"
+Sessions	GET	/api/v1/sessions/agency-cb59e033-tenant-b379175e-whatsapp/status	200	{"status":"WORKING","me":{"id":"13468207183@c.us"}}
+Sessions	GET	/api/v1/sessions/by-tenant?agencyId=f021b51679650e00cb59e033&tenantId=9de657aa39b40e2fb379175e	200	{"id":"agency-cb59e033-tenant-b379175e-whatsapp","name":"agency-cb59e033-tenant-b379175e-whatsapp"}
+Sessions	POST	/api/v1/sessions/bootstrap	200	{"sessionName":"agency-fa507728-tenant-87b62c0d-whatsapp","status":"STARTING"}
+Pairing	GET	/api/v1/sessions/agency-fa507728-tenant-87b62c0d-whatsapp/qr	500	{"statusCode":500,"error":"Internal Server Error","message":"MessagingProvider Error: 422"}
+Pairing	GET	/api/v1/sessions/agency-fa507728-tenant-87b62c0d-whatsapp/status	200	{"status":"STARTING","me":{}}
+Profile	GET	/api/v1/sessions/agency-cb59e033-tenant-b379175e-whatsapp/profile	200	{"id":"13468207183@c.us","name":"Salmen Khelifi","picture":"https://pps.whatsapp.net/v/t61.24694-24/534423481_1683879499244873_6393822389179731739_n.jpg?ccb=11-4&oh=01_Q5Aa4QEqYb0lFMh7Z_8YoS2VnfS7xY7Hhy_JZBWl4ZmG4SIdAA&o
+Profile	GET	/api/v1/contacts/profile-picture?session=agency-cb59e033-tenant-b379175e-whatsapp&contactId=84961566302@c.us	200	{"profilePictureURL":"https://pps.whatsapp.net/v/t61.24694-24/473408072_916676900670093_1267868837564861371_n.jpg?ccb=11-4&oh=01_Q5Aa4QFeFSo7LrtZwtomurKs6X0VEgYhYpZAyybcaWZqy00YIw&oe=69EDBCE3&_nc_sid=5e03e0&_nc_cat=103"}
+Chatting	POST	/api/v1/sendText	201	{"_data":{"id":{"fromMe":true,"remote":"50805738631354@lid","id":"3EB074655D1F945730E8A9","_serialized":"true_50805738631354@lid_3EB074655D1F945730E8A9"},"viewed":false,"body":"post deploy outbound check to 84961566302",
+Chatting	POST	/api/v1/messages/send	409	{"error":"No active messaging session binding found"}
+Chats	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/chats/overview	200	[{"id":"50805738631354@lid","name":"Salmen Khelifi","picture":"https://pps.whatsapp.net/v/t61.24694-24/473408072_916676900670093_1267868837564861371_n.jpg?ccb=11-4&oh=01_Q5Aa4QFeFSo7LrtZwtomurKs6X0VEgYhYpZAyybcaWZqy00YIw
+Chats	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/chats/50805738631354@lid/messages?limit=20	500	{"statusCode":500,"timestamp":"2026-04-16T09:44:13.832Z","exception":{"message":"Cannot read properties of undefined (reading 'waitForChatLoading')\nObject.<anonymous> (https://static.whatsapp.net/rsrc.php/v4iu4R4/yQ/l/e
+Chats	GET	/api/v1/chats?tenantId=9de657aa39b40e2fb379175e&limit=10&offset=0	200	[{"id":"69e0af6bfbf58631dc8d4642","contactId":"84961566302@c.us","contactName":"Unknown","lastMessage":"","updatedAt":"2026-04-16T09:44:11.932Z"},{"id":"69e0aecbfbf58631dc8d4632","contactId":"13468207183@c.us","contactNa
+Presence	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/presence	501	{"message":"The method is not implemented by 'WEBJS' engine. Check the docs and try another engine: https://messaging-provider.devlike.pro/","error":"Not Implemented","statusCode":501}
+Presence	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/presence/84961566302@c.us	200	{"id":"84961566302@c.us","presences":[]}
+Channels	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/channels	200	[]
+Status	GET	/api/v1/sessions/agency-cb59e033-tenant-b379175e-whatsapp/status/stories	500	{"statusCode":500,"error":"Internal Server Error","message":"Cannot GET /api/agency-cb59e033-tenant-b379175e-whatsapp/status"}
+Status	POST	/api/v1/sessions/agency-cb59e033-tenant-b379175e-whatsapp/status/text	500	{"statusCode":500,"error":"Internal Server Error","message":"Cannot POST /api/sendStatusText"}
+ApiKeys	GET	/api/v1/keys	200	[]
+ApiKeys	POST	/api/v1/keys	500	{"statusCode":500,"error":"Internal Server Error","message":"Either isAdmin must be true or session must be provided"}
+Contacts	GET	/api/v1/sessions/agency-cb59e033-tenant-b379175e-whatsapp/contacts	200	[{"id":"13468207183@c.us","name":"Salmen Khelifi","isGroup":false},{"id":"100442642079906@lid","name":"Riadh Africanet","isGroup":false},{"id":"21693625611@c.us","name":"Riadh Africanet","isGroup":false},{"id":"100996491
+Contacts	POST	/api/v1/contacts/check-exists	404	{"message":"Cannot POST /api/contacts/check-exists","error":"Not Found","statusCode":404}
+Groups	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/groups	200	[]
+Calls	POST	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/calls/reject	400	{"message":["from should not be empty","from must be a string","id should not be empty","id must be a string"],"error":"Bad Request","statusCode":400}
+Events	POST	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/events	501	{"message":"The method is not implemented by 'WEBJS' engine. Check the docs and try another engine: https://messaging-provider.devlike.pro/","error":"Not Implemented","statusCode":501}
+Labels	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/labels	200	[{"id":"1","name":"New customer","color":1,"colorHex":"#64c4ff"},{"id":"10","name":"2,6","color":7,"colorHex":"#d3a91d"},{"id":"2","name":"New order","color":2,"colorHex":"#ffd429"},{"id":"3","name":"Pending payment","co
+Media	POST	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/media/convert/voice	500	{"statusCode":500,"timestamp":"2026-04-16T09:44:26.843Z","exception":{"message":"Request failed with status code 404","name":"AxiosError","code":"ERR_BAD_REQUEST","config":{},"status":404,"stack":"AxiosError: Request fai
+Apps	GET	/api/v1/apps?session=agency-cb59e033-tenant-b379175e-whatsapp	200	[]
+Storage	GET	/api/v1/agency-cb59e033-tenant-b379175e-whatsapp/storage	404	{"message":"Cannot GET /api/agency-cb59e033-tenant-b379175e-whatsapp/storage","error":"Not Found","statusCode":404}
+Observability	GET	/api/v1/health/messaging	200	{"status":"healthy","upstream":"MessagingProvider"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}
+Webhooks	POST	/v1/webhooks/messaging	500	{"error":"Failed to process webhook"}

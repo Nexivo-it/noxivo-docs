@@ -1,0 +1,25 @@
+{
+  "name": "@noxivo/messaging-client",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@noxivo/contracts": "workspace:*",
+    "@noxivo/database": "workspace:*",
+    "mongoose": "^8.13.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1"
+  }
+}

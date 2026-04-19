@@ -1,0 +1,36 @@
+{
+  "name": "@noxivo/workflow-engine",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS=--max-old-space-size=768 tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/static": "^9.1.0",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.5",
+    "@noxivo/contracts": "workspace:*",
+    "@noxivo/database": "workspace:*",
+    "@noxivo/messaging-client": "workspace:*",
+    "bullmq": "^5.48.1",
+    "fastify": "^5.3.2",
+    "fastify-plugin": "^5.1.0",
+    "fastify-sse-v2": "^4.2.2",
+    "ioredis": "^5.4.2",
+    "mongoose": "^8.13.2",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/fastify-cors": "^2.1.2",
+    "@types/node": "^22.14.1",
+    "mongodb-memory-server": "^10.1.4",
+    "tsx": "^4.15.1",
+    "vitest": "^3.1.1"
+  }
+}

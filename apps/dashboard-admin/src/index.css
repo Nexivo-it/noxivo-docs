@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand Colors */
+    --color-primary:         #25D366;
+    --color-primary-hover:   #1db954;
+    --color-primary-subtle:  rgba(37, 211, 102, 0.10);
+    --color-primary-ring:    rgba(37, 211, 102, 0.40);
+
+    --color-secondary:       #9333ea;
+    --color-secondary-hover: #7e22ce;
+    --color-secondary-subtle:rgba(147, 51, 234, 0.10);
+
+    --color-success:         #059669;
+    --color-success-subtle:  rgba(5, 150, 105, 0.10);
+
+    --color-warning:         #d97706;
+    --color-warning-subtle:  rgba(217, 119, 6, 0.10);
+
+    --color-error:           #dc2626;
+    --color-error-subtle:    rgba(220, 38, 38, 0.10);
+
+    /* Surfaces - Dark mode defaults */
+    --surface-base:           #070a14;
+    --surface-section:        #0f1523;
+    --surface-low:            #0d1220;
+    --surface-card:           #131b2e;
+    --surface-overlay:        rgba(7, 10, 20, 0.80);
+
+    /* Text */
+    --on-surface:             #f0f4ff;
+    --on-surface-muted:       #94a3b8;
+    --on-surface-subtle:      #475569;
+    --on-surface-inverse:     #191c1e;
+
+    /* Borders */
+    --border-ghost:           rgba(255, 255, 255, 0.08);
+    --border-focus:           rgba(37, 211, 102, 0.50);
+    --border-input:           rgba(255, 255, 255, 0.10);
+
+    /* Shadows */
+    --shadow-ambient:         0 20px 50px rgba(37, 211, 102, 0.08);
+    --shadow-card:            0 4px 24px rgba(0, 0, 0, 0.40);
+    --shadow-float:           0 25px 50px rgba(0, 0, 0, 0.60);
+    --shadow-primary-glow:    0 8px 32px rgba(37, 211, 102, 0.30);
+
+    /* Backdrop Blur */
+    --blur-glass:             blur(24px) saturate(160%);
+
+    /* Radius */
+    --radius-md:   0.75rem;
+    --radius-lg:   1rem;
+    --radius-xl:   1.25rem;
+    --radius-full: 9999px;
+
+    /* Gradients */
+    --gradient-brand:        linear-gradient(135deg, #25D366, #9333ea);
+  }
+
+  body {
+    @apply antialiased;
+    background-color: var(--surface-base);
+    color: var(--on-surface);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  ::selection {
+    background: rgba(37, 211, 102, 0.3);
+    color: white;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply backdrop-blur-xl border border-white/5;
+    background: rgba(19, 27, 46, 0.65);
+  }
+
+  .neural-glow {
+    @apply relative;
+  }
+
+  .neural-glow::after {
+    content: '';
+    @apply absolute inset-0 z-[-1] opacity-20 blur-3xl;
+    background: var(--color-primary);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-ghost);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--on-surface-subtle);
+}

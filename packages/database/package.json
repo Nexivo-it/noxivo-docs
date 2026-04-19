@@ -1,0 +1,35 @@
+{
+  "name": "@noxivo/database",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./contact-profile-projection": {
+      "types": "./dist/contact-profile-projection.d.ts",
+      "import": "./dist/contact-profile-projection.js"
+    },
+    "./models": {
+      "types": "./dist/models/index.d.ts",
+      "import": "./dist/models/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "migrate:messaging": "tsx scripts/migrate-messaging-fields.ts"
+  },
+  "dependencies": {
+    "@noxivo/contracts": "workspace:*",
+    "mongoose": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "vitest": "^3.1.1"
+  }
+}

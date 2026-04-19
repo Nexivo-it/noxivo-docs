@@ -1,0 +1,10 @@
+{
+  "name": "@noxivo/landing",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve -l 5001 ."
+  },
+  "devDependencies": {
+    "react-grab": "^0.1.32"
+  }
+}

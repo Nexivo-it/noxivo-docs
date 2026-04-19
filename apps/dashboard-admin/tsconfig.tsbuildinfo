@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/dummy.test.ts","./src/main.tsx","./src/components/sidebar.tsx","./src/components/topbar.tsx","./src/lib/authcontext.tsx","./src/lib/api.ts","./src/pages/events.tsx","./src/pages/explorer.tsx","./src/pages/login.tsx","./src/pages/overview.tsx","./src/pages/sessions.tsx","./src/pages/webhooks.tsx","./src/pages/workers.tsx"],"version":"5.6.3"}

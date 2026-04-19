@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────
+   Base resets — all values reference tokens, never hardcoded hex
+   ────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--surface-base);
+    color: var(--on-surface);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    transition: background-color var(--transition-slow), color var(--transition-normal);
+  }
+
+  ::selection {
+    background-color: var(--color-primary-subtle);
+    color: var(--on-surface);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-ghost); border-radius: var(--radius-full); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-primary-subtle); }
+
+  /* Focus rings — use brand token not browser default */
+  *:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Utility layer — glass, gradients, glow
+   ────────────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* Glass Morphism — navigation bars, modals, tooltips */
+  .glass-panel {
+    background: var(--surface-overlay);
+    backdrop-filter: var(--blur-glass);
+    -webkit-backdrop-filter: var(--blur-glass);
+    border: 1px solid var(--border-ghost);
+    box-shadow: var(--shadow-ambient);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-float:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-float), 0 0 20px var(--color-primary-subtle);
+    border-color: var(--border-focus);
+  }
+
+  /* Lumina effects — used for headers and focal points */
+  .lumina-header {
+    position: relative;
+    overflow: hidden;
+  }
+  .lumina-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -20%;
+    width: 140%;
+    height: 140%;
+    background: radial-gradient(circle at center, var(--color-primary-subtle) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.6;
+  }
+
+  .lumina-glow {
+    box-shadow: var(--shadow-glow), 0 0 40px var(--color-primary-subtle);
+  }
+
+  .shadow-yellow-glow {
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.4);
+  }
+  .shadow-emerald-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+  .shadow-rose-glow {
+    box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+  }
+
+  .lumina-card {
+    background: linear-gradient(135deg, var(--surface-card) 0%, var(--surface-overlay) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .dark .lumina-card {
+    border: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  @keyframes float-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-float-in {
+    animation: float-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Sidebar glass — slightly more opaque */
+  .sidebar-glass {
+    background: color-mix(in srgb, var(--surface-section) 90%, transparent);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-right: 1px solid var(--border-ghost);
+  }
+
+  /* Cards — "lifted" by being lighter than container */
+  .card {
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  }
+  .card:hover {
+    box-shadow: var(--shadow-ambient);
+    transform: translateY(-1px);
+  }
+
+  /* Gradient text — use sparingly on Display only */
+  .gradient-text {
+    background: var(--gradient-brand-text);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Primary CTA button gradient */
+  .btn-primary {
+    background: var(--gradient-brand);
+    color: #ffffff;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-primary-glow);
+    transition: opacity var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .btn-primary:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-primary-glow), 0 4px 12px rgba(37, 99, 235, 0.25);
+  }
+  .btn-primary:active { transform: translateY(0); opacity: 1; }
+
+  /* Ghost border — only for accessibility-required borders */
+  .border-ghost { border: 1px solid var(--border-ghost); }
+
+  /* Surface stack helpers */
+  .surface-base      { background-color: var(--surface-base); }
+  .surface-section   { background-color: var(--surface-section); }
+  .surface-low       { background-color: var(--surface-low); }
+  .surface-card      { background-color: var(--surface-card); }
+
+  /* Glow text — blue tint for brand emphasis */
+  .glow-text-blue {
+    text-shadow: 0 0 24px var(--color-primary-subtle);
+  }
+
+  /* QR dot pattern (used in sessions) */
+  .qr-pattern {
+    background-image: radial-gradient(var(--border-ghost) 2px, transparent 2px);
+    background-size: 10px 10px;
+  }
+
+  /* Hide scrollbar visually but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}

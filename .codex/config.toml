@@ -1,0 +1,14 @@
+[mcp_servers.voicetree]
+url = "http://localhost:3001/mcp"
+
+[mcp_servers.voicetree.tools.list_agents]
+approval_mode = "approve"
+
+[mcp_servers.voicetree.tools.graph_structure]
+approval_mode = "approve"
+
+[mcp_servers.voicetree.tools.create_graph]
+approval_mode = "approve"
+
+[mcp_servers.voicetree.tools.spawn_agent]
+approval_mode = "auto_edit"

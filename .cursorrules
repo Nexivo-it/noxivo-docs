@@ -1,0 +1,75 @@
+# NexusFlow AI Agent Rules
+
+## Core Principles
+
+1. Security First - Never expose internal provider names
+2. Type Safety - No `any`, no `@ts-ignore`
+3. Test Everything - No implementation without tests
+
+## 🚨 Strict Naming Conventions & Security
+
+### SECURITY RULE: Forbidden Terminology
+
+**The term 'WAHA' (and any case variations like 'waha', 'Waha') is strictly forbidden from being used in this codebase.**
+
+This rule applies to ALL generated code including:
+- Variable names
+- Filenames
+- API routes
+- Comments
+- Documentation
+- .env keys
+- Commit messages
+
+### Allowed Substitutions
+
+When you need to reference the messaging integration, use:
+- `messagingProvider` or `messaging-client` - for variable names
+- `MESSAGING_PROVIDER_*` - for .env variables
+- `/v1/messaging/` - for API routes
+- `MessagingSession` - for types/classes
+- "WhatsApp gateway" or "messaging provider" - for comments
+
+### Why This Matters
+
+This project integrates with external WhatsApp providers. Exposing specific provider names in code creates security risks and violates the project's security requirements.
+
+### Exceptions
+
+The only exception is:
+- `docs/internal/` - Internal documentation (gitignored)
+- `waha-openapi.json` - External API spec file
+
+## Code Generation Rules
+
+### DO
+
+- Use TypeScript strict mode
+- Add Zod schemas for input validation
+- Write tests before or with implementation
+- Use the messaging-client package for provider integrations
+
+### DON'T
+
+- Generate variables containing "waha"
+- Generate filenames with "waha"
+- Generate route paths with "waha"
+- Generate comments mentioning "waha"
+- Generate .env keys with "waha"
+
+## Package Structure
+
+- `apps/dashboard` - Next.js frontend
+- `apps/workflow-engine` - Fastify API
+- `packages/messaging-client` - Messaging provider client
+- `packages/database` - MongoDB models
+- `packages/contracts` - Zod schemas
+
+## Commands
+
+```bash
+pnpm dev      # Start development
+pnpm build    # Build all packages
+pnpm test     # Run tests
+pnpm lint     # TypeScript check
+```
