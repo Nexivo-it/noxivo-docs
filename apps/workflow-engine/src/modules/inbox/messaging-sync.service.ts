@@ -135,7 +135,7 @@ function toIsoPhone(contactId: string): string | null {
   return digits.length > 0 ? digits : null;
 }
 
-const normalizeChatIdCandidates = buildMessagingAliasCandidates;
+const normalizeChatIdCandidates = (value: string | null | undefined): string[] => buildMessagingAliasCandidates([value]);
 
 function extractMessagingChatIdFromMetadata(metadata: ConversationMetadata): string | null {
   const value = metadata.messagingChatId;
