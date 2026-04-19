@@ -41,3 +41,4 @@ export * from './spa-session.js';
 export * from './spa-service-category.js';
 export * from './spa-service.js';
 export * from './spa-site-settings.js';
+export * from './spa-webhook.js';
