@@ -57,9 +57,12 @@ export async function GET(): Promise<NextResponse> {
         agencyId: session.actor.agencyId,
         tenantId,
         sessionName: data.sessionName,
+        state: data.state,
+        reason: data.reason,
+        poll: data.poll,
         status: data.status,
-        qr: data.qr,
-        qrValue: data.qr,
+        qr: data.qrValue,
+        qrValue: data.qrValue,
         profile: data.profile,
         diagnostics: data.diagnostics,
         provisioning: data.provisioning,
@@ -82,11 +85,6 @@ export async function GET(): Promise<NextResponse> {
       const data = await response.json();
       return NextResponse.json(data, { status: response.status });
     }
-
-    return NextResponse.json(
-      { error: 'Invalid configuration state' },
-      { status: 500 }
-    );
   } catch (error) {
     if (isAbortLikeError(error)) {
       return NextResponse.json(

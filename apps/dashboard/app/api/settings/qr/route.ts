@@ -15,11 +15,21 @@ function isAbortLikeError(error: unknown): boolean {
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const SESSION_STARTUP_DELAY_MS = 2500;
 
 type QrAction = 'login' | 'regenerate';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readBootstrapSessionName(value: unknown): string | null {
+  if (!isRecord(value) || typeof value.sessionName !== 'string') {
+    return null;
+  }
+
+  const sessionName = value.sessionName.trim();
+  return sessionName.length > 0 ? sessionName : null;
 }
 
 async function readQrAction(request: Request): Promise<QrAction> {
@@ -74,9 +84,12 @@ export async function GET(_request: Request): Promise<NextResponse> {
       );
       return NextResponse.json({
         sessionName: data.sessionName,
+        state: data.state,
+        reason: data.reason,
+        poll: data.poll,
         status: data.status,
-        qr: data.qr,
-        qrValue: data.qr,
+        qr: data.qrValue,
+        qrValue: data.qrValue,
         profile: data.profile,
         diagnostics: data.diagnostics,
         provisioning: data.provisioning,
@@ -113,10 +126,6 @@ export async function GET(_request: Request): Promise<NextResponse> {
     );
   }
 
-  return NextResponse.json(
-    { error: 'Engine API not configured' },
-    { status: 500 }
-  );
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -152,11 +161,12 @@ export async function POST(request: Request): Promise<NextResponse> {
       .catch(() => null);
 
     if (!binding) {
-      const bsResult = await engineClient.bootstrapSession(session.actor.agencyId, tenantId) as any;
+      const bsResult = await engineClient.bootstrapSession(session.actor.agencyId, tenantId);
+      const bootstrapSessionName = readBootstrapSessionName(bsResult);
       bootstrapped = true;
       binding = await engineClient.getSessionByTenant(session.actor.agencyId, tenantId).catch(() => null);
-      if (!binding && bsResult?.sessionName) {
-        binding = { id: bsResult.sessionName, name: bsResult.sessionName };
+      if (!binding && bootstrapSessionName) {
+        binding = { id: bootstrapSessionName, name: bootstrapSessionName };
       }
 
       if (!binding) {
@@ -164,7 +174,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
 
       // Give MessagingProvider time to spin-up the new session container and emit a QR
-      await delay(2500);
+      await delay(SESSION_STARTUP_DELAY_MS);
     }
 
     const statusPayload = await engineClient.getStatus(binding.id).catch(() => null);
@@ -182,11 +192,11 @@ export async function POST(request: Request): Promise<NextResponse> {
         await engineClient.restartSession(binding.id);
       }
       restarted = true;
-      await delay(2500); // Give MessagingProvider time to rebuild container and get QR
+      await delay(SESSION_STARTUP_DELAY_MS); // Give MessagingProvider time to rebuild container and get QR
     } else if (shouldStartSession) {
       await engineClient.startSession(binding.id);
       restarted = true;
-      await delay(2500); // Give MessagingProvider time to rebuild container and get QR
+      await delay(SESSION_STARTUP_DELAY_MS); // Give MessagingProvider time to rebuild container and get QR
     }
 
     const data = await resolveDashboardMessagingSession(
@@ -198,9 +208,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({
       sessionName: data.sessionName,
+      state: data.state,
+      reason: data.reason,
+      poll: data.poll,
       status: data.status,
-      qr: data.qr,
-      qrValue: data.qr,
+      qr: data.qrValue,
+      qrValue: data.qrValue,
       profile: data.profile,
       diagnostics: data.diagnostics,
       provisioning: data.provisioning,
@@ -281,9 +294,12 @@ export async function DELETE(_request: Request): Promise<NextResponse> {
     return NextResponse.json({
       ok: true,
       sessionName: data.sessionName,
+      state: data.state,
+      reason: data.reason,
+      poll: data.poll,
       status: data.status,
-      qr: data.qr,
-      qrValue: data.qr,
+      qr: data.qrValue,
+      qrValue: data.qrValue,
       profile: data.profile,
       diagnostics: data.diagnostics,
       provisioning: data.provisioning,

@@ -255,7 +255,7 @@ describe('settings qr route', () => {
     expect(payload.error).toBe('Failed to communicate with backend: Network error');
   });
 
-  it('returns unavailable snapshot when binding is missing on passive GET', async () => {
+  it('returns unlinked bootstrap-required snapshot when binding is missing on passive GET', async () => {
     const agencyId = new mongoose.Types.ObjectId().toString();
     const tenantId = new mongoose.Types.ObjectId().toString();
 
@@ -279,43 +279,14 @@ describe('settings qr route', () => {
       expiresAt: new Date(Date.now() + 60000)
     });
 
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
 
-      if (url.includes('/sessions/by-tenant?') && (!init?.method || init.method === 'GET')) {
-        if (!fetchMock.mock.calls.some(([calledUrl]) => typeof calledUrl === 'string' && calledUrl.includes('/sessions/bootstrap'))) {
-          return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
-        }
-
-        return new Response(JSON.stringify({ id: 'binding-id', name: 'owner-example-whatsapp' }), {
-          status: 200,
+      if (url.includes('/sessions/by-tenant?')) {
+        return new Response(JSON.stringify({ error: 'Session not found' }), {
+          status: 404,
           headers: { 'content-type': 'application/json' }
         });
-      }
-
-      if (url.endsWith('/sessions/bootstrap')) {
-        return new Response(JSON.stringify({ sessionName: 'owner-example-whatsapp', status: 'SCAN_QR_CODE' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }
-
-      if (url.endsWith('/sessions/binding-id/status')) {
-        return new Response(JSON.stringify({ status: 'SCAN_QR_CODE', me: null }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }
-
-      if (url.endsWith('/sessions/binding-id/qr')) {
-        return new Response(JSON.stringify({ value: 'engine-qr-token' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        });
-      }
-
-      if (url.endsWith('/sessions/binding-id/profile')) {
-        return new Response('Not Found', { status: 404 });
       }
 
       return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
@@ -328,17 +299,24 @@ describe('settings qr route', () => {
 
     const response = await getSettingsQr(makeRequest());
     const payload = await response.json() as {
-      status: string;
-      qr: string | null;
-      provisioning: boolean;
+      state: string;
+      reason: string | null;
+      poll: boolean;
+      qrValue: string | null;
     };
 
     expect(response.status).toBe(200);
     expect(payload).toMatchObject({
-      status: 'unavailable',
-      qr: null,
-      provisioning: false
+      state: 'unlinked',
+      reason: 'bootstrap_required',
+      poll: false,
+      qrValue: null
     });
+
+    const bootstrapCall = fetchMock.mock.calls.find(([calledUrl]) => (
+      typeof calledUrl === 'string' && calledUrl.endsWith('/sessions/bootstrap')
+    ));
+    expect(bootstrapCall).toBeFalsy();
   });
 
   it('bootstraps session and returns QR on explicit POST action', async () => {
@@ -414,21 +392,21 @@ describe('settings qr route', () => {
 
     const response = await postSettingsQr(makePostRequest());
     const payload = await response.json() as {
-      status: string;
-      qr: string | null;
+      state: string;
+      reason: string | null;
+      poll: boolean;
       qrValue: string | null;
       sessionName: string;
-      provisioning: boolean;
       bootstrapped: boolean;
     };
 
     expect(response.status).toBe(200);
     expect(payload).toMatchObject({
-      status: 'available',
-      qr: 'engine-qr-token',
+      state: 'qr_ready',
+      reason: null,
+      poll: true,
       qrValue: 'engine-qr-token',
       sessionName: 'owner-example-whatsapp',
-      provisioning: false,
       bootstrapped: true
     });
 

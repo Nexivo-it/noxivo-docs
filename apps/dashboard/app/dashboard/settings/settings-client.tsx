@@ -23,8 +23,13 @@ import {
   WorkspacePanel,
 } from '../../../components/dashboard-workspace-ui';
 import { toast } from 'sonner';
+import {
+  getQrPollIntervalMs,
+  mapPairingSnapshotToUi,
+  type QrPairingState,
+} from './qr-state';
 
-type QRStatus = 'loading' | 'available' | 'provisioning' | 'connected' | 'unavailable' | 'error';
+type QRStatus = 'loading' | QrPairingState;
 
 type ConnectedProfile = Record<string, unknown>;
 type ConnectedDiagnostics = Record<string, unknown>;
@@ -32,6 +37,8 @@ type SessionPostAction = 'login' | 'regenerate';
 
 interface QRState {
   status: QRStatus;
+  reason: string | null;
+  poll: boolean;
   qrValue: string | null;
   error: string | null;
   sessionName: string | null;
@@ -190,33 +197,6 @@ function getConnectedProfilePicture(profile: ConnectedProfile | null): string | 
     ?? readString(profile.imgUrl);
 }
 
-function normalizeQrStatus(value: string | null): QRStatus {
-  const normalized = value?.trim().toUpperCase();
-
-  switch (normalized) {
-    case 'CONNECTED':
-    case 'WORKING':
-      return 'connected';
-    case 'SCAN_QR_CODE':
-    case 'AVAILABLE':
-      return 'available';
-    case 'STARTING':
-    case 'CONNECTING':
-    case 'LOADING':
-    case 'PROVISIONING':
-      return 'provisioning';
-    case 'OFFLINE':
-    case 'STOPPED':
-    case 'UNAVAILABLE':
-      return 'unavailable';
-    case 'FAILED':
-    case 'ERROR':
-      return 'error';
-    default:
-      return 'provisioning';
-  }
-}
-
 function getConnectionStatusLabel(status: QRStatus, diagnostics: ConnectedDiagnostics | null): string {
   const rawStatus = diagnostics ? readString(diagnostics.status) : null;
 
@@ -226,11 +206,11 @@ function getConnectionStatusLabel(status: QRStatus, diagnostics: ConnectedDiagno
 
   const fallbackLabels: Record<QRStatus, string> = {
     connected: 'WORKING',
-    available: 'SCAN_QR_CODE',
-    provisioning: 'CONNECTING',
+    qr_ready: 'SCAN_QR_CODE',
+    preparing: 'CONNECTING',
     loading: 'LOADING',
-    unavailable: 'OFFLINE',
-    error: 'ERROR',
+    unlinked: 'UNLINKED',
+    failed: 'ERROR',
   };
 
   return fallbackLabels[status];
@@ -331,6 +311,8 @@ export function SettingsClient() {
   const [isSavingWebhook, setIsSavingWebhook] = useState(false);
   const [qrState, setQrState] = useState<QRState>({
     status: 'loading',
+    reason: null,
+    poll: false,
     qrValue: null,
     error: null,
     sessionName: null,
@@ -348,6 +330,8 @@ export function SettingsClient() {
     if (shouldShowLoading) {
       setQrState({
         status: 'loading',
+        reason: null,
+        poll: false,
         qrValue: null,
         error: null,
         sessionName: null,
@@ -367,114 +351,59 @@ export function SettingsClient() {
       const res = await fetch('/api/settings/qr', { cache: 'no-store' });
       const payload = await res.json().catch(() => null);
       const data = isRecord(payload) ? payload : {};
-      const responseStatus = readString(data.status);
+      const snapshot = mapPairingSnapshotToUi(data);
       const sessionName = readString(data.sessionName);
-      const qrValue = readString(data.qrValue ?? data.qr);
       const error = readString(data.error);
       const profile = resolveConnectedProfile(data);
       const diagnostics = isRecord(data.diagnostics) ? data.diagnostics : null;
       const syncedAt = readDateCandidate(data.syncedAt ?? data.snapshotAt ?? data.fetchedAt);
 
-      if (!res.ok || responseStatus === 'error' || responseStatus === 'ERROR') {
-        setQrState((prev) => {
-          const isActuallyConnected = prev.status === 'connected' || Boolean(prev.profile);
-          const shouldPreserveState = prev.status === 'available' || isActuallyConnected || prev.status === 'provisioning';
-
-          if (shouldPreserveState) {
-            const fallbackError = isActuallyConnected 
-              ? 'Backend communication failure. Attempting to reconnect...' 
-              : 'Please scan the QR code to connect';
-            
-            return {
-              ...prev,
-              error: error ?? fallbackError,
-              sessionName: sessionName ?? prev.sessionName,
-              diagnostics: diagnostics ?? prev.diagnostics,
-              syncedAt: syncedAt ?? prev.syncedAt,
-            };
-          }
-
-          return {
-            status: 'error',
-            qrValue: null,
-            error: error ?? 'Please scan the QR code to connect',
-            sessionName,
-            profile: null,
-            diagnostics,
-            syncedAt,
-          };
-        });
+      if (!res.ok) {
+        setQrState((prev) => ({
+          ...prev,
+          status: 'failed',
+          reason: snapshot.reason,
+          poll: false,
+          qrValue: null,
+          error: error ?? 'Failed to refresh WhatsApp pairing state',
+          sessionName: sessionName ?? prev.sessionName,
+          profile: profile ?? prev.profile,
+          diagnostics: diagnostics ?? prev.diagnostics,
+          syncedAt: syncedAt ?? prev.syncedAt,
+        }));
 
         return {
           ok: false,
-          status: null,
-          error: error ?? 'Please scan the QR code to connect'
+          status: 'failed',
+          error: error ?? 'Failed to refresh WhatsApp pairing state'
         };
       }
 
-      const normalizedStatus = normalizeQrStatus(responseStatus);
-
-      if (normalizedStatus === 'connected') {
-        setQrState({
-          status: 'connected',
-          qrValue: null,
-          error: null,
-          sessionName,
-          profile,
-          diagnostics,
-          syncedAt,
-        });
-        return { ok: true, status: 'connected', error: null };
-      }
-
-      if (normalizedStatus === 'loading' || normalizedStatus === 'provisioning') {
-        setQrState({
-          status: normalizedStatus,
-          qrValue: null,
-          error: error ?? null,
-          sessionName,
-          profile,
-          diagnostics,
-          syncedAt,
-        });
-        return { ok: true, status: normalizedStatus, error: error ?? null };
-      }
-
-      if (normalizedStatus === 'available' && qrValue) {
-        setQrState({
-          status: 'available',
-          qrValue,
-          error: null,
-          sessionName,
-          profile,
-          diagnostics,
-          syncedAt,
-        });
-        return { ok: true, status: 'available', error: null };
-      }
+      const stateError = snapshot.state === 'failed'
+        ? (error ?? 'Unable to recover WhatsApp pairing state')
+        : null;
 
       setQrState({
-        status: normalizedStatus,
-        qrValue: null,
-        error: error ?? 'Please scan the QR code to connect',
+        status: snapshot.state,
+        reason: snapshot.reason,
+        poll: snapshot.poll,
+        qrValue: snapshot.qrValue,
+        error: snapshot.state === 'unlinked' ? null : stateError,
         sessionName,
         profile,
         diagnostics,
         syncedAt,
       });
-      return { ok: true, status: normalizedStatus, error: error ?? null };
+
+      return { ok: true, status: snapshot.state, error: stateError };
     } catch {
       const networkError = 'Network error';
       setQrState((prev) => ({
-        status:
-          prev.status === 'available' || prev.status === 'connected' || prev.status === 'provisioning'
-            ? prev.status
-            : 'error',
+        status: prev.status === 'connected' ? 'connected' : 'failed',
+        reason: prev.status === 'connected' ? prev.reason : 'network_error',
+        poll: false,
         qrValue: prev.qrValue,
-        error:
-          prev.status === 'available' || prev.status === 'connected' || prev.status === 'provisioning'
-            ? prev.error ?? networkError
-            : networkError,
+        error: prev.status === 'connected' ? prev.error ?? networkError : networkError,
         sessionName: prev.sessionName,
         profile: prev.profile,
         diagnostics: prev.diagnostics,
@@ -506,12 +435,12 @@ export function SettingsClient() {
       return;
     }
 
-    if (refreshResult.status === 'available') {
+    if (refreshResult.status === 'qr_ready') {
       toast.success('QR code is ready to scan.', { id: toastId });
       return;
     }
 
-    if (refreshResult.status === 'provisioning') {
+    if (refreshResult.status === 'preparing') {
       toast.message('Session is provisioning. QR will appear shortly.', { id: toastId });
       return;
     }
@@ -526,7 +455,9 @@ export function SettingsClient() {
     setIsRefreshingQr(true);
     setQrState((prev) => ({
       ...prev,
-      status: 'provisioning',
+      status: 'preparing',
+      reason: 'startup_in_progress',
+      poll: true,
       qrValue: null,
       error: null,
     }));
@@ -557,7 +488,7 @@ export function SettingsClient() {
         return;
       }
 
-      if (refreshed.status === 'available') {
+      if (refreshed.status === 'qr_ready') {
         toast.success(
           isLoginAction
             ? 'Login QR is ready. Scan it in WhatsApp to connect.'
@@ -572,7 +503,7 @@ export function SettingsClient() {
         return;
       }
 
-      if (refreshed.status === 'provisioning') {
+      if (refreshed.status === 'preparing') {
         toast.message(
           isLoginAction
             ? 'Secure login is starting. QR will appear shortly.'
@@ -743,16 +674,27 @@ export function SettingsClient() {
   };
 
   useEffect(() => {
-    if (qrState.status !== 'provisioning' && qrState.status !== 'available') {
+    if (qrState.status === 'loading') {
+      return;
+    }
+
+    const intervalMs = getQrPollIntervalMs({
+      state: qrState.status,
+      reason: qrState.reason,
+      poll: qrState.poll,
+      qrValue: qrState.qrValue,
+    });
+
+    if (!intervalMs) {
       return;
     }
 
     const interval = window.setInterval(() => {
       void fetchQR('background');
-    }, qrState.status === 'available' ? 5000 : 3000);
+    }, intervalMs);
 
     return () => window.clearInterval(interval);
-  }, [qrState.status]);
+  }, [qrState.status, qrState.reason, qrState.poll, qrState.qrValue]);
 
   useEffect(() => {
     setProfileImageFailed(false);
@@ -772,8 +714,8 @@ export function SettingsClient() {
   const connectedTitle = connectedDisplayName ?? connectedIdentifier ?? 'WhatsApp account';
   const connectedStatusLabel = getConnectionStatusLabel(qrState.status, qrState.diagnostics);
   const hasLinkedProfile = isMessagingProviderConnected || Boolean(qrState.profile);
-  const isQrReady = qrState.status === 'available' && Boolean(qrState.qrValue);
-  const isSessionBusy = qrState.status === 'loading' || qrState.status === 'provisioning';
+  const isQrReady = qrState.status === 'qr_ready' && Boolean(qrState.qrValue);
+  const isSessionBusy = qrState.status === 'loading' || qrState.status === 'preparing';
 
   const primaryActionLabel = hasLinkedProfile
     ? (isRevokingSession ? 'Logging out…' : 'Log out of WhatsApp')
@@ -826,9 +768,9 @@ export function SettingsClient() {
     ? { label: 'Connected', tone: 'success' as const }
     : isQrReady
       ? { label: 'QR Ready', tone: 'brand' as const }
-      : qrState.status === 'loading' || qrState.status === 'provisioning'
+      : qrState.status === 'loading' || qrState.status === 'preparing'
         ? { label: 'Provisioning', tone: 'brand' as const }
-        : qrState.status === 'error'
+        : qrState.status === 'failed'
           ? { label: 'Error', tone: 'danger' as const }
             : { label: 'Link Required', tone: 'warning' as const };
 
@@ -1109,7 +1051,7 @@ export function SettingsClient() {
                 <div className="group relative">
                   <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-brand opacity-0 blur-2xl transition-opacity duration-700 group-hover:opacity-20" />
                   <div className="relative flex min-h-[24rem] w-full max-w-[22rem] flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border border-border-ghost bg-surface-base p-8 shadow-card">
-                    {qrState.status === 'loading' || qrState.status === 'provisioning' ? (
+                    {qrState.status === 'loading' || qrState.status === 'preparing' ? (
                       <div className="relative flex flex-col items-center gap-4 px-4 text-center">
                         <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.03] mix-blend-overlay [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)] [&>svg]:blur-[1px] scale-150 transform-gpu grayscale">
                           <QRCodeSVG value={qrState.sessionName ?? 'noxivo-secure-pairing'} size={280} />
@@ -1171,7 +1113,7 @@ export function SettingsClient() {
                           ))}
                         </div>
                       </div>
-                    ) : qrState.status === 'error' ? (
+                    ) : qrState.status === 'failed' ? (
                       <div className="relative flex flex-col items-center gap-4 p-4 text-center">
                         <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.03] mix-blend-overlay [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)] [&>svg]:blur-[1px] scale-150 transform-gpu grayscale">
                           <QRCodeSVG value="noxivo-error-state" size={280} />
@@ -1181,7 +1123,7 @@ export function SettingsClient() {
                         </div>
                         <p className="relative text-xs font-semibold tracking-tight text-error">{qrState.error}</p>
                       </div>
-                    ) : qrState.qrValue ? (
+                    ) : qrState.status === 'qr_ready' && qrState.qrValue ? (
                       <div className="relative flex h-full w-full flex-col items-center justify-center">
                         {/* Richer Ambient Background for QR */}
                         <div className="absolute inset-x-0 -top-8 h-40 rounded-full bg-primary/20 blur-3xl opacity-60" />
@@ -1212,7 +1154,7 @@ export function SettingsClient() {
                     {sessionPanelCopy}
                   </p>
                   {qrState.sessionName ? <p className="text-[11px] font-medium text-on-surface-subtle">Session: {qrState.sessionName}</p> : null}
-                  {qrState.error && qrState.status !== 'error' && qrState.status !== 'unavailable' ? (
+                  {qrState.error && qrState.status !== 'failed' && qrState.status !== 'unlinked' ? (
                     <p className="text-[11px] font-medium text-error">{qrState.error}</p>
                   ) : null}
                 </div>
