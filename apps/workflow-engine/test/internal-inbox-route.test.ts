@@ -35,7 +35,11 @@ describe('internal inbox route', () => {
     process.env.MESSAGING_PROVIDER_API_KEY = 'messaging-api-key';
   });
 
-  async function seedConversation() {
+  async function seedConversation(options?: {
+    contactId?: string;
+    contactPhone?: string | null;
+    contactName?: string;
+  }) {
     const agencyId = new mongoose.Types.ObjectId();
     const tenantId = new mongoose.Types.ObjectId();
     const clusterId = new mongoose.Types.ObjectId();
@@ -68,9 +72,9 @@ describe('internal inbox route', () => {
       _id: conversationId,
       agencyId,
       tenantId,
-      contactId: '15550001111@c.us',
-      contactName: 'Alice Smith',
-      contactPhone: '+1 555-000-1111',
+      contactId: options?.contactId ?? '15550001111@c.us',
+      contactName: options?.contactName ?? 'Alice Smith',
+      contactPhone: options?.contactPhone ?? '+1 555-000-1111',
       status: 'assigned',
       lastMessageContent: 'Hello',
       lastMessageAt: new Date(),
@@ -206,6 +210,59 @@ describe('internal inbox route', () => {
       const profile = await ContactProfileModel.findOne({ tenantId, contactId: '15550001111@c.us' }).lean();
       expect(profile?.outboundMessages).toBe(1);
       expect(profile?.totalMessages).toBe(1);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('keeps anonymous LID chat IDs for outbound sends when no phone-backed mapping exists', async () => {
+    const { agencyId, tenantId, conversationId } = await seedConversation({
+      contactId: 'anon-user@lid',
+      contactPhone: null,
+      contactName: 'Anonymous'
+    });
+
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'wamid-anon-lid-1' }), {
+      status: 201,
+      headers: { 'content-type': 'application/json' }
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const server = await buildServer({ logger: false });
+
+    try {
+      const response = await server.inject({
+        method: 'POST',
+        url: `/v1/internal/inbox/conversations/${conversationId}/messages`,
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'send-anon-lid-1',
+          'x-nexus-internal-psk': process.env.WORKFLOW_ENGINE_INTERNAL_PSK ?? ''
+        },
+        payload: {
+          agencyId,
+          tenantId,
+          operatorUserId: 'user-1',
+          content: 'Reply to anonymous lid'
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+      const firstCall = fetchMock.mock.calls[0];
+      expect(firstCall).toBeTruthy();
+      if (!firstCall) {
+        throw new Error('Expected MessagingProvider fetch call');
+      }
+
+      const [rawUrl, rawInit] = firstCall as unknown as [unknown, unknown];
+      const url = String(rawUrl);
+      const init = (rawInit ?? {}) as RequestInit;
+      const body = JSON.parse(String(init.body)) as {
+        chatId: string;
+      };
+
+      expect(url).toBe('http://messaging.test/api/sendText');
+      expect(body.chatId).toBe('anon-user@lid');
     } finally {
       await server.close();
     }

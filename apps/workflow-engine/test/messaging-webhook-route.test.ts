@@ -214,6 +214,76 @@ describe('messaging webhook route', () => {
     }
   });
 
+  it('reuses one inbound conversation when a lid-first webhook identity later resolves as canonical @c.us', async () => {
+    const { tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_WEBHOOK_SECRET = 'webhook-secret';
+    const server = await buildServer({ logger: false });
+
+    try {
+      const firstResponse = await server.inject({
+        method: 'POST',
+        url: '/v1/webhooks/messaging',
+        headers: {
+          'x-messaging-webhook-secret': 'webhook-secret'
+        },
+        payload: {
+          event: 'message',
+          session: 'tenant-main',
+          payload: {
+            id: 'wamid-webhook-lid-first',
+            from: '15559990000@lid',
+            to: '15550002222@c.us',
+            fromMe: false,
+            body: 'first lid inbound',
+            ack: 0,
+            ackName: 'PENDING'
+          }
+        }
+      });
+
+      const secondResponse = await server.inject({
+        method: 'POST',
+        url: '/v1/webhooks/messaging',
+        headers: {
+          'x-messaging-webhook-secret': 'webhook-secret'
+        },
+        payload: {
+          event: 'message',
+          session: 'tenant-main',
+          payload: {
+            id: 'wamid-webhook-canonical-second',
+            from: '15559990000@c.us',
+            to: '15550002222@c.us',
+            fromMe: false,
+            body: 'second canonical inbound',
+            ack: 0,
+            ackName: 'PENDING'
+          }
+        }
+      });
+
+      expect(firstResponse.statusCode).toBe(202);
+      expect(secondResponse.statusCode).toBe(202);
+
+      const [conversations, firstMessage, secondMessage] = await Promise.all([
+        ConversationModel.find({ tenantId }).lean().exec(),
+        MessageModel.findOne({ providerMessageId: 'wamid-webhook-lid-first' }).lean().exec(),
+        MessageModel.findOne({ providerMessageId: 'wamid-webhook-canonical-second' }).lean().exec()
+      ]);
+
+      expect(conversations).toHaveLength(1);
+      expect(conversations[0]?.contactId).toBe('15559990000@c.us');
+      expect(conversations[0]?.metadata).toEqual(expect.objectContaining({
+        messagingCanonicalContactId: '15559990000@c.us',
+        messagingAliases: expect.arrayContaining(['15559990000@lid', '15559990000@c.us'])
+      }));
+      expect(firstMessage?.conversationId.toString()).toBe(secondMessage?.conversationId.toString());
+      expect(firstMessage?.conversationId.toString()).toBe(conversations[0]?._id.toString());
+    } finally {
+      await server.close();
+    }
+  });
+
   it('canonicalizes @lid messages from WAHA lid phone/name payloads even when contacts lookup lacks number', async () => {
     const { agencyId, tenantId } = await seedBinding();
     process.env.MESSAGING_PROVIDER_WEBHOOK_SECRET = 'webhook-secret';

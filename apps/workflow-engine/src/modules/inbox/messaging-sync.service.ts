@@ -421,6 +421,12 @@ export class MessagingInboxSyncService {
           rawContactId: chat.id
         });
 
+        const resolvedPhone = resolvedIdentity.contactPhone === undefined
+          ? null
+          : resolvedIdentity.contactPhone;
+        const phoneFromId = resolvedPhone === null && chat.id.endsWith('@lid')
+          ? null
+          : resolvedPhone ?? toIsoPhone(chat.id);
         const conversationRecord = await this.inboxService.upsertConversationIdentity({
           agencyId: input.agencyId,
           tenantId: input.tenantId,
@@ -429,7 +435,7 @@ export class MessagingInboxSyncService {
           rawContactId: resolvedIdentity.rawContactId,
           contactAliases: resolvedIdentity.contactAliases,
           contactName: resolvedIdentity.contactName ?? chat.name ?? null,
-          contactPhone: resolvedIdentity.contactPhone ?? toIsoPhone(chat.id)
+          contactPhone: phoneFromId ?? null
         });
 
         await ConversationModel.updateOne(

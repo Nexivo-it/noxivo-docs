@@ -585,4 +585,240 @@ describe('messaging inbox sync service', () => {
     expect(refreshedConversation?.unreadCount).toBe(4);
     expect(refreshedConversation?.lastMessageContent).toBe('Overview fallback message');
   });
+
+  it('canonicalizes mapped-LID to @c.us when trustworthy phone mapping exists', async () => {
+    const { agencyId, tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
+
+    // Seed existing @lid conversation
+    const legacyConversation = await ConversationModel.create({
+      agencyId,
+      tenantId,
+      contactId: '15550009999@lid',
+      contactName: 'Unknown Caller',
+      status: 'open',
+      unreadCount: 1,
+      metadata: {
+        messagingChatId: '15550009999@lid',
+        messagingAliases: ['15550009999@lid']
+      }
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      // Chat overview returns the @lid chat
+      if (url.includes('/chats/overview')) {
+        return new Response(JSON.stringify([
+          {
+            id: '15550009999@lid',
+            name: 'Known Contact',
+            lastMessage: { body: 'Hello from mapped LID', timestamp: 1710000000, fromMe: false },
+            _chat: { unreadCount: 1 }
+          }
+        ]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      // Contact endpoint returns a @c.us ID with a phone number - this is a trustworthy mapping
+      if (url.endsWith('/api/tenant-main/contacts/15550009999%40lid')) {
+        return new Response(JSON.stringify({
+          id: '15550009999@c.us',
+          number: '15550009999',
+          name: 'Known Contact'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      // LID endpoint confirms mapping to phone number - this makes it trustworthy
+      if (url.endsWith('/api/tenant-main/lids/15550009999')) {
+        return new Response(JSON.stringify({
+          lid: '15550009999@lid',
+          pn: '15550009999@c.us'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = new MessagingInboxSyncService();
+    const result = await service.syncRecentChats({ agencyId, tenantId, limit: 20 });
+
+    const conversations = await ConversationModel.find({ tenantId }).lean().exec();
+    expect(result).toEqual({ syncedConversations: 1, syncedMessages: 0, sessionName: 'tenant-main' });
+    expect(conversations).toHaveLength(1);
+    // When mapping exists and is trustworthy, @lid should canonicalize to @c.us
+    expect(conversations[0]?.contactId).toBe('15550009999@c.us');
+    expect(conversations[0]?.contactName).toBe('Known Contact');
+    expect(conversations[0]?.metadata).toEqual(expect.objectContaining({
+      messagingCanonicalContactId: '15550009999@c.us',
+      messagingChatId: '15550009999@lid',
+      messagingAliases: expect.arrayContaining(['15550009999@lid', '15550009999@c.us'])
+    }));
+  });
+
+  it('canonicalizes LID to @c.us using only lids/{lid} phone mapping when contacts lookup has no number', async () => {
+    const { agencyId, tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
+
+    const legacyConversation = await ConversationModel.create({
+      agencyId,
+      tenantId,
+        contactId: 'anonliduser@lid',
+      contactName: 'Unknown',
+      status: 'open',
+      unreadCount: 0,
+      metadata: {
+          messagingChatId: 'anonliduser@lid',
+          messagingAliases: ['anonliduser@lid']
+      }
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.includes('/chats/overview')) {
+        return new Response(JSON.stringify([
+          {
+            id: 'anonliduser@lid',
+            name: 'LID Contact',
+            lastMessage: { body: 'Hello', timestamp: 1710000000, fromMe: false },
+            _chat: { unreadCount: 0 }
+          }
+        ]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.endsWith('/api/tenant-main/contacts/anonliduser%40lid')) {
+        return new Response(JSON.stringify({
+          id: 'anonliduser@lid',
+          name: 'LID Contact'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      if (url.endsWith('/api/tenant-main/lids/anonliduser')) {
+        return new Response(JSON.stringify({
+          lid: 'anonliduser@lid',
+          pn: '15550007777@c.us'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = new MessagingInboxSyncService();
+    const result = await service.syncRecentChats({ agencyId, tenantId, limit: 20 });
+
+    const conversations = await ConversationModel.find({ tenantId }).lean().exec();
+    expect(result).toEqual({ syncedConversations: 1, syncedMessages: 0, sessionName: 'tenant-main' });
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0]?.contactId).toBe('15550007777@c.us');
+    expect(conversations[0]?.contactPhone).toBe('15550007777');
+    expect(conversations[0]?.metadata).toEqual(expect.objectContaining({
+      messagingCanonicalContactId: '15550007777@c.us',
+      messagingChatId: 'anonliduser@lid'
+    }));
+  });
+
+  it('preserves anonymous-LID as @lid when no trustworthy mapping exists', async () => {
+    const { agencyId, tenantId } = await seedBinding();
+    process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
+
+    // Seed existing @lid conversation
+    const legacyConversation = await ConversationModel.create({
+      agencyId,
+      tenantId,
+      contactId: '15550008888@lid',
+      contactName: 'Unknown',
+      status: 'open',
+      unreadCount: 0,
+      metadata: {
+        messagingChatId: '15550008888@lid',
+        messagingAliases: ['15550008888@lid']
+      }
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      // Chat overview returns @lid chat
+      if (url.includes('/chats/overview')) {
+        return new Response(JSON.stringify([
+          {
+            id: '15550008888@lid',
+            name: 'Anonymous Caller',
+            lastMessage: { body: 'Hello anonymous', timestamp: 1710000000, fromMe: false },
+            _chat: { unreadCount: 0 }
+          }
+        ]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      // Contact endpoint either 404s or returns no phone mapping
+      if (url.endsWith('/api/tenant-main/contacts/15550008888%40lid')) {
+        return new Response(JSON.stringify({
+          id: '15550008888@lid',
+          name: 'Anonymous Caller'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      // LID endpoint returns no pn field - no trustworthy mapping exists
+      if (url.endsWith('/api/tenant-main/lids/15550008888')) {
+        return new Response(JSON.stringify({
+          lid: '15550008888@lid'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({ error: `Unexpected request: ${url}` }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = new MessagingInboxSyncService();
+    const result = await service.syncRecentChats({ agencyId, tenantId, limit: 20 });
+
+    const conversations = await ConversationModel.find({ tenantId }).lean().exec();
+    expect(result).toEqual({ syncedConversations: 1, syncedMessages: 0, sessionName: 'tenant-main' });
+    expect(conversations).toHaveLength(1);
+    // When no trustworthy mapping exists, @lid should stay @lid
+    expect(conversations[0]?.contactId).toBe('15550008888@lid');
+    expect(conversations[0]?.contactPhone ?? null).toBeNull();
+    expect(conversations[0]?.metadata).toEqual(expect.objectContaining({
+      messagingCanonicalContactId: '15550008888@lid',
+      messagingChatId: '15550008888@lid'
+    }));
+  });
 });
