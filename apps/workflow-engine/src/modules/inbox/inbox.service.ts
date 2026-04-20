@@ -1,6 +1,7 @@
 import { ConversationModel, MessageModel, projectContactProfileFromMessage } from '@noxivo/database';
 import { type InboxDeliveryEventSource, type InboxAttachment, type InboxDeliveryStatus, type InboxStatus, type MessageRole } from '@noxivo/contracts';
 import { DeliveryLifecycleService } from './delivery-lifecycle.service.js';
+import { buildMessagingAliasCandidates } from './messaging-contact-identity.js';
 
 export interface AddMessageInput {
   agencyId: string;
@@ -60,10 +61,27 @@ export class InboxService {
 
   async upsertConversationIdentity(input: Pick<AddMessageInput, 'agencyId' | 'tenantId' | 'contactId' | 'canonicalContactId' | 'rawContactId' | 'contactAliases' | 'contactName' | 'contactPhone'>) {
     const canonicalContactId = normalizeChatId(input.canonicalContactId ?? input.contactId) ?? input.contactId;
-    const aliasCandidates = new Set<string>([
+    const explicitAliases = [
       canonicalContactId,
-      ...(input.contactAliases ?? []).map((value) => normalizeChatId(value)).filter((value): value is string => Boolean(value)),
-      ...[input.contactId, input.rawContactId].map((value) => normalizeChatId(value)).filter((value): value is string => Boolean(value))
+      ...(input.contactAliases ?? []),
+      input.contactId,
+      input.rawContactId
+    ]
+      .map((value) => normalizeChatId(value))
+      .filter((value): value is string => Boolean(value));
+
+    const canonicalMappingSeed = normalizeChatId(input.canonicalContactId);
+    const mappingAliases = [
+      ...((input.contactAliases ?? [])
+        .map((value) => normalizeChatId(value))
+        .filter((value): value is string => Boolean(value) && !value.endsWith('@lid'))),
+      ...(canonicalMappingSeed && !canonicalMappingSeed.endsWith('@lid') ? [canonicalMappingSeed] : []),
+      ...(input.contactPhone && input.contactPhone.trim().length > 0 ? [input.contactPhone] : [])
+    ];
+
+    const aliasCandidates = new Set<string>([
+      ...explicitAliases,
+      ...buildMessagingAliasCandidates(mappingAliases)
     ]);
     const phoneDigits = normalizePhoneDigits(input.contactPhone);
     const orClauses: Array<Record<string, unknown>> = [
