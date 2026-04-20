@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { ConversationModel, MessagingSessionBindingModel } from '@noxivo/database';
 import { InboxService, type AddMessageInput } from '../../modules/inbox/inbox.service.js';
 import { proxyToMessaging } from '../../lib/messaging-proxy-utils.js';
+import { buildMessagingAliasCandidates, extractPhoneDigits } from '../../modules/inbox/messaging-contact-identity.js';
 
 type ConversationLean = {
   _id: { toString(): string };
@@ -171,34 +172,65 @@ function buildMessagingSendRequest(input: {
 async function ensureConversation(input: {
   agencyId: string;
   tenantId: string;
-  contactId: string;
-  phone: string;
+  rawContactId: string;
 }): Promise<ConversationLean> {
-  const existing = await ConversationModel.findOne({
-    agencyId: input.agencyId,
-    tenantId: input.tenantId,
-    contactId: input.contactId,
-  }).select({ _id: 1, contactId: 1, contactPhone: 1, contactName: 1 }).lean<ConversationLean | null>();
+  const normalizedRawContactId = input.rawContactId.trim().toLowerCase();
+  const isLidContact = normalizedRawContactId.endsWith('@lid');
+  const extractedPhone = extractPhoneDigits(normalizedRawContactId);
 
-  if (existing) {
-    return existing;
+  let hasTrustedCanonicalMapping = false;
+  if (isLidContact && extractedPhone) {
+    const phoneCanonicalContactId = `${extractedPhone}@c.us`;
+    const trustedConversation = await ConversationModel.findOne({
+      agencyId: input.agencyId,
+      tenantId: input.tenantId,
+      $or: [
+        { contactId: phoneCanonicalContactId },
+        { 'metadata.messagingCanonicalContactId': phoneCanonicalContactId }
+      ]
+    }).select({ _id: 1 }).lean<{ _id: { toString(): string } } | null>();
+
+    hasTrustedCanonicalMapping = Boolean(trustedConversation);
   }
 
-  const created = await ConversationModel.create({
+  const canonicalContactId = isLidContact
+    ? hasTrustedCanonicalMapping && extractedPhone
+      ? `${extractedPhone}@c.us`
+      : normalizedRawContactId
+    : normalizedRawContactId.includes('@')
+      ? normalizedRawContactId
+      : extractedPhone
+        ? `${extractedPhone}@c.us`
+        : normalizedRawContactId;
+
+  const contactAliases = isLidContact && !hasTrustedCanonicalMapping
+    ? [normalizedRawContactId]
+    : buildMessagingAliasCandidates([
+        normalizedRawContactId,
+        canonicalContactId,
+        extractedPhone
+      ]);
+
+  const contactPhone = isLidContact && !hasTrustedCanonicalMapping
+    ? null
+    : extractedPhone;
+
+  const inboxService = new InboxService();
+  const conversation = await inboxService.upsertConversationIdentity({
     agencyId: input.agencyId,
     tenantId: input.tenantId,
-    contactId: input.contactId,
-    contactPhone: input.phone,
-    status: 'open',
-    unreadCount: 0,
-    lastMessageAt: new Date(),
+    contactId: canonicalContactId,
+    canonicalContactId,
+    rawContactId: normalizedRawContactId,
+    contactAliases,
+    contactPhone
   });
 
   return {
-    _id: created._id,
-    contactId: created.contactId,
-    contactPhone: created.contactPhone ?? null,
-    contactName: created.contactName ?? null,
+    _id: conversation._id,
+    contactId: conversation.contactId,
+    contactPhone: conversation.contactPhone ?? null,
+    contactName: conversation.contactName ?? null,
   };
 }
 
@@ -238,17 +270,10 @@ async function resolveFallbackSessionName(input: {
 async function sendViaMessagingFallback(input: {
   agencyId: string;
   tenantId: string;
-  contactId: string;
-  phone: string;
+  conversation: ConversationLean;
   text?: string;
   attachments: SendAttachment[];
 }) {
-  const conversation = await ensureConversation({
-    agencyId: input.agencyId,
-    tenantId: input.tenantId,
-    contactId: input.contactId,
-    phone: input.phone,
-  });
   const sessionName = await resolveFallbackSessionName({
     agencyId: input.agencyId,
     tenantId: input.tenantId,
@@ -260,7 +285,7 @@ async function sendViaMessagingFallback(input: {
 
   const messagingRequest = buildMessagingSendRequest({
     sessionName,
-    chatId: input.contactId,
+    chatId: input.conversation.contactId,
     ...(typeof input.text === 'string' ? { text: input.text } : {}),
     attachments: input.attachments,
   });
@@ -274,9 +299,9 @@ async function sendViaMessagingFallback(input: {
   const recordInput: AddMessageInput = {
     agencyId: input.agencyId,
     tenantId: input.tenantId,
-    contactId: conversation.contactId,
-    contactName: conversation.contactName ?? null,
-    contactPhone: conversation.contactPhone ?? null,
+    contactId: input.conversation.contactId,
+    contactName: input.conversation.contactName ?? null,
+    contactPhone: input.conversation.contactPhone ?? null,
     role: 'assistant',
     content: input.text ?? '',
     attachments: input.attachments,
@@ -382,18 +407,17 @@ export async function registerMessageRoutes(fastify: FastifyInstance) {
     }
 
     const normalizedContactId = body.to.includes('@') ? body.to : `${body.to}@c.us`;
-    const normalizedPhone = normalizedContactId.replace(/@c\.us$/i, '');
     const idempotencyKeyHeader = request.headers['idempotency-key'];
     const idempotencyKey = typeof idempotencyKeyHeader === 'string' && idempotencyKeyHeader.trim().length > 0
       ? idempotencyKeyHeader
       : randomUUID();
+    let conversation: ConversationLean | null = null;
 
     try {
-      const conversation = await ensureConversation({
+      conversation = await ensureConversation({
         agencyId,
         tenantId,
-        contactId: normalizedContactId,
-        phone: normalizedPhone,
+        rawContactId: normalizedContactId,
       });
 
       const result = await messageService.sendOperatorMessage({
@@ -415,12 +439,15 @@ export async function registerMessageRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       if (isMissingBindingError(error)) {
+        if (!conversation) {
+          return reply.status(500).send({ error: 'Conversation resolution failed before fallback send' });
+        }
+
         try {
           const fallbackResult = await sendViaMessagingFallback({
             agencyId,
             tenantId,
-            contactId: normalizedContactId,
-            phone: normalizedPhone,
+            conversation,
             ...(typeof body.text === 'string' ? { text: body.text } : {}),
             attachments: normalizeAttachments(body.attachments ?? []),
           });
