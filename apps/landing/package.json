@@ -1,5 +1,5 @@
 {
-  "name": "@noxivo/landing",
+  "name": "@nexivo/landing",
   "private": true,
   "scripts": {
     "dev": "npx serve -l 5001 ."

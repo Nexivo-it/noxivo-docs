@@ -3,12 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Noxivo — Enterprise WhatsApp & Social Automation Platform</title>
-  <meta name="description" content="Noxivo powers WhatsApp and social media at scale. Multi-tenant automation, unified calendars, headless engine API, and real-time CRM sync — built for agencies that ship." />
-  <meta property="og:title" content="Noxivo — Enterprise WhatsApp & Social Automation" />
+  <title>Nexivo Pro — Enterprise WhatsApp & Social Automation Platform</title>
+  <meta name="description" content="Nexivo Pro powers WhatsApp and social media at scale. Multi-tenant automation, unified calendars, headless engine API, and real-time CRM sync — built for agencies that ship." />
+  <meta property="og:title" content="Nexivo Pro — Enterprise WhatsApp & Social Automation" />
   <meta property="og:description" content="Multi-tenant WhatsApp & social scheduling. Omnichannel inbox. AI workflows. Headless Engine API. Built for agencies." />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nexivo.pro" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Nexivo Pro — Enterprise WhatsApp & Social Automation" />
+  <meta name="twitter:description" content="Multi-tenant WhatsApp & social scheduling. Omnichannel inbox. AI workflows. Built for agencies." />
+  <link rel="canonical" href="https://nexivo.pro" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <script type="module">
@@ -18,22 +22,37 @@
   </script>
 
   <script>
-    const NOXIVO_SAAS_URL = window.NOXIVO_SAAS_URL || 'https://app.noxivo.ai';
-    const NOXIVO_SESSION_COOKIE = 'next-auth.session-token';
+    const NEXIVO_SAAS_URL = window.NEXIVO_SAAS_URL || 'https://app.nexivo.pro';
+    const NEXIVO_SESSION_COOKIE = 'next-auth.session-token';
     function detectSession() {
       const hasCookie = document.cookie.split(';').some(c => {
         const name = c.trim().split('=')[0];
-        return name === NOXIVO_SESSION_COOKIE ||
+        return name === NEXIVO_SESSION_COOKIE ||
                name === '__Secure-next-auth.session-token' ||
                name === 'nf_session';
       });
       const hasLocalSession = !!localStorage.getItem('nf_auth_token') ||
                               !!sessionStorage.getItem('nf_auth_token');
       if (hasCookie || hasLocalSession) {
-        window.location.replace(NOXIVO_SAAS_URL + '/dashboard');
+        window.location.replace(NEXIVO_SAAS_URL + '/dashboard');
       }
     }
     detectSession();
+  </script>
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Nexivo Pro",
+      "url": "https://nexivo.pro",
+      "logo": "https://nexivo.pro/logo.png",
+      "description": "Enterprise WhatsApp & Social Automation Platform for agencies.",
+      "sameAs": [
+        "https://twitter.com/nexivopro",
+        "https://linkedin.com/company/nexivo-pro"
+      ]
+    }
   </script>
 
   <style>
@@ -805,7 +824,7 @@
     <!-- ── Nav ──────────────────────────────────────────────────────────── -->
     <nav>
       <div class="nav-inner">
-        <div class="logo">Nexus<span>Flow</span></div>
+        <div class="logo">Nexivo <span>Pro</span></div>
         <div class="nav-links">
           <a href="#products">Products</a>
           <a href="#platform">Platform</a>
@@ -866,7 +885,7 @@
           <div class="product-card reveal">
             <div class="product-num">01</div>
             <div class="product-tag active">AVAILABLE NOW</div>
-            <div class="product-name">Noxivo<br/>Platform</div>
+            <div class="product-name">Nexivo<br/>Platform</div>
             <div class="product-desc">The full multi-tenant SaaS. Manage agencies, onboard clients, link WhatsApp sessions, run AI workflows, and monitor conversations through a unified omnichannel inbox.</div>
             <div class="product-features">
               <div class="feat-row"><div class="feat-icon"></div>Multi-tenant agency workspace with quota controls</div>
@@ -883,8 +902,8 @@
           <div class="product-card reveal">
             <div class="product-num">02</div>
             <div class="product-tag active">AVAILABLE NOW</div>
-            <div class="product-name">Noxivo<br/>Engine API</div>
-            <div class="product-desc">A fully headless, standalone WhatsApp automation engine. Expose a clean white-labeled REST API to your own apps, CRMs, or custom chat UIs — without any Noxivo branding.</div>
+            <div class="product-name">Nexivo<br/>Engine API</div>
+            <div class="product-desc">A fully headless, standalone WhatsApp automation engine. Expose a clean white-labeled REST API to your own apps, CRMs, or custom chat UIs — without any Nexivo Pro branding.</div>
             <div class="product-features">
               <div class="feat-row"><div class="feat-icon"></div>REST API: send messages, retrieve chats, manage sessions</div>
               <div class="feat-row"><div class="feat-icon"></div>X-API-Key authentication — no cookie sessions</div>
@@ -941,7 +960,7 @@
           <div class="bento-cell col-4 reveal">
             <div class="cell-label">// WHITE_LABEL</div>
             <div class="cell-title">Sell it as your own.</div>
-            <div class="cell-body">Custom branding per tenant workspace. Your logo, your domain, your product. End-clients never see Noxivo.</div>
+            <div class="cell-body">Custom branding per tenant workspace. Your logo, your domain, your product. End-clients never see our infra branding.</div>
             <div class="cell-badge pro">PRO+</div>
           </div>
           <div class="bento-cell col-4 reveal">
@@ -1041,7 +1060,7 @@
               <div class="plan-feat yes"><div class="plan-feat-ico"></div>White-label</div>
               <div class="plan-feat yes"><div class="plan-feat-ico"></div>Priority support</div>
             </div>
-            <a class="plan-btn" href="mailto:enterprise@noxivo.ai">Contact Sales</a>
+            <a class="plan-btn" href="mailto:enterprise@nexivo.pro">Contact Sales</a>
           </div>
         </div>
       </div>
@@ -1087,7 +1106,7 @@
       <p>14-day free trial. No credit card required. Go from zero to live session in under 5 minutes.</p>
       <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;position:relative">
         <a class="btn-primary" href="#" id="cta-bottom">Start Free Trial</a>
-        <a class="btn-ghost" href="mailto:hello@noxivo.ai">Schedule a Demo</a>
+        <a class="btn-ghost" href="mailto:hello@nexivo.pro">Schedule a Demo</a>
       </div>
       <div class="cta-chips">
         <span class="chip">NO_CC_REQUIRED</span>
@@ -1101,7 +1120,7 @@
       <div class="footer-inner">
         <div class="footer-grid">
           <div>
-            <div class="logo" style="margin-bottom:14px">Nexus<span>Flow</span></div>
+            <div class="logo" style="margin-bottom:14px">Nexivo <span>Pro</span></div>
             <p style="font-size:0.78rem;color:var(--text-muted);max-width:230px;line-height:1.65">
               Enterprise WhatsApp automation infrastructure for modern agencies.
             </p>
@@ -1129,13 +1148,13 @@
             <div class="footer-links">
               <a href="#">About</a>
               <a href="#">Blog</a>
-              <a href="mailto:hello@noxivo.ai">Contact</a>
+              <a href="mailto:hello@nexivo.pro">Contact</a>
               <a href="#">Privacy</a>
             </div>
           </div>
         </div>
         <div class="footer-bottom">
-          <span class="footer-copy">© 2026 Noxivo. All rights reserved.</span>
+          <span class="footer-copy">© 2026 Nexivo Pro. All rights reserved.</span>
           <span class="footer-status">[BUILD: STABLE] [STATUS: <span>ALL_SYSTEMS_OPERATIONAL</span>]</span>
         </div>
       </div>
@@ -1144,7 +1163,7 @@
 
   <script>
     // Button links
-    const saasUrl  = typeof NOXIVO_SAAS_URL !== 'undefined' ? NOXIVO_SAAS_URL : 'https://app.noxivo.ai';
+    const saasUrl  = typeof NEXIVO_SAAS_URL !== 'undefined' ? NEXIVO_SAAS_URL : 'https://app.nexivo.pro';
     const loginUrl = saasUrl + '/auth/login';
     const trialUrl = saasUrl + '/auth/register';
     document.getElementById('login-btn').href    = loginUrl;
