@@ -135,6 +135,9 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     }
   });
 
+  // Ensure DB connection is established early in the server lifecycle
+  await dbConnect();
+
   fastify.addHook('preHandler', async (request, reply) => {
     const requestPath = getRequestPath(request.raw.url);
     const isAdminStaticPath = requestPath === '/admin' || requestPath.startsWith('/admin/');
@@ -358,6 +361,17 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
     fastify.log.info('Workflow Agent Worker started on queue %s', WORKFLOW_CONTINUATION_QUEUE_NAME);
   }
+
+  // Root route to provide service status and avoid 404 on bare domain
+  fastify.get('/', async (_request, reply) => {
+    return reply.send({
+      service: 'noxivo-workflow-engine',
+      status: 'online',
+      version: '1.0.0',
+      documentation: '/v1/docs',
+      admin: '/admin/'
+    });
+  });
 
   fastify.get('/health', async (request, reply) => {
     const checks: Record<string, string> = {

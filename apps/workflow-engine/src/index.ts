@@ -30,21 +30,39 @@ async function start() {
   const initialPort = Number.parseInt(process.env.PORT ?? '4000', 10);
   const host = process.env.HOST ?? '0.0.0.0';
   
-  // Automate platform seeding on startup
-  await ensurePlatformSeeds();
-  
-  const server = await buildServer({ logger: process.env.LOGGER !== 'false' });
+  console.log('🚀 Starting Noxivo Workflow Engine...');
 
   try {
-    const finalPort = await attemptListen(server, host, initialPort);
-    server.log.info('Workflow engine listening on %s:%d', host, finalPort);
+    // 1. Automate platform seeding on startup
+    console.log('🌱 Seeding platform data...');
+    await ensurePlatformSeeds();
+    console.log('✅ Seeding complete');
 
-    const actualHostUrl = process.env.CLUSTER_NODE_HOST || `http://127.0.0.1:${finalPort}`;
-    await server.clusterManager.start(actualHostUrl);
-    server.log.info('Cluster manager joined with node URL: %s', actualHostUrl);
+    // 2. Build the server
+    console.log('🏗️ Building server instance...');
+    const server = await buildServer({ logger: process.env.LOGGER !== 'false' });
+    console.log('✅ Server built');
 
-  } catch (error) {
-    server.log.error(error);
+    try {
+      // 3. Start listening
+      const finalPort = await attemptListen(server, host, initialPort);
+      server.log.info('Workflow engine listening on %s:%d', host, finalPort);
+
+      // 4. Cluster Management
+      const actualHostUrl = process.env.CLUSTER_NODE_HOST || `http://127.0.0.1:${finalPort}`;
+      await server.clusterManager.start(actualHostUrl);
+      server.log.info('Cluster manager joined with node URL: %s', actualHostUrl);
+
+    } catch (error) {
+      if (server) {
+        server.log.error(error);
+      } else {
+        console.error('Fatal error during startup listen phase:', error);
+      }
+      process.exit(1);
+    }
+  } catch (globalError) {
+    console.error('❌ CRITICAL: Workflow engine failed to boot:', globalError);
     process.exit(1);
   }
 }

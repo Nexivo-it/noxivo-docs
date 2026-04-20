@@ -74,3 +74,4 @@ test_sessions.json
 scratch/
 tasks/
 apps/dashboard/public/uploads/
+index.html

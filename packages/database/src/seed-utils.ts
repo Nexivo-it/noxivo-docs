@@ -129,10 +129,5 @@ export async function ensurePlatformSeeds() {
     console.error('❌ Failed to ensure platform seeds:', error);
     // We don't exit the process here to allow the app to potentially start anyway,
     // though most likely it will fail later if DB is unreachable.
-  } finally {
-    // Only disconnect if we were the ones who connected
-    if (!isConnected) {
-      await mongoose.disconnect();
-    }
   }
 }
