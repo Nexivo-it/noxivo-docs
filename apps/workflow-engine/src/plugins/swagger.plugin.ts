@@ -42,7 +42,7 @@ export const swaggerPlugin = fp(async (fastify: FastifyInstance) => {
   });
 
   await fastify.register(swaggerUi, {
-    routePrefix: '/',
+    routePrefix: '/docs',
     staticCSP: true,
     transformStaticCSP: (header) => header,
     uiConfig: {
