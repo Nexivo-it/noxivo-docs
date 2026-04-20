@@ -83,9 +83,10 @@
 - [x] Finalize commit hygiene for ImageKit integration and prepare for production deployment.
 - [x] Update .gitignore to exclude temporary/tool files (index.html, scratch/, tasks/, etc.)
 - [x] Pushed all pending changes to GitHub (origin/main)
+- [x] Link `apps/landing` to the `Nexivo-Pro` repository via Git Subtree
 
 ## Next Action
-- Monitor production deployment post-push.
+- Monitor production deployment and verify `Nexivo-Pro` repository contents.
 
 ## Commands Still Relevant
 

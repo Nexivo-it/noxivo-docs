@@ -1,8 +1,8 @@
-# Session Handoff - Git Hygiene & Deployment
+# Session Handoff - Git Hygiene & Repo Linking
 
 ## Recent Activity
 - **Git Hygiene**: Updated `.gitignore` to exclude `index.html`, `test_sessions.json`, `.codex/`, `scratch/`, `tasks/`, and `apps/dashboard/public/uploads/`.
-- **Deployment**: Pushed all modified and new feature files to GitHub `main` branch. This includes the ImageKit integration, new Catalog APIs, and Media storage logic that were previously untracked.
+- **Repo Linking**: Linked `apps/landing` to the external repository [Nexivo-Pro](https://github.com/Nexivo-it/Nexivo-Pro.git) using `git subtree`. History and files from `apps/landing` have been pushed to the remote `main` branch.
 
 ## Changes Included in Push
 - **ImageKit Auth API**: Created `/api/media/imagekit-auth` route using `@imagekit/nodejs` v7. Fixed compatibility issues (removed `publicKey` from constructor, used `imagekit.helper.getAuthenticationParameters`).
