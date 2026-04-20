@@ -14,9 +14,9 @@ const cluster = await MessagingClusterModel.findOneAndUpdate(
   {
     name: 'prod-messaging',
     region: 'eu-west-1',
-    baseUrl: 'https://workflow-engine.khelifi-salmen.com',
-    dashboardUrl: 'https://messaging.khelifi-salmen.com',
-    swaggerUrl: 'https://workflow-engine.khelifi-salmen.com/api',
+    baseUrl: 'https://api-workflow-engine.noxivo.app',
+    dashboardUrl: 'https://noxivo.app',
+    swaggerUrl: 'https://api-workflow-engine.noxivo.app/api',
     capacity: 100,
     activeSessionCount: 0,
     status: 'active',

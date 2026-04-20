@@ -12,7 +12,7 @@
 
 ## Latest Post-Deploy Run
 - Run timestamp (UTC): `2026-04-16T09:44:48Z`
-- Target engine: `https://api-workflow-engine.khelifi-salmen.com`
+- Target engine: `https://api-workflow-engine.noxivo.app`
 - Reference session used: `agency-cb59e033-tenant-b379175e-whatsapp` (`WORKING`)
 - Target number used for live checks: `+84961566302` (`84961566302@c.us`)
 - Auth headers used:

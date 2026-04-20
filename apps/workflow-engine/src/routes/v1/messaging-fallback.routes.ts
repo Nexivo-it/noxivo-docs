@@ -2,7 +2,7 @@ import { type FastifyInstance } from 'fastify';
 import { dbConnect } from '../../lib/mongodb.js';
 
 function normalizeMessagingBaseUrl(): string {
-  const raw = process.env.MESSAGING_PROVIDER_BASE_URL ?? 'https://workflow-engine.khelifi-salmen.com';
+  const raw = process.env.MESSAGING_PROVIDER_BASE_URL ?? 'https://api-workflow-engine.noxivo.app';
   return raw.replace(/\/$/, '');
 }
 

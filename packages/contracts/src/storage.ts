@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const MediaProviderSchema = z.enum(['s3', 'google_drive', 'imagekit', 'cloudinary', 'bunny', 'cloudflare_r2', 'local']);
+export type MediaProvider = z.infer<typeof MediaProviderSchema>;
 
 export const MediaStorageConfigSchema = z.object({
   provider: MediaProviderSchema,

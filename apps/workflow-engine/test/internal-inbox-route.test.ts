@@ -138,7 +138,7 @@ describe('internal inbox route', () => {
 
   it('sends outbound operator messages through MessagingProvider and persists one assistant message', async () => {
     const { agencyId, tenantId, conversationId } = await seedConversation();
-    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.khelifi-salmen.com';
+    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.noxivo.app';
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'wamid-123' }), {
       status: 201,
       headers: { 'content-type': 'application/json' }

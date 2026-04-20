@@ -218,7 +218,7 @@ describe('MessagingSessionService', () => {
       status: 'active'
     });
 
-    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.khelifi-salmen.com';
+    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.noxivo.app';
 
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ value: 'qr-code-data' }), {
       status: 200,

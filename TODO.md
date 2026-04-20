@@ -66,6 +66,7 @@
 - [x] Refactor Catalog Settings to Lumina Design System (Glassmorphism, Tonal Stacking)
 - [x] Implement ImageKit Media Provider support for dashboard uploads
 - [x] Integrate professional ImageKit Upload (IKUpload) in Catalog Settings for branding
+- [x] Fix Workflow Engine build failure by aligning MediaConfig types with centralized MediaProviderSchema
 
 ## Multi-Dashboard Architecture (Completed Earlier)
 
@@ -83,10 +84,9 @@
 - [x] Finalize commit hygiene for ImageKit integration and prepare for production deployment.
 - [x] Update .gitignore to exclude temporary/tool files (index.html, scratch/, tasks/, etc.)
 - [x] Pushed all pending changes to GitHub (origin/main)
-- [x] Link `apps/landing` to the `Nexivo-Pro` repository via Git Subtree
-
-## Next Action
-- Monitor production deployment and verify `Nexivo-Pro` repository contents.
+- [x] Rebrand landing page to **Nexivo Pro** and add SEO enhancements
+- [x] Push updates to monorepo and `Nexivo-Pro` external repository
+- [ ] Connect `apps/workflow-engine` with a sample dashboard registration
 
 ## Commands Still Relevant
 
@@ -119,4 +119,4 @@
 - `pnpm --filter @noxivo/dashboard build` ✅
 - `pnpm --filter @noxivo/dashboard lint` ⚠️ pre-existing `.next/types/**/*.ts` include mismatch; still fails independently of this inbox fix
 - `pnpm --filter @noxivo/workflow-engine build` ✅
-- Swagger spec: `https://api-workflow-engine.khelifi-salmen.com/json`
+- Swagger spec: `https://api-workflow-engine.noxivo.app/json`

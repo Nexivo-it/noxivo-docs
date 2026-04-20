@@ -1,3 +1,4 @@
+import { type MediaProvider } from '@noxivo/contracts';
 import { resolveSpaMediaUrl } from './media-url.service.js';
 
 type SerializableService = {
@@ -10,7 +11,7 @@ type SerializableService = {
 };
 
 type MediaConfig = {
-  provider: 's3' | 'google_drive' | 'imagekit' | 'cloudinary';
+  provider: MediaProvider;
   publicBaseUrl?: string | null;
   pathPrefix?: string | null;
 } | null;

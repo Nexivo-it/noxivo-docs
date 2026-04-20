@@ -77,7 +77,7 @@ describe('api keys routes', () => {
   it('bootstraps a missing binding and returns an active scoped API key even when proxy env points to the engine', async () => {
     const { agencyId, tenantId } = await seedAgencyTenantAndCluster();
     process.env.ENGINE_API_KEY = 'engine-key';
-    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.khelifi-salmen.com';
+    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.noxivo.app';
     process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -148,7 +148,7 @@ describe('api keys routes', () => {
   it('falls back to an existing binding when tenant record is missing during scoped api key generation', async () => {
     const { agencyId, tenantId } = await seedAgencyTenantAndCluster();
     process.env.ENGINE_API_KEY = 'engine-key';
-    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.khelifi-salmen.com';
+    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.noxivo.app';
     process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
 
     await MessagingSessionBindingModel.create({
@@ -222,7 +222,7 @@ describe('api keys routes', () => {
 
   it('recovers api key generation from a live MessagingProvider session when tenant bootstrap lookup fails', async () => {
     process.env.ENGINE_API_KEY = 'engine-key';
-    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.khelifi-salmen.com';
+    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.noxivo.app';
     process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
 
     const agencyId = new mongoose.Types.ObjectId().toString();
@@ -245,7 +245,7 @@ describe('api keys routes', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString();
 
-      if (url === 'https://api-workflow-engine.khelifi-salmen.com/api/sessions?all=true') {
+      if (url === 'https://api-workflow-engine.noxivo.app/api/sessions?all=true') {
         return new Response(JSON.stringify([
           {
             name: 'recovered-live-session',

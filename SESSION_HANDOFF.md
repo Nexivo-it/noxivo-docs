@@ -1,8 +1,11 @@
 # Session Handoff - Git Hygiene & Repo Linking
 
 ## Recent Activity
+- **Build Failure Fix**: Resolved `workflow-engine` build error caused by `MediaConfig` type mismatch. Centralized the `MediaProvider` type in `packages/contracts`.
 - **Git Hygiene**: Updated `.gitignore` to exclude `index.html`, `test_sessions.json`, `.codex/`, `scratch/`, `tasks/`, and `apps/dashboard/public/uploads/`.
-- **Repo Linking**: Linked `apps/landing` to the external repository [Nexivo-Pro](https://github.com/Nexivo-it/Nexivo-Pro.git) using `git subtree`. History and files from `apps/landing` have been pushed to the remote `main` branch.
+- **Repo Rebrand**: Rebranded `apps/landing` to **Nexivo Pro**.
+- **SEO Enhancement**: Added JSON-LD schema, canonical tags, and OpenGraph meta cards.
+- **Repo Linking**: Linked `apps/landing` to the [Nexivo-Pro](https://github.com/Nexivo-it/Nexivo-Pro.git) external repo using `git subtree`. All brand updates pushed to both `origin` and `landing-remote`.
 
 ## Changes Included in Push
 - **ImageKit Auth API**: Created `/api/media/imagekit-auth` route using `@imagekit/nodejs` v7. Fixed compatibility issues (removed `publicKey` from constructor, used `imagekit.helper.getAuthenticationParameters`).

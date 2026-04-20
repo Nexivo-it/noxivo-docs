@@ -9,10 +9,9 @@ export const corsPlugin = fp(async (fastify: FastifyInstance) => {
         'http://localhost:5173', 
         'http://localhost:5174', 
         'http://localhost:3000',
-        'https://api-workflow-engine.khelifi-salmen.com',
-        'https://dashboard.khelifi-salmen.com',
-        'https://noxivo-admin-portal.netlify.app',
-        'https://noxivo-landing-saas.netlify.app'
+        'https://noxivo.app',
+        'https://admin.noxivo.app',
+        'https://api-workflow-engine.noxivo.app'
       ];
 
   await fastify.register(cors, {
@@ -24,15 +23,10 @@ export const corsPlugin = fp(async (fastify: FastifyInstance) => {
       }
 
       // Check if origin is in allowed list or matches internal subdomains
-      const isAllowed = allowedOrigins.some(allowed => {
-        if (allowed.includes('*')) {
-          const pattern = new RegExp(`^${allowed.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`);
-          return pattern.test(origin);
-        }
-        return allowed === origin;
-      }) || origin.endsWith('.khelifi-salmen.com');
-
-      if (isAllowed) {
+      if (
+        allowedOrigins.includes(origin) ||
+        (origin.startsWith('https://') && (origin.endsWith('.noxivo.app')))
+      ) {
         cb(null, true);
         return;
       }

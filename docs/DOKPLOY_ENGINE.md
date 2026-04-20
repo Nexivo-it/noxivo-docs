@@ -38,8 +38,8 @@ We utilize **Dokploy Method 1 (UI-Managed Domains)**. This means Dokploy/Traefik
 
 ### How to Verify Readiness
 Check the health endpoint via the public domain:
-- **Public Health**: `https://api-workflow-engine.khelifi-salmen.com/health` (Checks DB/Redis).
-- **Upstream Health**: `https://api-workflow-engine.khelifi-salmen.com/api/v1/health/messaging` (Checks MessagingProvider connection, requires `X-API-Key`).
+- **Public Health**: `https://api-workflow-engine.noxivo.app/health` (Checks DB/Redis).
+- **Upstream Health**: `https://api-workflow-engine.noxivo.app/api/v1/health/messaging` (Checks MessagingProvider connection, requires `X-API-Key`).
 
 ### Handling CORS
 If the frontend cannot reach the engine, update the `ALLOWED_CORS_ORIGINS` in the Dokploy Environment tab:

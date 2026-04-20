@@ -1,7 +1,7 @@
-type SupportedMediaProvider = 's3' | 'google_drive' | 'imagekit' | 'cloudinary';
+import { type MediaProvider } from '@noxivo/contracts';
 
 type SpaMediaConfig = {
-  provider: SupportedMediaProvider;
+  provider: MediaProvider;
   publicBaseUrl?: string | null;
   pathPrefix?: string | null;
 };

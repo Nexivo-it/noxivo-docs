@@ -69,13 +69,13 @@ services:
       MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGO_USER:-nexus}:${MONGO_PASSWORD:-nexuspassword}@mongodb:27017/noxivo_dashboard?authSource=admin}
       REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD:-redispass}@redis:6379}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://noxivo.khelifi-salmen.com}
-      ENGINE_API_URL: ${ENGINE_API_URL:-https://api-workflow-engine.khelifi-salmen.com}
-      NEXT_PUBLIC_ENGINE_API_URL: ${NEXT_PUBLIC_ENGINE_API_URL:-https://api-workflow-engine.khelifi-salmen.com}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://noxivo.app}
+      ENGINE_API_URL: ${ENGINE_API_URL:-https://api-workflow-engine.noxivo.app}
+      NEXT_PUBLIC_ENGINE_API_URL: ${NEXT_PUBLIC_ENGINE_API_URL:-https://api-workflow-engine.noxivo.app}
       ENGINE_API_KEY: ${ENGINE_API_KEY}
       MESSAGING_PROVIDER_DEFAULT_SESSION: ${MESSAGING_PROVIDER_DEFAULT_SESSION:-dev-agency-whatsapp}
       WORKFLOW_ENGINE_INTERNAL_PSK: ${WORKFLOW_ENGINE_INTERNAL_PSK:-internal-psk}
-      WORKFLOW_ENGINE_INTERNAL_BASE_URL: ${WORKFLOW_ENGINE_INTERNAL_BASE_URL:-https://api-workflow-engine.khelifi-salmen.com}
+      WORKFLOW_ENGINE_INTERNAL_BASE_URL: ${WORKFLOW_ENGINE_INTERNAL_BASE_URL:-https://api-workflow-engine.noxivo.app}
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS}
       PLATFORM_OWNER_EMAIL: ${PLATFORM_OWNER_EMAIL:-owner@example.com}
       PLATFORM_OWNER_PASSWORD: ${PLATFORM_OWNER_PASSWORD:-StrongPass1!}
@@ -85,7 +85,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
-      - traefik.http.routers.noxivo-dashboard.rule=Host(`noxivo.khelifi-salmen.com`)
+      - traefik.http.routers.noxivo-dashboard.rule=Host(`noxivo.app`) || Host(`admin.noxivo.app`)
       - traefik.http.routers.noxivo-dashboard.entrypoints=websecure
       - traefik.http.routers.noxivo-dashboard.tls.certresolver=letsencrypt
       - traefik.http.routers.noxivo-dashboard.priority=10

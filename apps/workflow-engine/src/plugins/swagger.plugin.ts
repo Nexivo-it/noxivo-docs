@@ -13,7 +13,7 @@ export const swaggerPlugin = fp(async (fastify: FastifyInstance) => {
       },
       servers: [
         {
-          url: 'https://api-workflow-engine.khelifi-salmen.com',
+          url: 'https://api-workflow-engine.noxivo.app',
           description: 'Production Server'
         },
         {

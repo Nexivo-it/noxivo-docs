@@ -174,6 +174,6 @@ pnpm --filter @noxivo/workflow-engine lint
 pnpm --filter @noxivo/workflow-engine build
 
 # Check Swagger spec (production)
-curl https://api-workflow-engine.khelifi-salmen.com/json | jq '.paths | length'
+curl https://api-workflow-engine.noxivo.app/json | jq '.paths | length'
 # Expected: 20+ V1 routes exposed
 ```

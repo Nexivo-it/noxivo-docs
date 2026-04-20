@@ -166,7 +166,7 @@ describe('messaging inbox sync service', () => {
   it('syncs MessagingProvider chat messages into inbox messages without duplicating provider ids', async () => {
     const { agencyId, tenantId } = await seedBinding();
     process.env.MESSAGING_PROVIDER_PROXY_AUTH_TOKEN = 'messaging-token';
-    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.khelifi-salmen.com';
+    process.env.MESSAGING_PROVIDER_PROXY_BASE_URL = 'https://api-workflow-engine.noxivo.app';
 
     const conversation = await ConversationModel.create({
       agencyId,
