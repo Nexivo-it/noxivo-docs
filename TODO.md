@@ -67,6 +67,8 @@
 - [x] Implement ImageKit Media Provider support for dashboard uploads
 - [x] Integrate professional ImageKit Upload (IKUpload) in Catalog Settings for branding
 - [x] Fix Workflow Engine build failure by aligning MediaConfig types with centralized MediaProviderSchema
+- [x] Fix workflow-engine startup exit and 404 Bare domain error (Add root route + early DB connect)
+- [x] Prevent `@noxivo/database` seeding from disconnecting MongoDB on startup
 
 ## Multi-Dashboard Architecture (Completed Earlier)
 
@@ -86,6 +88,7 @@
 - [x] Pushed all pending changes to GitHub (origin/main)
 - [x] Rebrand landing page to **Nexivo Pro** and add SEO enhancements
 - [x] Push updates to monorepo and `Nexivo-Pro` external repository
+- [x] Push stability fixes for workflow-engine to origin/main
 - [ ] Connect `apps/workflow-engine` with a sample dashboard registration
 
 ## Commands Still Relevant

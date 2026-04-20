@@ -1,34 +1,31 @@
-# Session Handoff - Git Hygiene & Repo Linking
+# Session Handoff - Workflow Engine Stability & Git Hygiene
 
 ## Recent Activity
-- **Build Failure Fix**: Resolved `workflow-engine` build error caused by `MediaConfig` type mismatch. Centralized the `MediaProvider` type in `packages/contracts`.
-- **Git Hygiene**: Updated `.gitignore` to exclude `index.html`, `test_sessions.json`, `.codex/`, `scratch/`, `tasks/`, and `apps/dashboard/public/uploads/`.
-- **Repo Rebrand**: Rebranded `apps/landing` to **Nexivo Pro**.
-- **SEO Enhancement**: Added JSON-LD schema, canonical tags, and OpenGraph meta cards.
-- **Repo Linking**: Linked `apps/landing` to the [Nexivo-Pro](https://github.com/Nexivo-it/Nexivo-Pro.git) external repo using `git subtree`. All brand updates pushed to both `origin` and `landing-remote`.
+- **Workflow Engine Stability**: Resolved critical issues where the `workflow-engine` container would exit during Docker startup.
+  - Added early `dbConnect()` to ensuring connection is alive before workers start.
+  - Modified `@noxivo/database` seeding to keep the connection open for the application lifecycle.
+- **Bare Domain 404 Fix**: Added a `GET /` route to the workflow engine to provide service metadata and avoid 404s when Traefik hits the root domain.
+- **Git Hygiene**: Cleaned up the repository state and pushed all pending stability fixes to `origin/main`.
+- **Media Provider Integration**: (Previous) Integrated ImageKit for dashboard uploads and centralized types in `packages/contracts`.
 
 ## Changes Included in Push
-- **ImageKit Auth API**: Created `/api/media/imagekit-auth` route using `@imagekit/nodejs` v7. Fixed compatibility issues (removed `publicKey` from constructor, used `imagekit.helper.getAuthenticationParameters`).
-- **IKUpload Component**: Created a custom `IKUpload` component in `apps/dashboard/components/media/imagekit-provider.tsx` that shims the `@imagekit/react` v5 behavior to remain headless and style-agnostic.
-- **ImageKit Provider**: Updated `ImageKitWrapper` to handle `urlEndpoint` and auth properly with v5 SDK constraints.
-- **Catalog Settings**: Integrated `IKUpload` into `apps/dashboard/app/dashboard/catalog/settings/page.tsx`. Replaced the manual text input with a professional drag-and-drop upload zone for the brand logo.
-- **Type Safety**: Verified all changes with `tsc --noEmit`.
+- **Workflow Engine entrypoint**: Added logging and error boundaries in `apps/workflow-engine/src/index.ts`.
+- **Workflow Engine Server**: Added root route and early DB connection in `apps/workflow-engine/src/server.ts`.
+- **Database Seeding**: Prevented post-seed disconnection in `packages/database/src/seed-utils.ts`.
 
 ## Files Pushed
+- `apps/workflow-engine/src/index.ts`
+- `apps/workflow-engine/src/server.ts`
+- `packages/database/src/seed-utils.ts`
+- `AGENTS.md` (Cleanup/Reformat)
 - `.gitignore` (Updated)
-- `SESSION_HANDOFF.md` (Updated)
-- `TODO.md` (Updated)
-- `apps/dashboard/app/api/catalog/ai-help/route.ts` (New)
-- `apps/dashboard/app/api/catalog/settings/route.ts` (New)
-- `apps/dashboard/app/api/media/imagekit-auth/route.ts` (New)
-- `apps/dashboard/components/media/imagekit-provider.tsx` (New)
-- `apps/dashboard/lib/ai/catalog-assistant.ts` (New)
-- `packages/database/src/models/catalog-settings.ts` (New)
-- ... and various modified files in `apps/dashboard`, `apps/workflow-engine`, `packages/database`, etc.
+- `V2_ARCHITECTURE.md` (New documentation)
 
 ## Next Steps
-- Verify the upload flow in a live environment (requires valid ImageKit credentials in DB).
-- Consider adding similar uploaders for catalog items (Product Images).
+- Verify the `workflow-engine` health on the live production domain (`https://api-workflow-engine.noxivo.app/`).
+- Connect the engine with a sample dashboard registration to test end-to-end messaging.
 
 ## Commands to Verify
-- `pnpm --filter @noxivo/dashboard lint`
+- `curl https://api-workflow-engine.noxivo.app/`
+- `curl https://api-workflow-engine.noxivo.app/health`
+- `pnpm --filter @noxivo/workflow-engine build`
