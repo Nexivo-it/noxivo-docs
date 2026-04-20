@@ -77,21 +77,6 @@ services:
     networks:
       - engine-net
       - dokploy-network
-    labels:
-      - "traefik.docker.network=dokploy-network"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.rule=Host(`api-workflow-engine.noxivo.app`)"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.entrypoints=web"
-      - "traefik.http.services.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.loadbalancer.server.port=3000"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.service=nexusflow-salmen-appsworkflowengine-ktgq1b-42-web"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.middlewares=redirect-to-https@file"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.rule=Host(`api-workflow-engine.noxivo.app`)"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.entrypoints=websecure"
-      - "traefik.http.services.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.loadbalancer.server.port=3000"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.service=nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure"
-      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.tls.certresolver=letsencrypt"
-      - "traefik.enable=true"
-      - "dokploy.main=true"
-      - "traefik.http.services.workflow-engine.loadbalancer.server.port=3000"
     depends_on:
       mongodb:
         condition: service_healthy
