@@ -106,13 +106,17 @@ services:
     networks:
       - engine-net       # Internal access to DB/Redis
       - dokploy-network  # Public access via Traefik
+    labels:
+      - "dokploy.main=true"
+      # Explicitly specify the port for Traefik routing in case auto-discovery fails
+      - "traefik.http.services.workflow-engine.loadbalancer.server.port=3000"
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:3000/health"]
       interval: 15s
       timeout: 10s
       retries: 5
