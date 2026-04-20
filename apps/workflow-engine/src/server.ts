@@ -137,6 +137,63 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   // Ensure DB connection is established early in the server lifecycle
   await dbConnect();
+  
+  // -- Public Health & Info Routes --
+  // These are registered early to ensure they are always public and avoid 404s on the root domain.
+  fastify.get('/', async (_request, reply) => {
+    return reply.send({
+      service: 'noxivo-workflow-engine',
+      status: 'online',
+      version: '1.0.0',
+      documentation: '/v1/docs',
+      admin: '/admin/'
+    });
+  });
+
+  fastify.get('/health', async (request, reply) => {
+    const checks: Record<string, string> = {
+      mongodb: 'unknown',
+      redis: 'unknown',
+      messagingProvider: 'unknown'
+    };
+
+    try {
+      await dbConnect();
+      checks.mongodb = 'healthy';
+    } catch {
+      checks.mongodb = 'unhealthy';
+    }
+
+    try {
+      const redis = getWorkflowRedisConnection();
+      if (redis) {
+        await redis.ping();
+        checks.redis = 'healthy';
+      } else {
+        checks.redis = 'not_configured';
+      }
+    } catch {
+      checks.redis = 'unhealthy';
+    }
+
+    const { WorkflowEngineService } = await import('./modules/workflow/workflow-engine.service.js');
+    const engineService = new WorkflowEngineService();
+    try {
+      const stats = await engineService.getStats();
+      if (stats) {
+        checks.workflowEngine = 'healthy';
+      }
+    } catch {
+      checks.workflowEngine = 'unknown';
+    }
+
+    const allHealthy = Object.values(checks).every(v => v === 'healthy' || v === 'not_configured' || v === 'unknown');
+    return reply.status(allHealthy ? 200 : 503).send({
+      status: allHealthy ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      checks
+    });
+  });
 
   fastify.addHook('preHandler', async (request, reply) => {
     const requestPath = getRequestPath(request.raw.url);
@@ -362,64 +419,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     fastify.log.info('Workflow Agent Worker started on queue %s', WORKFLOW_CONTINUATION_QUEUE_NAME);
   }
 
-  // Root route to provide service status and avoid 404 on bare domain
-  fastify.get('/', async (_request, reply) => {
-    return reply.send({
-      service: 'noxivo-workflow-engine',
-      status: 'online',
-      version: '1.0.0',
-      documentation: '/v1/docs',
-      admin: '/admin/'
-    });
-  });
 
-  fastify.get('/health', async (request, reply) => {
-    const checks: Record<string, string> = {
-      mongodb: 'unknown',
-      redis: 'unknown',
-      messagingProvider: 'unknown'
-    };
-
-    try {
-      await dbConnect();
-      checks.mongodb = 'healthy';
-    } catch {
-      checks.mongodb = 'unhealthy';
-    }
-
-    try {
-      const redis = getWorkflowRedisConnection();
-      if (redis) {
-        await redis.ping();
-        checks.redis = 'healthy';
-      } else {
-        checks.redis = 'not_configured';
-      }
-    } catch {
-      checks.redis = 'unhealthy';
-    }
-
-    try {
-      // Check messaging provider connectivity by listing sessions (lightweight check)
-      await proxyToMessaging('/api/sessions');
-      checks.messagingProvider = 'healthy';
-    } catch {
-      checks.messagingProvider = 'unhealthy';
-    }
-
-    const isHealthy = Object.values(checks).every(s => s === 'healthy' || s === 'not_configured');
-
-    const activeNodes = await clusterManager.getActiveNodes();
-
-    return reply.status(isHealthy ? 200 : 503).send({
-      service: 'workflow-engine',
-      timestamp: new Date().toISOString(),
-      instanceId: clusterManager.getInstanceId(),
-      sessionCount: sessionAffinity.getLocalSessionCount(),
-      clusterNodes: activeNodes.map(n => n.nodeUrl),
-      checks
-    });
-  });
 
   fastify.post('/v1/internal/inbox/conversations/:conversationId/messages', async (request, reply) => {
     const configuredPsk = process.env.WORKFLOW_ENGINE_INTERNAL_PSK;

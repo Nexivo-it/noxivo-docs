@@ -55,6 +55,9 @@ COPY --from=builder /app/apps/workflow-engine/dist ./apps/workflow-engine/dist
 # Admin mini-dashboard static files (served at /admin/)
 COPY --from=builder /app/apps/workflow-engine/public ./apps/workflow-engine/public
 
+# Copy OpenAPI spec for messaging provider (required by routes)
+COPY --from=builder /app/messaging-openapi.json /app/
+
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
 

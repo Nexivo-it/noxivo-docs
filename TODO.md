@@ -68,6 +68,9 @@
 - [x] Integrate professional ImageKit Upload (IKUpload) in Catalog Settings for branding
 - [x] Fix Workflow Engine build failure by aligning MediaConfig types with centralized MediaProviderSchema
 - [x] Fix workflow-engine startup exit and 404 Bare domain error (Add root route + early DB connect)
+- [x] Fix production crash by adding missing `messaging-openapi.json` to Docker runner stage
+- [x] Ensure public `/health` and `/` routes are prioritize and registered before auth hooks
+- [x] Relocated status routes to top of server initialization to guarantee accessibility
 - [x] Prevent `@noxivo/database` seeding from disconnecting MongoDB on startup
 
 ## Multi-Dashboard Architecture (Completed Earlier)
