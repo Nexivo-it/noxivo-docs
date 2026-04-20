@@ -15,8 +15,17 @@ type EngineSessionStatus = {
 
 type EngineSessionProfile = Record<string, unknown> | null;
 
+type EngineSessionQrFetch = {
+  qrValue: string | null;
+  recoverableError: boolean;
+};
+
 export type DashboardMessagingSessionSnapshot = {
   sessionName: string;
+  state: 'unlinked' | 'preparing' | 'qr_ready' | 'connected' | 'failed';
+  reason: string | null;
+  poll: boolean;
+  qrValue: string | null;
   status: 'available' | 'connected' | 'provisioning' | 'unavailable';
   qr: string | null;
   profile: EngineSessionProfile;
@@ -88,15 +97,23 @@ function hasProfileIdentity(profile: EngineSessionProfile): profile is Record<st
   );
 }
 
-function extractQrValue(payload: unknown): string | null {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return null;
+function mapStateToLegacyStatus(state: DashboardMessagingSessionSnapshot['state']): DashboardMessagingSessionSnapshot['status'] {
+  if (state === 'connected') {
+    return 'connected';
   }
 
-  const record = payload as Record<string, unknown>;
-  const qr = record.qr ?? record.qrValue ?? record.value ?? record.code;
-  return typeof qr === 'string' && qr.length > 0 ? qr : null;
+  if (state === 'qr_ready') {
+    return 'available';
+  }
+
+  if (state === 'preparing') {
+    return 'provisioning';
+  }
+
+  return 'unavailable';
 }
+
+
 
 function getEngineApiConfig(): { baseUrl: string; apiKey: string } {
   const rawUrl = process.env.ENGINE_API_URL?.replace(/\/$/, '');
@@ -212,20 +229,23 @@ async function getSessionStatus(sessionId: string): Promise<EngineSessionStatus 
   }
 }
 
-async function getSessionQr(sessionId: string): Promise<string | null> {
+async function getSessionQr(sessionId: string): Promise<EngineSessionQrFetch> {
   try {
     const payload = await fetchEngineJson<{ qr?: string | null; qrValue?: string | null; value?: string | null }>(
       `/sessions/${encodeURIComponent(sessionId)}/qr`
     );
 
     const qrValue = payload.qr ?? payload.qrValue ?? payload.value ?? null;
-    if (qrValue) {
-      return qrValue;
-    }
+    return {
+      qrValue,
+      recoverableError: false,
+    };
   } catch {
-    return null;
+    return {
+      qrValue: null,
+      recoverableError: true,
+    };
   }
-  return null;
 }
 
 async function getSessionProfile(sessionId: string): Promise<EngineSessionProfile> {
@@ -244,11 +264,13 @@ export async function resolveDashboardMessagingSession(
 ): Promise<DashboardMessagingSessionSnapshot> {
   const allowBootstrapRecovery = options?.allowBootstrapRecovery ?? true;
   const readSnapshot = async (sessionId: string, sessionName: string): Promise<DashboardMessagingSessionSnapshot> => {
-    const [statusPayload, qr] = await Promise.all([
-      getSessionStatus(sessionId),
-      getSessionQr(sessionId),
-    ]);
+    const statusPayload = await getSessionStatus(sessionId);
     const rawStatus = statusPayload?.status?.trim().toUpperCase();
+    const isConnectedFromStatus = hasMeIdentity(statusPayload?.me) || rawStatus === 'WORKING';
+    const qrFetch = isConnectedFromStatus
+      ? { qrValue: null, recoverableError: false }
+      : await getSessionQr(sessionId);
+    const qr = qrFetch.qrValue;
     const shouldFetchProfile = rawStatus === 'WORKING' || hasMeIdentity(statusPayload?.me);
     const profile = shouldFetchProfile ? await getSessionProfile(sessionId) : null;
 
@@ -262,16 +284,30 @@ export async function resolveDashboardMessagingSession(
         }
       : null;
 
-    const profileConnected = hasProfileIdentity(profile);
     const meConnected = hasMeIdentity(statusPayload?.me);
+    const profileConnected = hasProfileIdentity(profile);
     const connected = profileConnected || meConnected || rawStatus === 'WORKING';
-    const sessionStatus = connected
+    const recoverableStartupStates = new Set(['STARTING', 'SCAN_QR_CODE', 'PROVISIONING', 'BOOTING', 'INITIALIZING']);
+    const failureStates = new Set(['FAILED', 'STOPPED', 'OFFLINE', 'UNAVAILABLE', 'ERROR']);
+    const isRecoverableStartup = rawStatus ? recoverableStartupStates.has(rawStatus) : true;
+    const isFailureState = rawStatus ? failureStates.has(rawStatus) : false;
+
+    const state: DashboardMessagingSessionSnapshot['state'] = connected
       ? 'connected'
-      : qr || rawStatus === 'SCAN_QR_CODE'
-        ? 'available'
-        : rawStatus === 'STOPPED' || rawStatus === 'OFFLINE'
-          ? 'unavailable'
-          : 'provisioning';
+      : qr
+        ? 'qr_ready'
+        : isRecoverableStartup
+          ? 'preparing'
+          : 'failed';
+    const reason: string | null = state === 'preparing'
+      ? (qrFetch.recoverableError ? 'qr_fetch_recoverable_error' : 'startup_in_progress')
+      : state === 'failed'
+        ? isFailureState
+          ? `status_${rawStatus?.toLowerCase() ?? 'unknown'}`
+          : 'qr_unavailable'
+        : null;
+    const poll = state === 'preparing' || state === 'qr_ready';
+    const sessionStatus = mapStateToLegacyStatus(state);
     const profileForUi = profileConnected
       ? profile
       : meConnected && isRecord(statusPayload?.me)
@@ -280,11 +316,15 @@ export async function resolveDashboardMessagingSession(
 
     return {
       sessionName,
+      state,
+      reason,
+      poll,
+      qrValue: qr,
       status: sessionStatus,
       qr,
       profile: profileForUi,
       diagnostics,
-      provisioning: sessionStatus === 'provisioning',
+      provisioning: state === 'preparing',
       syncedAt: new Date().toISOString()
     };
   };
@@ -294,9 +334,14 @@ export async function resolveDashboardMessagingSession(
     : await getSessionBinding(agencyId, tenantId);
 
   if (!binding) {
+    const state: DashboardMessagingSessionSnapshot['state'] = 'unlinked';
     return {
       sessionName: `unlinked-${agencyId.slice(-6)}-${tenantId.slice(-6)}`,
-      status: 'unavailable',
+      state,
+      reason: 'bootstrap_required',
+      poll: false,
+      qrValue: null,
+      status: mapStateToLegacyStatus(state),
       qr: null,
       profile: null,
       diagnostics: {
