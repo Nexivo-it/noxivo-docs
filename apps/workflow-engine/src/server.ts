@@ -176,16 +176,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       checks.redis = 'unhealthy';
     }
 
-    const { WorkflowEngineService } = await import('./modules/workflow/workflow-engine.service.js');
-    const engineService = new WorkflowEngineService();
-    try {
-      const stats = await engineService.getStats();
-      if (stats) {
-        checks.workflowEngine = 'healthy';
-      }
-    } catch {
-      checks.workflowEngine = 'unknown';
-    }
+    // Basic check for DB and Redis connectivity
 
     const allHealthy = Object.values(checks).every(v => v === 'healthy' || v === 'not_configured' || v === 'unknown');
     return reply.status(allHealthy ? 200 : 503).send({
