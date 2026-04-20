@@ -1,22 +1,8 @@
-# Noxivo Standalone Engine Stack
-# Includes: workflow-engine, MongoDB, Redis
-# Deployed with Dokploy — Traefik handles HTTPS routing automatically.
-#
-# DO NOT add manual Traefik labels — Dokploy auto-generates them from the UI domain config.
-# Env vars MUST use ${VAR_NAME} syntax so Dokploy's env-var store injects them.
-#
-# Usage:
-#   cp .env.engine.example .env.engine
-#   pnpm build
-#   docker-compose -f docker-compose.engine.yml up -d
-
 version: "3.9"
 
 networks:
-  # Internal network for service-to-service comms (MongoDB, Redis)
   engine-net:
     driver: bridge
-  # Dokploy's external Traefik network — required for HTTPS routing
   dokploy-network:
     external: true
 
@@ -25,11 +11,10 @@ volumes:
   redis-data:
 
 services:
-  # ── MongoDB ──────────────────────────────────────────────────────────────────
   mongodb:
     image: mongo:7
     restart: unless-stopped
-    env_file: 
+    env_file:
       - .env
     environment:
       MONGO_INITDB_DATABASE: noxivo
@@ -46,13 +31,15 @@ services:
       retries: 5
       start_period: 15s
 
-  # ── Redis ─────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     env_file:
       - .env
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis-data:/data
     networks:
@@ -64,14 +51,11 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── Noxivo Workflow Engine ─────────────────────────────────────────────────
   workflow-engine:
     build:
       context: .
       dockerfile: apps/workflow-engine/Dockerfile
     restart: unless-stopped
-    # Use expose instead of ports to let Traefik handle the internal routing 
-    # and avoid host port conflicts.
     expose:
       - "3000"
     env_file:
@@ -80,35 +64,33 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOST: "0.0.0.0"
-
-      # Database
       MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGO_USER:-nexus}:${MONGO_PASSWORD}@mongodb:27017/noxivo?authSource=admin}
-
-      # Cache & Queues
       REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379}
-
-      # Messaging Provider Connection
       MESSAGING_PROVIDER_BASE_URL: ${MESSAGING_PROVIDER_BASE_URL:?MESSAGING_PROVIDER_BASE_URL is required}
       MESSAGING_PROVIDER_PROXY_BASE_URL: ${MESSAGING_PROVIDER_PROXY_BASE_URL:?MESSAGING_PROVIDER_PROXY_BASE_URL is required}
       MESSAGING_PROVIDER_API_KEY: ${MESSAGING_PROVIDER_API_KEY:?MESSAGING_PROVIDER_API_KEY is required}
       MESSAGING_PROVIDER_PROXY_AUTH_TOKEN: ${MESSAGING_PROVIDER_API_KEY}
       MESSAGING_PROVIDER_WEBHOOK_SECRET: ${MESSAGING_PROVIDER_WEBHOOK_SECRET:?MESSAGING_PROVIDER_WEBHOOK_SECRET is required}
-
-      # CORS — set this in Dokploy env vars
-      # Example: https://noxivo-admin-portal.netlify.app,https://noxivo-landing-saas.netlify.app
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS}
-
-      # Engine public API key
       ENGINE_API_KEY: ${ENGINE_API_KEY:?ENGINE_API_KEY is required}
-
-      # Internal PSK for dashboard → engine trusted calls
       WORKFLOW_ENGINE_INTERNAL_PSK: ${WORKFLOW_ENGINE_INTERNAL_PSK:?WORKFLOW_ENGINE_INTERNAL_PSK is required}
     networks:
-      - engine-net       # Internal access to DB/Redis
-      - dokploy-network  # Public access via Traefik
+      - engine-net
+      - dokploy-network
     labels:
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.rule=Host(`api-workflow-engine.noxivo.app`)"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.entrypoints=web"
+      - "traefik.http.services.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.service=nexusflow-salmen-appsworkflowengine-ktgq1b-42-web"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-web.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.rule=Host(`api-workflow-engine.noxivo.app`)"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.entrypoints=websecure"
+      - "traefik.http.services.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.loadbalancer.server.port=3000"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.service=nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure"
+      - "traefik.http.routers.nexusflow-salmen-appsworkflowengine-ktgq1b-42-websecure.tls.certresolver=letsencrypt"
+      - "traefik.enable=true"
       - "dokploy.main=true"
-      # Explicitly specify the port for Traefik routing in case auto-discovery fails
       - "traefik.http.services.workflow-engine.loadbalancer.server.port=3000"
     depends_on:
       mongodb:
