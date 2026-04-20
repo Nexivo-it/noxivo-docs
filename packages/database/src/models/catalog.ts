@@ -48,6 +48,12 @@ const CatalogItemSchema = new Schema({
   customFields: { type: Schema.Types.Mixed }, // Array of objects
   gallery: { type: [String] },
   reviews: { type: Schema.Types.Mixed }, // Array of objects
+  isActive: { type: Boolean, default: true },
+  
+  // SEO & Metadata
+  seoTitle: { type: String },
+  seoDescription: { type: String },
+  seoKeywords: { type: [String] },
   
   sortOrder: { type: Number, default: 0 }
 }, { timestamps: true });

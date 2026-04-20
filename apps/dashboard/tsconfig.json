@@ -20,6 +20,7 @@
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["lib/*"],
+      "@/components/*": ["components/*"],
       "@app/*": ["app/*"],
       "@noxivo/workflow-engine": [
         "../workflow-engine/src/public-api.ts"

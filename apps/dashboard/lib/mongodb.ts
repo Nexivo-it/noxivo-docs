@@ -27,9 +27,17 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(mongoUri, opts).then((mongoose) => {
-      return mongoose.connection;
-    });
+    console.log('[DEBUG] DB: Initiating new connection attempt...');
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('MongoDB connection timed out after 10s')), 10000)
+    );
+
+    cached.promise = Promise.race([
+      mongoose.connect(mongoUri, opts).then((m) => m.connection),
+      timeoutPromise
+    ]);
   }
 
   try {

@@ -10,6 +10,9 @@
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@imagekit/javascript": "^5.3.0",
+    "@imagekit/nodejs": "^7.5.0",
+    "@imagekit/react": "^5.0.2",
     "@noxivo/contracts": "workspace:*",
     "@noxivo/database": "workspace:*",
     "@xyflow/react": "^12.10.2",

@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.6.1",
   "scripts": {
-    "dev": "turbo run dev --parallel --filter=@noxivo/workflow-engine --filter=@noxivo/dashboard --filter=@noxivo/service-catalog-canvas --filter=@noxivo/dashboard-admin --filter=@noxivo/stratic-flow",
+    "dev": "turbo run dev --parallel --filter=@noxivo/workflow-engine --filter=@noxivo/dashboard",
     "dev:all": "turbo run dev --parallel",
     "dev:engine": "pnpm --filter @noxivo/workflow-engine dev",
     "dev:dashboard": "pnpm --filter @noxivo/dashboard dev",

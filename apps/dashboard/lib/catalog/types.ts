@@ -24,6 +24,15 @@ export interface Catalog {
   status: 'draft' | 'active' | 'archived';
 }
 
+export interface CatalogSettings {
+  businessName: string;
+  currency: 'USD' | 'EUR' | 'GBP' | 'VND' | 'AUD' | 'CAD';
+  timezone: string;
+  accentColor: string;
+  logoUrl: string;
+  defaultDuration: number;
+}
+
 export interface CatalogItem {
   id: string;
   catalogId: string;
@@ -51,6 +60,10 @@ export interface CatalogItem {
   customFields?: string; // JSON string of CustomField[]
   gallery?: string;      // JSON string of string[] (URLs)
   reviews?: string;      // JSON string of Review[]
+  isActive?: boolean;    // Inventory active/inactive toggle
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
 }
 
 export interface Review {

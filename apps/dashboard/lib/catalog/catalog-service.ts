@@ -2,7 +2,8 @@ import {
   CatalogItemModel, 
   CategoryModel, 
   BundleModel, 
-  RelationModel 
+  RelationModel,
+  CatalogSettingsModel
 } from '@noxivo/database';
 import dbConnect from '@/lib/mongodb';
 import { CatalogItem, ItemType, ReadinessStatus } from './types';
@@ -48,7 +49,11 @@ export class CatalogService {
       imageUrl: item.imageUrl || '',
       customFields: typeof item.customFields === 'string' ? item.customFields : JSON.stringify(item.customFields),
       gallery: Array.isArray(item.gallery) ? JSON.stringify(item.gallery) : '[]',
-      reviews: typeof item.reviews === 'string' ? item.reviews : JSON.stringify(item.reviews)
+      reviews: typeof item.reviews === 'string' ? item.reviews : JSON.stringify(item.reviews),
+      isActive: item.isActive !== false,
+      seoTitle: item.seoTitle || '',
+      seoDescription: item.seoDescription || '',
+      seoKeywords: Array.isArray(item.seoKeywords) ? item.seoKeywords : []
     }));
   }
 
@@ -83,7 +88,11 @@ export class CatalogService {
       imageUrl: payload.imageUrl,
       customFields: customFields || {},
       gallery: gallery || [],
-      reviews: reviews || []
+      reviews: reviews || [],
+      isActive: payload.isActive !== false,
+      seoTitle: payload.seoTitle,
+      seoDescription: payload.seoDescription,
+      seoKeywords: payload.seoKeywords
     });
 
 return {
@@ -110,7 +119,11 @@ return {
       imageUrl: itemDoc.imageUrl || '',
       customFields: JSON.stringify(itemDoc.customFields),
       gallery: JSON.stringify(itemDoc.gallery),
-      reviews: JSON.stringify(itemDoc.reviews)
+      reviews: JSON.stringify(itemDoc.reviews),
+      isActive: itemDoc.isActive !== false,
+      seoTitle: itemDoc.seoTitle || '',
+      seoDescription: itemDoc.seoDescription || '',
+      seoKeywords: Array.isArray(itemDoc.seoKeywords) ? itemDoc.seoKeywords : []
     };
   }
 
@@ -160,7 +173,11 @@ return {
       imageUrl: item.imageUrl || '',
       customFields: JSON.stringify(item.customFields),
       gallery: JSON.stringify(item.gallery),
-      reviews: JSON.stringify(item.reviews)
+      reviews: JSON.stringify(item.reviews),
+      isActive: item.isActive !== false,
+      seoTitle: item.seoTitle || '',
+      seoDescription: item.seoDescription || '',
+      seoKeywords: Array.isArray(item.seoKeywords) ? item.seoKeywords : []
     };
   }
 
@@ -205,5 +222,19 @@ return {
   static async getCategories(tenantId: string) {
     await dbConnect();
     return await CategoryModel.find({ tenantId }).lean();
+  }
+
+  static async getSettings(tenantId: string) {
+    await dbConnect();
+    return await CatalogSettingsModel.findOne({ tenantId }).lean();
+  }
+
+  static async updateSettings(tenantId: string, payload: any) {
+    await dbConnect();
+    return await CatalogSettingsModel.findOneAndUpdate(
+      { tenantId },
+      { $set: payload },
+      { upsert: true, new: true }
+    ).lean();
   }
 }

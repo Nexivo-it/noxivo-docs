@@ -66,3 +66,11 @@ build_log*.txt
 .env.bak
 .env.engine
 messaging-openapi.json
+
+# User temporary files
+index.html
+test_sessions.json
+.codex/
+scratch/
+tasks/
+apps/dashboard/public/uploads/

@@ -12,7 +12,7 @@ const MediaStorageConfigSchema = new Schema({
   provider: {
     type: String,
     required: true,
-    enum: ['s3', 'google_drive', 'imagekit', 'cloudinary'],
+    enum: ['s3', 'google_drive', 'imagekit', 'cloudinary', 'bunny', 'cloudflare_r2', 'local'],
   },
   isActive: {
     type: Boolean,

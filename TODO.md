@@ -60,6 +60,12 @@
   - [x] Fix `@noxivo/database` test failures (Missing Model.init() for unique indexes).
   - [x] Fix `@noxivo/dashboard-admin` test failure (Missing test files).
 - [x] Fix `/product/canva` 404 by adding `basePath` to `service-catalog-canvas` and adding sidebar link.
+- [x] Implement Catalog Service Readiness Check with dynamic validation and blocking publish warning.
+- [x] Refactor Catalog Page to Lumina Design System (Glassmorphism, Neural Glows, Premium Forms)
+- [x] Fix Catalog Settings infinite loading loop
+- [x] Refactor Catalog Settings to Lumina Design System (Glassmorphism, Tonal Stacking)
+- [x] Implement ImageKit Media Provider support for dashboard uploads
+- [x] Integrate professional ImageKit Upload (IKUpload) in Catalog Settings for branding
 
 ## Multi-Dashboard Architecture (Completed Earlier)
 
@@ -71,8 +77,11 @@
 - [x] Swagger security schemes (apiKey + PSK)
 - [x] Multi-dashboard architecture documentation
 
+- [x] Implement ImageKit Media Provider support for dashboard uploads
+- [x] Integrate professional ImageKit Upload (IKUpload) in Catalog Settings for branding
+
 ## Next Action
-- Finalize commit hygiene for inbox source-awareness changes, then open PR (or keep direct-to-main flow) with verification evidence attached.
+- Finalize commit hygiene for ImageKit integration and prepare for production deployment.
 
 ## Commands Still Relevant
 

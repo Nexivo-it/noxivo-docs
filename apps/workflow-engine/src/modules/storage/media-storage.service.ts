@@ -1,7 +1,7 @@
 import { MediaStorageConfigModel } from '@noxivo/database';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v2 as cloudinary } from 'cloudinary';
-import ImageKit from 'imagekit';
+import ImageKit, { toFile } from '@imagekit/nodejs';
 import { google } from 'googleapis';
 import crypto from 'crypto';
 import { Readable } from 'stream';
@@ -124,20 +124,18 @@ export class MediaStorageService {
   private async uploadToImageKit(config: any, buffer: Buffer, mimeType: string, filename: string): Promise<string> {
     const secretConfig = config.secretConfig || {};
     const imagekit = new ImageKit({
-      publicKey: secretConfig.publicKey,
       privateKey: secretConfig.privateKey,
-      urlEndpoint: config.publicBaseUrl || 'https://ik.imagekit.io/default',
     });
 
     const folder = config.pathPrefix ? `/${config.pathPrefix.replace(/\/$/, '')}` : '/';
 
-    const result = await imagekit.upload({
-      file: buffer,
+    const result = await imagekit.files.upload({
+      file: await toFile(buffer, filename, { type: mimeType }),
       fileName: filename,
       folder,
     });
 
-    return result.url;
+    return result.url ?? '';
   }
 
   private async uploadToGoogleDrive(config: any, buffer: Buffer, mimeType: string, filename: string): Promise<string> {

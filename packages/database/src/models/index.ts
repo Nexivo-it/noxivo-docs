@@ -37,6 +37,7 @@ export * from './spa-customer-profile.js';
 export * from './spa-gallery-image.js';
 export * from './spa-ai-concierge-config.js';
 export * from './media-storage-config.js';
+export * from './catalog-settings.js';
 export * from './spa-session.js';
 export * from './spa-service-category.js';
 export * from './spa-service.js';
