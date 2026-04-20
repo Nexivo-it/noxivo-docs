@@ -97,6 +97,9 @@ export async function resolveMessagingContactIdentity(input: {
 }): Promise<ResolvedMessagingIdentity> {
   const rawContactId = normalizeChatId(input.rawContactId) ?? input.rawContactId.trim().toLowerCase();
   const rawDigits = extractPhoneDigits(rawContactId);
+  const rawLidLookupKey = rawContactId.endsWith('@lid')
+    ? (rawContactId.split('@')[0] ?? null)
+    : null;
   const contactPayload = await safeRequest<MessagingContactPayload>(
     input.requester,
     `/api/${encodeURIComponent(input.sessionName)}/contacts/${encodeURIComponent(rawContactId)}`
@@ -111,20 +114,26 @@ export async function resolveMessagingContactIdentity(input: {
         `/api/${encodeURIComponent(input.sessionName)}/lids/pn/${encodeURIComponent(rawDigits)}`
       )
     : null;
-  const phoneByLid = rawContactId.endsWith('@lid') && rawDigits
+  const phoneByLid = rawLidLookupKey
     ? await safeRequest<MessagingLidPayload>(
         input.requester,
-        `/api/${encodeURIComponent(input.sessionName)}/lids/${encodeURIComponent(rawDigits)}`
+        `/api/${encodeURIComponent(input.sessionName)}/lids/${encodeURIComponent(rawLidLookupKey)}`
       )
     : null;
 
-  const phoneFromLid = typeof phoneByLid?.pn === 'string'
+  const lidPhoneFromLidPayload = typeof phoneByLid?.pn === 'string'
     ? extractPhoneDigits(phoneByLid.pn)
     : typeof phoneByLid?.phone === 'string'
       ? extractPhoneDigits(phoneByLid.phone)
       : null;
   const lidFromPhone = typeof lidByPhone?.lid === 'string' ? normalizeChatId(lidByPhone.lid) : null;
-  const canonicalPhone = numberFromPayload ?? phoneFromLid ?? (rawContactId.endsWith('@c.us') ? rawDigits : null);
+
+  const hasPhoneFromLid = lidPhoneFromLidPayload !== null;
+  const canonicalPhone = hasPhoneFromLid
+    ? lidPhoneFromLidPayload
+    : rawContactId.endsWith('@lid') && !numberFromPayload
+      ? null
+      : numberFromPayload ?? (rawContactId.endsWith('@c.us') ? rawDigits : null);
   const canonicalContactId = canonicalPhone ? `${canonicalPhone}@c.us` : rawContactId;
 
   return {
