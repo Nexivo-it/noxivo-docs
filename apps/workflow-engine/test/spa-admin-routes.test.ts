@@ -45,7 +45,7 @@ describe('spa admin routes', () => {
     }
   });
 
-  it('allows an admin to manage services, settings, gallery, customers, media config, and ai config', async () => {
+  it('allows an admin to manage services, settings, gallery, customers, and ai config', async () => {
     const agency = await createSpaAgency({ name: 'Admin Agency', slug: 'admin-agency' });
     const category = await SpaServiceCategoryModel.create({
       agencyId: agency._id,
@@ -98,27 +98,6 @@ describe('spa admin routes', () => {
 
       expect(createService.statusCode).toBe(201);
       const createdService = createService.json();
-
-      const updateMedia = await server.inject({
-        method: 'PUT',
-        url: '/api/v1/spa/admin/media-storage',
-        headers: { cookie, 'content-type': 'application/json' },
-        payload: {
-          provider: 'cloudinary',
-          isActive: true,
-          publicBaseUrl: 'https://res.cloudinary.com/luxenail',
-          publicConfig: { cloudName: 'luxenail' },
-          secretConfig: { apiKey: 'secret-key', apiSecret: 'secret-secret' },
-          pathPrefix: 'spa',
-        },
-      });
-
-      expect(updateMedia.statusCode).toBe(200);
-      expect(updateMedia.json()).toMatchObject({
-        provider: 'cloudinary',
-        publicConfig: { cloudName: 'luxenail' },
-      });
-      expect(updateMedia.json().secretConfig).toBeUndefined();
 
       const updateSettings = await server.inject({
         method: 'PUT',

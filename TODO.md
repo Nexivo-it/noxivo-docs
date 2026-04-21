@@ -2,6 +2,15 @@
 
 ## Active Sprint
 
+- [x] Phase 7 backend modularization: cut dashboard `/api/{agencies,catalog,workflows,team-inbox,settings}/**` route trees over to workflow-engine proxy handlers via shared `proxyDashboardRouteToWorkflowEngine` helper
+- [x] Phase 8 cleanup: harden dashboard proxy dynamic-path encoding (`conversationId`/`messageId`/`sourceId`) and replace stale local-backend dashboard inbox tests with proxy-focused coverage
+- [x] Phase 8 cleanup (continued): migrate stale dashboard settings/team-management/smoke/CRM route tests to workflow-engine proxy assertions (remove pre-proxy local-backend expectations)
+- [x] Fix workflow-engine `spa-admin-routes` regression by removing stale assertion against retired `/api/v1/spa/admin/media-storage` endpoint and aligning test with current admin surface
+- [x] Phase 2 backend modularization: migrate dashboard agency-management backend endpoints into workflow-engine agency module (`/api/v1/agencies/**`) with session auth + authorization parity and remove broken placeholder agency routes
+- [x] Phase 3 backend modularization: migrate dashboard catalog backend endpoints into workflow-engine catalog module (`/api/v1/catalog/**`) with session auth parity and workflow-engine-owned business services/tests
+- [x] Phase 4 backend modularization: migrate dashboard workflow backend endpoints into workflow-engine workflows module (`/api/v1/workflows/**`) with session auth/authorization parity, clone/templates support, and workflow runs/analytics/execution-events routes
+- [x] Phase 5 backend modularization: migrate dashboard team-inbox backend endpoints into workflow-engine team-inbox module (`/api/v1/team-inbox/**`) with session auth parity, listing/events coverage, and conversation/message/action route ownership
+- [x] Phase 6 backend modularization: migrate dashboard settings backend endpoints into workflow-engine settings module (`/api/v1/settings/**`) covering credentials/shop/developer-api/whatsapp-check/qr/storage/webhook-inbox-activation/webhook-inbox-sources with workflow-engine-owned tests
 - [x] Add Spa backend source-of-truth APIs for auth, catalog, bookings, customers, settings, gallery, media-provider config, and AI concierge config
 - [x] Fix workflow-engine inbox sync TypeScript alias normalization so Docker/package builds stop failing on `normalizeChatIdCandidates` calls
 - [x] Fix dashboard inbox inbound recovery when dashboard and workflow-engine run on different Mongo/Redis planes (refresh remote summaries for existing conversations + recover newest engine-side message into dense paginated history)
@@ -102,6 +111,7 @@
 - `pnpm --filter @noxivo/workflow-engine test` ✅
 - `pnpm --filter @noxivo/workflow-engine lint` ✅
 - `pnpm --filter @noxivo/workflow-engine build` ✅
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/agency-management-routes.test.ts` ✅
 - `rg -n "messaging_integration\\.md|messaging/noxivo-saas|apps_workflow_engine_context_1776393302834\\.md" voicetree-14-4` ✅ (returns no matches)
 - `rg -n 'MESSAGING_WEBHOOK_SECRET|MessagingRouteService|explicitly \`sendText\`' voicetree-14-4/workflow-engine/*.md voicetree-14-4/workflowenginecontextanalysis20260417.md voicetree-14-4/ctx-nodes/workflowenginecontextanalysis20260417_context_1776566400045.md voicetree-14-4/ctx-nodes/workflowenginecontextanalysis20260417_context_1776568437318.md` ✅ (returns no matches)
 - `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts` ✅
@@ -114,12 +124,19 @@
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/api-keys-routes.test.ts` ✅
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/api-keys-routes.test.ts` ✅ (covers bootstrap + missing-tenant + live-session recovery)
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/messages-route.test.ts` ✅ (covers no-binding + missing-cluster fallback)
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts` ✅ (covers Phase 5 team-inbox parity endpoints)
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/settings-routes.test.ts` ✅ (covers Phase 6 settings parity endpoints)
 - `pnpm --filter @noxivo/dashboard exec vitest run test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/inbox-pagination-realtime.test.tsx` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-shop-route.test.ts` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-webhook-inbox-sources-route.test.ts` ✅
 - `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts test/settings-shop-route.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/phase7-dashboard-proxy-routes.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts test/settings-shop-route.test.ts test/settings-webhook-inbox-sources-route.test.ts test/settings-qr-route.test.ts test/settings-whatsapp-check-route.test.ts test/settings-developer-api-route.test.ts test/team-management-routes.test.ts test/team-inbox-crm-routes.test.ts test/smoke-tests.test.ts test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/phase7-dashboard-proxy-routes.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard test` ✅ (33 files passed, 1 skipped)
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/spa-admin-routes.test.ts` ✅
+- `pnpm --filter @noxivo/workflow-engine lint && pnpm --filter @noxivo/workflow-engine build && pnpm --filter @noxivo/workflow-engine test` ✅ (44 files, 229 tests)
 - `pnpm --filter @noxivo/workflow-engine lint` ✅
 - `pnpm --filter @noxivo/database build` ✅
 - `pnpm --filter @noxivo/dashboard build` ✅

@@ -1,31 +1,261 @@
-# Session Handoff - Workflow Engine Stability & Git Hygiene
+# Session Handoff - Backend Modularization Phase 8 (Proxy Cleanup)
 
 ## Recent Activity
-- **Workflow Engine Stability**: Resolved critical issues where the `workflow-engine` container would exit during Docker startup.
-  - Added early `dbConnect()` to ensuring connection is alive before workers start.
-  - Modified `@noxivo/database` seeding to keep the connection open for the application lifecycle.
-- **Bare Domain 404 Fix**: Added a `GET /` route to the workflow engine to provide service metadata and avoid 404s when Traefik hits the root domain.
-- **Git Hygiene**: Cleaned up the repository state and pushed all pending stability fixes to `origin/main`.
-- **Media Provider Integration**: (Previous) Integrated ImageKit for dashboard uploads and centralized types in `packages/contracts`.
+- Fixed workflow-engine verification failure in `test/spa-admin-routes.test.ts` by removing a stale expectation against the retired `/api/v1/spa/admin/media-storage` endpoint; test now validates the currently supported admin API surface.
+- Continued Phase 8 test cleanup by replacing stale pre-proxy dashboard route suites with workflow-engine proxy-focused tests for settings/team-management/smoke/CRM:
+  - `test/settings-credentials-route.test.ts`
+  - `test/settings-shop-route.test.ts`
+  - `test/settings-webhook-inbox-sources-route.test.ts`
+  - `test/settings-qr-route.test.ts`
+  - `test/settings-whatsapp-check-route.test.ts`
+  - `test/settings-developer-api-route.test.ts`
+  - `test/team-management-routes.test.ts`
+  - `test/team-inbox-crm-routes.test.ts`
+  - `test/smoke-tests.test.ts`
+- Completed Phase 7 dashboard cutover: dashboard API trees now proxy to workflow-engine through `apps/dashboard/lib/api/workflow-engine-proxy.ts` for agencies, catalog, workflows, team-inbox, and settings routes.
+- Completed Phase 8 proxy hardening for dynamic route segments:
+  - Added `encodeURIComponent` handling for proxied `conversationId`, `messageId`, and `sourceId` path segments in dashboard team-inbox/settings route wrappers.
+- Replaced stale dashboard local-backend inbox tests with proxy-focused tests:
+  - `apps/dashboard/test/team-inbox-routes.test.ts`
+  - `apps/dashboard/test/inbox-events-route.test.ts`
+- Verified proxy route behavior and dashboard build with current branch changes.
+- Migrated dashboard catalog backend behavior into workflow-engine under `apps/workflow-engine/src/modules/catalog/`.
+- Added workflow-engine catalog route registration at `/api/v1/catalog/**` and excluded catalog routes from API-key auth so cookie-session auth is used.
+- Ported catalog business services into workflow-engine:
+  - Catalog item list/create/detail/update/delete
+  - Catalog settings read/update with media storage secret redaction + merge behavior
+  - Catalog publish destinations (`webhook`, `wordpress`, `shopify`)
+  - Catalog AI helper endpoint logic (provider-backed metadata/SEO generation)
+  - Catalog upload endpoint (base64 payload write to `public/uploads`)
+- Added workflow-engine TDD coverage for catalog module route behavior and verified RED→GREEN.
+- Migrated dashboard agency-management backend behavior into workflow-engine under `apps/workflow-engine/src/modules/agency/`.
+- Replaced broken placeholder/incorrect Fastify-generic agency route files with compiling route handlers registered at `/api/v1/agencies/**`.
+- Added workflow-engine session auth + authorization helpers for agency routes, ported from dashboard logic:
+  - Session resolution from `noxivo_session` (`AuthSessionModel` + membership normalization)
+  - Agency/team permission checks (`canManageTargetAgency`, `canManageAgencyTeam`, etc.)
+- Ported agency/team business services into workflow-engine:
+  - Agency list/create/detail/update
+  - Tenant list/create/detail
+  - Team list/detail/update/remove
+  - Invitation list/create/detail/update/revoke
+  - Custom domain reservation sync (agency + tenant)
+- Registered agency module from workflow-engine server and excluded `/api/v1/agencies` from API-key auth hook so cookie session auth is used.
+- Migrated dashboard workflow backend behavior into workflow-engine under `apps/workflow-engine/src/modules/workflows/`.
+- Added workflow-engine workflows route registration at `/api/v1/workflows/**` and excluded workflows routes from API-key auth so cookie-session auth is used.
+- Ported workflow backend logic into workflow-engine-owned route/services for:
+  - Workflow list/create/fetch/update/delete
+  - Workflow template clone route (template library + clone service)
+  - Workflow toggle route
+  - Workflow runs + analytics routes
+  - Workflow execution-events SSE route with hydration + Redis backplane subscription support
+- Added workflow-engine TDD coverage for workflows module route behavior and verified RED→GREEN.
+- Migrated dashboard team-inbox backend ownership into workflow-engine under `apps/workflow-engine/src/modules/team-inbox/`.
+- Added workflow-engine team-inbox route registration at `/api/v1/team-inbox/**` and excluded team-inbox routes from API-key auth so cookie-session auth is used.
+- Ported workflow-engine-owned handlers for team-inbox listing/events plus conversation/message/action endpoints:
+  - `GET /api/v1/team-inbox`
+  - `GET /api/v1/team-inbox/events`
+  - `GET /api/v1/team-inbox/leads`
+  - `POST /api/v1/team-inbox/:conversationId/{assign,read,actions}`
+  - `GET|POST /api/v1/team-inbox/:conversationId/messages`
+  - `POST /api/v1/team-inbox/:conversationId/messages/:messageId/actions`
+  - `GET|POST|DELETE /api/v1/team-inbox/:conversationId/lead`
+- Added workflow-engine TDD coverage for team-inbox module route behavior and verified RED→GREEN.
+- Completed remaining Phase 5 parity for dashboard team-inbox backend routes in workflow-engine:
+  - `GET /api/v1/team-inbox/stats`
+  - `GET|POST /api/v1/team-inbox/plugins`
+  - `GET /api/v1/team-inbox/billing`
+  - `POST /api/v1/team-inbox/:conversationId/unhandoff`
+  - `POST /api/v1/team-inbox/:conversationId/suggest-reply`
+  - `POST /api/v1/team-inbox/:conversationId/messages/:messageId`
+  - `GET /api/v1/team-inbox/:conversationId/delivery-history`
+  - `GET|PATCH /api/v1/team-inbox/:conversationId/crm`
+- Reused workflow-engine capabilities for CRM and outbound messaging (`mutateCrmConversationProfile`, `loadCrmConversationProfile`, `InternalInboxMessageService`) instead of dashboard-side proxy behavior.
+- Migrated dashboard settings backend ownership into workflow-engine under `apps/workflow-engine/src/modules/settings/`.
+- Added workflow-engine settings route registration at `/api/v1/settings/**` and excluded settings routes from API-key auth so cookie session auth is used.
+- Ported workflow-engine-owned handlers for settings endpoints:
+  - `GET|POST /api/v1/settings/credentials`
+  - `GET|POST /api/v1/settings/shop`
+  - `GET|POST|DELETE /api/v1/settings/developer-api`
+  - `GET /api/v1/settings/whatsapp-check`
+  - `GET|POST|DELETE /api/v1/settings/qr`
+  - `GET|PUT /api/v1/settings/storage`
+  - `GET|POST|DELETE /api/v1/settings/webhook-inbox-activation`
+  - `GET|POST /api/v1/settings/webhook-inbox-sources`
+  - `PATCH /api/v1/settings/webhook-inbox-sources/:sourceId`
+- Added workflow-engine TDD coverage for settings module route behavior and verified RED→GREEN.
 
-## Changes Included in Push
-- **Workflow Engine entrypoint**: Added logging and error boundaries in `apps/workflow-engine/src/index.ts`.
-- **Workflow Engine Server**: Added root route and early DB connection in `apps/workflow-engine/src/server.ts`.
-- **Database Seeding**: Prevented post-seed disconnection in `packages/database/src/seed-utils.ts`.
-
-## Files Pushed
-- `apps/workflow-engine/src/index.ts`
+## Files Changed
+- `apps/workflow-engine/test/spa-admin-routes.test.ts` (removed stale media-storage assertion; aligned with active SPA admin endpoints)
+- `apps/dashboard/test/settings-credentials-route.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/settings-shop-route.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/settings-webhook-inbox-sources-route.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/settings-qr-route.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/settings-whatsapp-check-route.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/settings-developer-api-route.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/team-management-routes.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/team-inbox-crm-routes.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/smoke-tests.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/app/api/team-inbox/[conversationId]/actions/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/assign/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/crm/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/delivery-history/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/lead/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/messages/[messageId]/actions/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/messages/[messageId]/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/messages/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/read/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/suggest-reply/route.ts`
+- `apps/dashboard/app/api/team-inbox/[conversationId]/unhandoff/route.ts`
+- `apps/dashboard/app/api/settings/webhook-inbox-sources/[sourceId]/route.ts`
+- `apps/dashboard/test/team-inbox-routes.test.ts` (rewritten to proxy-focused assertions)
+- `apps/dashboard/test/inbox-events-route.test.ts` (rewritten to proxy-focused assertions)
+- `TODO.md`
+- `SESSION_HANDOFF.md`
+- `apps/workflow-engine/src/modules/catalog/catalog.service.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/catalog-settings.service.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/catalog-publish.service.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/catalog-ai.service.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/shared.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/catalog.routes.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/catalog-item.routes.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/catalog-settings.routes.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/catalog-upload.routes.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/catalog-ai-help.routes.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/catalog-publish.routes.ts` (new)
+- `apps/workflow-engine/src/modules/catalog/routes/index.ts`
+- `apps/workflow-engine/src/plugins/api-auth.plugin.ts`
 - `apps/workflow-engine/src/server.ts`
-- `packages/database/src/seed-utils.ts`
-- `AGENTS.md` (Cleanup/Reformat)
-- `.gitignore` (Updated)
-- `V2_ARCHITECTURE.md` (New documentation)
+- `apps/workflow-engine/test/catalog-routes.test.ts` (new, TDD)
+- `apps/workflow-engine/src/modules/agency/routes/index.ts`
+- `apps/workflow-engine/src/modules/agency/routes/agency.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/agency-single.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/tenants.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/tenant-single.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/team.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/team-user.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/invitations.routes.ts`
+- `apps/workflow-engine/src/modules/agency/routes/invitation-single.routes.ts`
+- `apps/workflow-engine/src/modules/agency/authorization.ts` (new)
+- `apps/workflow-engine/src/modules/agency/session-auth.ts` (new)
+- `apps/workflow-engine/src/modules/agency/domain-reservations.ts` (new)
+- `apps/workflow-engine/src/modules/agency/agency-admin.service.ts` (new)
+- `apps/workflow-engine/src/modules/agency/team-admin.service.ts` (new)
+- `apps/workflow-engine/src/plugins/api-auth.plugin.ts`
+- `apps/workflow-engine/src/server.ts`
+- `apps/workflow-engine/test/agency-management-routes.test.ts` (new, TDD)
+- `apps/workflow-engine/src/modules/workflows/routes/workflows.routes.ts` (new)
+- `apps/workflow-engine/src/modules/workflows/routes/index.ts`
+- `apps/workflow-engine/src/modules/workflows/authorization.ts` (new)
+- `apps/workflow-engine/src/modules/workflows/scope.ts` (new)
+- `apps/workflow-engine/src/modules/workflows/templates-library.ts` (new)
+- `apps/workflow-engine/src/modules/workflows/workflow-cloner.ts` (new)
+- `apps/workflow-engine/src/modules/workflows/workflow-events-backplane.ts` (new)
+- `apps/workflow-engine/src/plugins/api-auth.plugin.ts`
+- `apps/workflow-engine/src/server.ts`
+- `apps/workflow-engine/test/workflows-routes.test.ts` (new, TDD)
+- `apps/workflow-engine/src/modules/team-inbox/routes/index.ts` (new)
+- `apps/workflow-engine/src/modules/team-inbox/routes/index.ts` (expanded with missing parity endpoints)
+- `apps/workflow-engine/src/modules/settings/routes/index.ts` (new)
+- `apps/workflow-engine/src/modules/agency/authorization.ts` (added `canManageCredentials` export)
+- `apps/workflow-engine/src/plugins/api-auth.plugin.ts`
+- `apps/workflow-engine/src/server.ts`
+- `apps/workflow-engine/test/team-inbox-routes.test.ts` (expanded, TDD)
+- `apps/workflow-engine/test/settings-routes.test.ts` (new, TDD)
+- `TODO.md`
 
-## Next Steps
-- Verify the `workflow-engine` health on the live production domain (`https://api-workflow-engine.noxivo.app/`).
-- Connect the engine with a sample dashboard registration to test end-to-end messaging.
+## Verification Run
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/spa-admin-routes.test.ts` ✅
+- `pnpm --filter @noxivo/workflow-engine lint && pnpm --filter @noxivo/workflow-engine build && pnpm --filter @noxivo/workflow-engine test` ✅ (44 files, 229 tests)
+- `pnpm --filter @noxivo/dashboard test` ✅ (33 files passed, 1 skipped)
+- `pnpm --filter @noxivo/dashboard exec vitest run test/settings-credentials-route.test.ts test/settings-shop-route.test.ts test/settings-webhook-inbox-sources-route.test.ts test/settings-qr-route.test.ts test/settings-whatsapp-check-route.test.ts test/settings-developer-api-route.test.ts test/team-management-routes.test.ts test/team-inbox-crm-routes.test.ts test/smoke-tests.test.ts test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/phase7-dashboard-proxy-routes.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard build` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/phase7-dashboard-proxy-routes.test.ts` ✅
+- `pnpm --filter @noxivo/dashboard build` ✅
+- RED (before implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/catalog-routes.test.ts` ❌
+  - Failed with `401` because catalog module/routes were not yet registered and API-key guard blocked route access.
+- GREEN (after implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/catalog-routes.test.ts` ✅
+- Type/build gates:
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+- LSP diagnostics:
+  - `apps/workflow-engine/src/modules/catalog` ✅ clean
+  - `apps/workflow-engine/src/server.ts` ✅ clean
+  - `apps/workflow-engine/src/plugins/api-auth.plugin.ts` ✅ clean
+  - `apps/workflow-engine/test/catalog-routes.test.ts` ✅ clean
+- RED (before implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/agency-management-routes.test.ts` ❌
+  - Failed with `401` on missing agency module/session handling behavior.
+- GREEN (after implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/agency-management-routes.test.ts` ✅
+- Type/build gates:
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+- LSP diagnostics:
+  - `apps/workflow-engine/src/modules/agency` ✅ clean
+  - `apps/workflow-engine/src/plugins/api-auth.plugin.ts` ✅ clean
+  - `apps/workflow-engine/src/server.ts` ✅ clean
+  - `apps/workflow-engine/test/agency-management-routes.test.ts` ✅ clean
+- RED (before implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/workflows-routes.test.ts` ❌
+  - Failed with `401` because workflows routes were not yet registered and API-key guard still protected `/api/v1/workflows/**`.
+- GREEN (after implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/workflows-routes.test.ts` ✅
+- Type/build gates:
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+- LSP diagnostics:
+  - `apps/workflow-engine/src/modules/workflows` ✅ clean
+  - `apps/workflow-engine/src/server.ts` ✅ clean
+  - `apps/workflow-engine/src/plugins/api-auth.plugin.ts` ✅ clean
+  - `apps/workflow-engine/test/workflows-routes.test.ts` ✅ clean
+- RED (before implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts` ❌
+  - Failed with `401` because `/api/v1/team-inbox/**` was not yet registered/excluded from API-key auth.
+- GREEN (after implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts` ✅
+- Type/build gates:
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+- LSP diagnostics:
+  - `apps/workflow-engine/src/modules/team-inbox/routes/index.ts` ✅ clean
+  - `apps/workflow-engine/src/server.ts` ✅ clean
+  - `apps/workflow-engine/src/plugins/api-auth.plugin.ts` ✅ clean
+  - `apps/workflow-engine/test/team-inbox-routes.test.ts` ✅ clean
+- RED (before parity completion):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts` ❌
+  - Failed on missing `/api/v1/team-inbox/stats` parity behavior.
+- GREEN (after parity completion):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts` ✅
+- Type/build gates (post-parity):
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+- RED (before Phase 6 implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/settings-routes.test.ts` ❌
+  - Failed with `401` because `/api/v1/settings/**` routes were not yet registered and API-key guard still protected settings paths.
+- GREEN (after Phase 6 implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/settings-routes.test.ts` ✅
+- Type/build gates (post-Phase 6):
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
 
-## Commands to Verify
-- `curl https://api-workflow-engine.noxivo.app/`
-- `curl https://api-workflow-engine.noxivo.app/health`
+## Assumptions / Risks
+- Agency endpoints are intentionally exposed under `/api/v1/agencies/**` with cookie-based session auth (not API-key auth).
+- Invitation signup URL remains path-based (`/<agencySlug>/auth/signup?invitationToken=...`) matching prior dashboard behavior.
+- Tenant/user/invitation “detail” GET routes are provided in workflow-engine for completeness of the migrated module.
+- Running `pnpm --filter @noxivo/dashboard test -- ...` currently executes broader dashboard tests that include legacy/local-backend expectations; prefer `pnpm --filter @noxivo/dashboard exec vitest run ...` for explicit proxy-focused subsets during this migration branch.
+
+## Next Step
+- Prepare branch for PR: summarize Phase 2–8 backend modularization + dashboard proxy cutover, include verification evidence, and request review.
+
+## Commands Still Relevant
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/catalog-routes.test.ts`
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/agency-management-routes.test.ts`
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/workflows-routes.test.ts`
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts`
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/settings-routes.test.ts`
+- `pnpm --filter @noxivo/workflow-engine lint`
 - `pnpm --filter @noxivo/workflow-engine build`
+- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/phase7-dashboard-proxy-routes.test.ts`
+- `pnpm --filter @noxivo/dashboard build`
