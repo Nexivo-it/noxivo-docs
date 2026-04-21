@@ -13,7 +13,16 @@ function isAbortLikeError(error: unknown): boolean {
 }
 
 export async function GET(): Promise<NextResponse> {
-  const session = await getCurrentSession();
+  let session;
+
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -51,6 +51,16 @@ describe('settings whatsapp-check route', () => {
     await disconnectDashboardTestDb();
   });
 
+  it('returns 503 when session lookup fails before whatsapp status resolution starts', async () => {
+    mockGetCurrentSession.mockRejectedValue(new Error('MongoDB connection timed out after 10s'));
+
+    const response = await getWhatsAppCheck();
+    const payload = await response.json() as { error: string };
+
+    expect(response.status).toBe(503);
+    expect(payload.error).toBe('Dashboard session store unavailable. Please verify MONGODB_URI.');
+  });
+
   it('returns unlinked bootstrap-required snapshot when binding is missing on passive check', async () => {
     const agencyId = new mongoose.Types.ObjectId().toString();
     const tenantId = new mongoose.Types.ObjectId().toString();
