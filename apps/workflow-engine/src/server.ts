@@ -46,6 +46,7 @@ import { apiAuthPlugin } from './plugins/api-auth.plugin.js';
 import { swaggerPlugin } from './plugins/swagger.plugin.js';
 import { corsPlugin } from './plugins/cors.plugin.js';
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { registerMessageRoutes } from './routes/v1/messages.routes.js';
 import { registerChatRoutes } from './routes/v1/chats.routes.js';
@@ -65,6 +66,11 @@ import { registerApiKeysRoutes } from './routes/v1/api-keys.routes.js';
 import { registerMessagingFallbackRoutes } from './routes/v1/messaging-fallback.routes.js';
 import { aiSalesAgentRoutes } from './routes/v1/ai-sales-agent.routes.js';
 import { registerSpaRoutes } from './routes/v1/spa.routes.js';
+import { agencyRoutes } from './modules/agency/routes/index.js';
+import { catalogRoutes } from './modules/catalog/routes/index.js';
+import { workflowsRoutes } from './modules/workflows/routes/index.js';
+import { teamInboxRoutes } from './modules/team-inbox/routes/index.js';
+import { settingsRoutes } from './modules/settings/routes/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -250,6 +256,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   // Plugins
   await fastify.register(fastifyCookie);
+  await fastify.register(fastifyMultipart);
   await fastify.register(corsPlugin);
   await fastify.register(swaggerPlugin);
   await fastify.register(apiAuthPlugin);
@@ -285,6 +292,11 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await registerMessagingFallbackRoutes(fastify);
   await aiSalesAgentRoutes(fastify);
   await registerSpaRoutes(fastify);
+  await fastify.register(agencyRoutes, { prefix: '/api/v1/agencies' });
+  await fastify.register(catalogRoutes, { prefix: '/api/v1/catalog' });
+  await fastify.register(workflowsRoutes, { prefix: '/api/v1/workflows' });
+  await fastify.register(teamInboxRoutes, { prefix: '/api/v1/team-inbox' });
+  await fastify.register(settingsRoutes, { prefix: '/api/v1/settings' });
 
   const { MediaStorageService } = await import('./modules/storage/media-storage.service.js');
   const mediaStorageService = new MediaStorageService();

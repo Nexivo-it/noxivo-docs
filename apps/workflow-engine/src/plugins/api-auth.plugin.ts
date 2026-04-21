@@ -3,6 +3,15 @@ import fp from 'fastify-plugin';
 import { ApiKeyModel } from '@noxivo/database';
 import { dbConnect } from '../lib/mongodb.js';
 
+function readScopedId(source: unknown, key: 'agencyId' | 'tenantId'): string {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return '';
+  }
+
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : '';
+}
+
 declare module 'fastify' {
   interface FastifyInstance {
     verifyApiKey(request: FastifyRequest, reply: FastifyReply): Promise<boolean>;
@@ -37,8 +46,8 @@ export const apiAuthPlugin = fp(async (fastify: FastifyInstance) => {
     // 1. Check if it's the Master Key
     if (apiKey === masterKey) {
       request.context = {
-        agencyId: (request.body as any)?.agencyId || (request.query as any)?.agencyId,
-        tenantId: (request.body as any)?.tenantId || (request.query as any)?.tenantId,
+        agencyId: readScopedId(request.body, 'agencyId') || readScopedId(request.query, 'agencyId'),
+        tenantId: readScopedId(request.body, 'tenantId') || readScopedId(request.query, 'tenantId'),
         isMasterKey: true
       };
       return true;
@@ -64,9 +73,15 @@ export const apiAuthPlugin = fp(async (fastify: FastifyInstance) => {
       // Helper for Zero-Config GET requests: auto-inject into query if missing
       const requestPath = (request.url ?? '').split('?')[0] ?? '';
       if (requestPath === '/api/v1/sessions/by-tenant' || requestPath === '/v1/inbox/chats') {
-        const query = request.query as any;
-        if (!query.agencyId) query.agencyId = request.context.agencyId;
-        if (!query.tenantId) query.tenantId = request.context.tenantId;
+        if (request.query && typeof request.query === 'object' && !Array.isArray(request.query)) {
+          const query = request.query as Record<string, unknown>;
+          if (!query.agencyId) {
+            query.agencyId = request.context.agencyId;
+          }
+          if (!query.tenantId) {
+            query.tenantId = request.context.tenantId;
+          }
+        }
       }
 
       // Update last used (fire and forget)
@@ -88,6 +103,16 @@ export const apiAuthPlugin = fp(async (fastify: FastifyInstance) => {
     const isPublicV1 = requestPath.startsWith('/api/v1/') || requestPath.startsWith('/v1/');
     const isExcluded = requestPath.startsWith('/api/v1/admin/') || 
                      requestPath.startsWith('/api/v1/spa/') ||
+                     requestPath.startsWith('/api/v1/catalog/') ||
+                     requestPath === '/api/v1/catalog' ||
+                     requestPath.startsWith('/api/v1/team-inbox/') ||
+                     requestPath === '/api/v1/team-inbox' ||
+                     requestPath.startsWith('/api/v1/workflows/') ||
+                     requestPath === '/api/v1/workflows' ||
+                     requestPath.startsWith('/api/v1/settings/') ||
+                     requestPath === '/api/v1/settings' ||
+                     requestPath === '/api/v1/agencies' ||
+                     requestPath.startsWith('/api/v1/agencies/') ||
                      requestPath.startsWith('/v1/internal/') || 
                      requestPath.startsWith('/v1/webhooks/');
 
