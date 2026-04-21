@@ -43,7 +43,16 @@ async function readQrAction(request: Request): Promise<QrAction> {
 }
 
 export async function GET(_request: Request): Promise<NextResponse> {
-  const session = await getCurrentSession();
+  let session;
+
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -129,7 +138,16 @@ export async function GET(_request: Request): Promise<NextResponse> {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const session = await getCurrentSession();
+  let session;
+
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -241,7 +259,16 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 export async function DELETE(_request: Request): Promise<NextResponse> {
-  const session = await getCurrentSession();
+  let session;
+
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
