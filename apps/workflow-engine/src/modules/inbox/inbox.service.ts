@@ -74,7 +74,8 @@ export class InboxService {
     const mappingAliases = [
       ...((input.contactAliases ?? [])
         .map((value) => normalizeChatId(value))
-        .filter((value): value is string => Boolean(value) && !value.endsWith('@lid'))),
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .filter((value) => !value.endsWith('@lid'))),
       ...(canonicalMappingSeed && !canonicalMappingSeed.endsWith('@lid') ? [canonicalMappingSeed] : []),
       ...(input.contactPhone && input.contactPhone.trim().length > 0 ? [input.contactPhone] : [])
     ];
