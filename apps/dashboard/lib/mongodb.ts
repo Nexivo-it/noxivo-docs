@@ -11,8 +11,22 @@ if (!(global as Record<string, unknown>).mongoose) {
   (global as Record<string, unknown>).mongoose = cached;
 }
 
+export function resolveMongoUri(): string {
+  const explicitMongoUri = process.env.MONGODB_URI?.trim();
+  if (explicitMongoUri) {
+    return explicitMongoUri;
+  }
+
+  const mongoUser = process.env.MONGO_USER?.trim() || 'nexus';
+  const mongoPassword = process.env.MONGO_PASSWORD?.trim() || 'nexuspassword';
+  const mongoHost = process.env.NODE_ENV === 'production' ? 'mongodb' : 'localhost';
+  const mongoDatabase = process.env.NODE_ENV === 'production' ? 'noxivo_dashboard' : 'noxivo';
+
+  return `mongodb://${mongoUser}:${mongoPassword}@${mongoHost}:27017/${mongoDatabase}?authSource=admin`;
+}
+
 async function dbConnect() {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxivo';
+  const mongoUri = resolveMongoUri();
 
   if (!mongoUri) {
     throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
