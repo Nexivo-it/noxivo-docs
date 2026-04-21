@@ -4,7 +4,15 @@ import { resolveActorTenantId } from '../../../../lib/auth/tenant-context';
 import { engineClient } from '../../../../lib/api/engine-client';
 
 export async function GET() {
-  const session = await getCurrentSession();
+  let session;
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const tenantId = resolveActorTenantId(session.actor);
@@ -20,7 +28,15 @@ export async function GET() {
 }
 
 export async function POST() {
-  const session = await getCurrentSession();
+  let session;
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const tenantId = resolveActorTenantId(session.actor);
@@ -36,7 +52,15 @@ export async function POST() {
 }
 
 export async function DELETE() {
-  const session = await getCurrentSession();
+  let session;
+  try {
+    session = await getCurrentSession();
+  } catch {
+    return NextResponse.json(
+      { error: 'Dashboard session store unavailable. Please verify MONGODB_URI.' },
+      { status: 503 }
+    );
+  }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const tenantId = resolveActorTenantId(session.actor);
