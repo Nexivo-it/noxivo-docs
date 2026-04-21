@@ -1,230 +1,86 @@
-import { describe, expect, it, beforeAll, afterAll, vi } from 'vitest';
-import mongoose from 'mongoose';
-import {
-  AgencyModel,
-  TenantModel,
-  UserModel,
-  ConversationModel,
-  MessageModel,
-  PluginInstallationModel
-} from '@noxivo/database';
-import { GET as getPlugins } from '../app/api/team-inbox/plugins/route.js';
-import { GET as getStats } from '../app/api/team-inbox/stats/route.js';
-import { GET as getBilling } from '../app/api/team-inbox/billing/route.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GET as listPlugins } from '../app/api/team-inbox/plugins/route.js';
+import { GET as getInboxStats } from '../app/api/team-inbox/stats/route.js';
+import { GET as getInboxBilling } from '../app/api/team-inbox/billing/route.js';
 import { GET as getDeliveryHistory } from '../app/api/team-inbox/[conversationId]/delivery-history/route.js';
-import { POST as resendMessage } from '../app/api/team-inbox/[conversationId]/messages/[messageId]/route.js';
-import { POST as unhandoff } from '../app/api/team-inbox/[conversationId]/unhandoff/route.js';
+import { POST as unhandoffConversation } from '../app/api/team-inbox/[conversationId]/unhandoff/route.js';
 
 const { mockGetCurrentSession } = vi.hoisted(() => ({
-  mockGetCurrentSession: vi.fn()
+  mockGetCurrentSession: vi.fn(),
 }));
 
 vi.mock('../lib/auth/session', () => ({
-  getCurrentSession: mockGetCurrentSession
+  getCurrentSession: mockGetCurrentSession,
 }));
 
-import {
-  connectDashboardTestDb,
-  disconnectDashboardTestDb
-} from './helpers/mongo-memory.js';
-
-describe('production smoke tests', () => {
-  let agencyId: mongoose.Types.ObjectId;
-  let tenantId: mongoose.Types.ObjectId;
-  let userId: mongoose.Types.ObjectId;
-  let conversationId: mongoose.Types.ObjectId;
-  let messageId: mongoose.Types.ObjectId;
-
-  const mockSession = {
-    actor: {
-      agencyId: '',
-      tenantId: '',
-      userId: '',
-      role: 'owner'
-    }
-  };
-
-  beforeAll(async () => {
-    await connectDashboardTestDb({ dbName: 'noxivo-smoke-tests' });
-
-    agencyId = new mongoose.Types.ObjectId();
-    tenantId = new mongoose.Types.ObjectId();
-    userId = new mongoose.Types.ObjectId();
-    conversationId = new mongoose.Types.ObjectId();
-    messageId = new mongoose.Types.ObjectId();
-
-    mockSession.actor.agencyId = agencyId.toString();
-    mockSession.actor.tenantId = tenantId.toString();
-    mockSession.actor.userId = userId.toString();
-
-    await AgencyModel.create({
-      _id: agencyId,
-      name: 'Smoke Test Agency',
-      slug: 'smoke-test',
-      plan: 'reseller_pro',
-      billingOwnerUserId: userId,
-      whiteLabelDefaults: {},
-      usageLimits: { tenants: 5, activeSessions: 10 },
-      status: 'active'
-    });
-
-    await TenantModel.create({
-      _id: tenantId,
-      agencyId,
-      name: 'Test Tenant',
-      slug: 'test-tenant',
-      billingMode: 'agency_pays',
-      region: 'us-east-1',
-      status: 'active'
-    });
-
-    await ConversationModel.create({
-      _id: conversationId,
-      agencyId,
-      tenantId,
-      contactId: '15551234567@c.us',
-      status: 'open',
-      unreadCount: 0
-    });
-
-    await MessageModel.create({
-      _id: messageId,
-      conversationId,
-      agencyId,
-      tenantId,
-      role: 'assistant',
-      content: 'Test message for smoke testing',
-      deliveryStatus: 'sent'
-    });
-
-    await PluginInstallationModel.create({
-      agencyId,
-      tenantId,
-      pluginId: 'test-plugin',
-      pluginVersion: '1.0.0',
-      enabled: true,
-      config: { test: true }
-    });
-
-    mockGetCurrentSession.mockResolvedValue(mockSession);
+function createJsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'content-type': 'application/json' },
   });
+}
 
-  afterAll(async () => {
-    mockGetCurrentSession.mockRestore();
-    await disconnectDashboardTestDb();
-  });
-
-  describe('plugin routes', () => {
-    it('lists installed plugins', async () => {
-      const request = new Request('http://localhost/api/team-inbox/plugins');
-      const response = await getPlugins(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBeGreaterThan(0);
-      expect(data[0]).toHaveProperty('pluginId');
-      expect(data[0]).toHaveProperty('enabled');
-    });
-
-    it('filters plugins by pluginId', async () => {
-      const request = new Request('http://localhost/api/team-inbox/plugins?pluginId=test-plugin');
-      const response = await getPlugins(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.length).toBe(1);
-      expect(data[0].pluginId).toBe('test-plugin');
+describe('dashboard proxy smoke tests', () => {
+  beforeEach(() => {
+    process.env.WORKFLOW_ENGINE_INTERNAL_BASE_URL = 'http://workflow-engine.internal';
+    mockGetCurrentSession.mockResolvedValue({
+      id: 'session-id',
+      actor: {
+        userId: 'user-1',
+        agencyId: 'agency-1',
+        tenantId: 'tenant-1',
+        email: 'owner@example.com',
+        fullName: 'Owner',
+        role: 'agency_owner',
+        status: 'active',
+      },
+      expiresAt: new Date(Date.now() + 60_000),
     });
   });
 
-  describe('stats routes', () => {
-    it('returns agency statistics', async () => {
-      const request = new Request('http://localhost/api/team-inbox/stats');
-      const response = await getStats(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data).toHaveProperty('conversations');
-      expect(data).toHaveProperty('messages');
-      expect(data).toHaveProperty('users');
-      expect(data).toHaveProperty('activeSessions');
-      expect(data).toHaveProperty('timestamp');
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete process.env.WORKFLOW_ENGINE_INTERNAL_BASE_URL;
   });
 
-  describe('billing routes', () => {
-    it('returns agency billing info', async () => {
-      const request = new Request('http://localhost/api/team-inbox/billing');
-      const response = await getBilling(request);
-      const data = await response.json();
+  it('forwards plugin/stats/billing endpoints to workflow-engine', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
 
-      expect(response.status).toBe(200);
-      expect(data).toHaveProperty('plan');
-      expect(data).toHaveProperty('status');
-      expect(data).toHaveProperty('features');
-      expect(data.features).toHaveProperty('crmIntegration');
-    });
+    await listPlugins(new Request('http://localhost/api/team-inbox/plugins'));
+    await getInboxStats(new Request('http://localhost/api/team-inbox/stats'));
+    await getInboxBilling(new Request('http://localhost/api/team-inbox/billing'));
+
+    const calledUrls = fetchMock.mock.calls.map((call) => call[0] as string);
+    expect(calledUrls).toEqual([
+      'http://workflow-engine.internal/api/v1/team-inbox/plugins',
+      'http://workflow-engine.internal/api/v1/team-inbox/stats',
+      'http://workflow-engine.internal/api/v1/team-inbox/billing',
+    ]);
   });
 
-  describe('delivery history route', () => {
-    it('returns delivery events for conversation', async () => {
-      const request = new Request(`http://localhost/api/team-inbox/${conversationId}/delivery-history`);
-      
-      const response = await getDeliveryHistory(
-        request,
-        { params: Promise.resolve({ conversationId: conversationId.toString() }) }
-      );
-      
-      const data = await response.json();
-      expect(response.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-    });
-  });
+  it('forwards delivery-history and unhandoff conversation actions', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
 
-  describe('unhandoff route', () => {
-    it('returns 404 for non-handoff conversation', async () => {
-      const request = new Request(`http://localhost/api/team-inbox/${conversationId}/unhandoff`, {
-        method: 'POST'
-      });
-      
-      const response = await unhandoff(
-        request,
-        { params: Promise.resolve({ conversationId: conversationId.toString() }) }
-      );
-      
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toContain('not in handoff state');
+    await getDeliveryHistory(new Request('http://localhost/api/team-inbox/cv-22/delivery-history'), {
+      params: Promise.resolve({ conversationId: 'cv-22' }),
     });
-  });
+    await unhandoffConversation(
+      new Request('http://localhost/api/team-inbox/cv-22/unhandoff', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reason: 'manual takeover' }),
+      }),
+      { params: Promise.resolve({ conversationId: 'cv-22' }) }
+    );
 
-  describe('authentication', () => {
-    it('rejects unauthenticated requests to plugins', async () => {
-      mockGetCurrentSession.mockResolvedValueOnce(null);
-      
-      const request = new Request('http://localhost/api/team-inbox/plugins');
-      const response = await getPlugins(request);
-      
-      expect(response.status).toBe(401);
-    });
-
-    it('rejects unauthenticated requests to stats', async () => {
-      mockGetCurrentSession.mockResolvedValueOnce(null);
-      
-      const request = new Request('http://localhost/api/team-inbox/stats');
-      const response = await getStats(request);
-      
-      expect(response.status).toBe(401);
-    });
-
-    it('rejects unauthenticated requests to billing', async () => {
-      mockGetCurrentSession.mockResolvedValueOnce(null);
-      
-      const request = new Request('http://localhost/api/team-inbox/billing');
-      const response = await getBilling(request);
-      
-      expect(response.status).toBe(401);
-    });
+    const calledUrls = fetchMock.mock.calls.map((call) => call[0] as string);
+    expect(calledUrls).toEqual([
+      'http://workflow-engine.internal/api/v1/team-inbox/cv-22/delivery-history',
+      'http://workflow-engine.internal/api/v1/team-inbox/cv-22/unhandoff',
+    ]);
+    const methods = fetchMock.mock.calls.map((call) => (call[1] as RequestInit).method);
+    expect(methods).toEqual(['GET', 'POST']);
   });
 });

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET as listCredentials, POST as upsertCredential } from '../app/api/settings/credentials/route.js';
+import { proxyDashboardRouteToWorkflowEngine } from '../lib/api/workflow-engine-proxy.js';
 
 const { mockGetCurrentSession } = vi.hoisted(() => ({
   mockGetCurrentSession: vi.fn(),
@@ -9,14 +9,7 @@ vi.mock('../lib/auth/session', () => ({
   getCurrentSession: mockGetCurrentSession,
 }));
 
-function createJsonResponse(payload: unknown, status = 200): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
-}
-
-describe('settings credentials route proxy behavior', () => {
+describe('workflow-engine proxy helper', () => {
   beforeEach(() => {
     process.env.WORKFLOW_ENGINE_INTERNAL_BASE_URL = 'http://workflow-engine.internal';
     mockGetCurrentSession.mockResolvedValue({
@@ -39,40 +32,49 @@ describe('settings credentials route proxy behavior', () => {
     delete process.env.WORKFLOW_ENGINE_INTERNAL_BASE_URL;
   });
 
-  it('forwards GET /api/settings/credentials including query params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse([{ provider: 'airtable' }]));
+  it('returns 401 and does not call fetch when session is missing', async () => {
+    mockGetCurrentSession.mockResolvedValueOnce(null);
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    await listCredentials(new Request('http://localhost/api/settings/credentials?provider=airtable'));
+    const response = await proxyDashboardRouteToWorkflowEngine(new Request('http://localhost/api/agencies'), {
+      targetPath: '/agencies',
+    });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('http://workflow-engine.internal/api/v1/settings/credentials?provider=airtable');
-    expect(init.method).toBe('GET');
+    expect(response.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('forwards POST body and cookies to workflow-engine credentials endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true }));
+  it('forwards method, query, headers, cookies and body to workflow-engine', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
-    await upsertCredential(
-      new Request('http://localhost/api/settings/credentials', {
+    await proxyDashboardRouteToWorkflowEngine(
+      new Request('http://localhost/api/workflows?status=active', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           cookie: 'noxivo_session=sess-1',
+          'x-forwarded-for': '127.0.0.1',
         },
-        body: JSON.stringify({ provider: 'shopify', status: 'active' }),
-      })
+        body: JSON.stringify({ name: 'New Flow' }),
+      }),
+      { targetPath: '/workflows' }
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('http://workflow-engine.internal/api/v1/settings/credentials');
+    expect(url).toBe('http://workflow-engine.internal/api/v1/workflows?status=active');
     expect(init.method).toBe('POST');
+
     const headers = new Headers(init.headers);
     expect(headers.get('cookie')).toBe('noxivo_session=sess-1');
     expect(headers.get('content-type')).toContain('application/json');
+    expect(headers.get('x-forwarded-for')).toBe('127.0.0.1');
     expect(init.body).toBeDefined();
   });
 });
