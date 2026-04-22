@@ -1096,10 +1096,10 @@ export async function registerAdminRoutes(fastify: FastifyInstance) {
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
-    // Role check - only allow owners/admins to access the engine dashboard
+    // Role check - allow owners and developers
     const role = normalizeStoredUserRole(user.role as string);
-    if (role !== 'owner') {
-      return reply.status(403).send({ error: 'Access denied: Requires platform owner role' });
+    if (role !== 'owner' && role !== 'developer') {
+      return reply.status(403).send({ error: 'Access denied: Requires platform owner or developer role' });
     }
 
     // Resolve agencyId and tenantId for the session
@@ -1149,5 +1149,123 @@ export async function registerAdminRoutes(fastify: FastifyInstance) {
         role,
       },
     });
+  });
+
+  fastify.post('/api/v1/admin/register', {
+    schema: {
+      description: 'Developer registration for engine docs',
+      tags: ['Admin'],
+      body: {
+        type: 'object',
+        required: ['email', 'password', 'name'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string', minLength: 8 },
+          name: { type: 'string' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { email, password, name } = z.object({
+      email: z.string().email(),
+      password: z.string().min(8),
+      name: z.string().min(1),
+    }).parse(request.body);
+
+    await dbConnect();
+    const { UserModel, hashPassword } = await import('@noxivo/database');
+
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      return reply.status(400).send({ error: 'User already exists' });
+    }
+
+    // Create a new user with status 'pending' and role 'developer'
+    await UserModel.create({
+      email,
+      fullName: name,
+      passwordHash: await hashPassword(password),
+      role: 'developer',
+      status: 'pending',
+    });
+
+    return reply.status(201).send({ success: true, message: 'Registration successful. Waiting for admin approval.' });
+  });
+
+  fastify.patch('/api/v1/admin/users/:id/approve', {
+    schema: {
+      summary: 'Approve Developer Access',
+      description: 'Platform owner route to activate a pending developer account.',
+      tags: ['Admin'],
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'The unique User ID to approve', example: '64a1b2c3d4e5f6g7h8i9j0k1' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'User approved' }
+          }
+        }
+      },
+      security: [{ psk: [] }]
+    },
+  }, async (request, reply) => {
+    // Session check is already done by global hooks or should be checked here
+    const token = getSessionTokenFromCookies(request.headers.cookie);
+    if (!token) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    await dbConnect();
+    const { AuthSessionModel, UserModel, normalizeStoredUserRole } = await import('@noxivo/database');
+    
+    const session = await AuthSessionModel.findOne({ sessionTokenHash: hashSessionToken(token) });
+    if (!session || session.expiresAt < new Date()) {
+      return reply.status(401).send({ error: 'Session expired' });
+    }
+
+    const adminUser = await UserModel.findById(session.userId);
+    if (!adminUser || normalizeStoredUserRole(adminUser.role as string) !== 'owner') {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+
+    const { id } = request.params as { id: string };
+    const userToApprove = await UserModel.findById(id);
+    if (!userToApprove) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    userToApprove.status = 'active';
+    await userToApprove.save();
+
+    return reply.status(200).send({ success: true, message: 'User approved' });
+  });
+
+  fastify.get('/api/v1/admin/users/pending', {
+    schema: {
+      description: 'Owner-only list of pending developers',
+      tags: ['Admin'],
+    },
+  }, async (request, reply) => {
+    const token = getSessionTokenFromCookies(request.headers.cookie);
+    if (!token) return reply.status(401).send({ error: 'Unauthorized' });
+
+    await dbConnect();
+    const { AuthSessionModel, UserModel, normalizeStoredUserRole } = await import('@noxivo/database');
+    const session = await AuthSessionModel.findOne({ sessionTokenHash: hashSessionToken(token) });
+    if (!session || session.expiresAt < new Date()) return reply.status(401).send({ error: 'Session expired' });
+
+    const adminUser = await UserModel.findById(session.userId);
+    if (!adminUser || normalizeStoredUserRole(adminUser.role as string) !== 'owner') {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+
+    const pendingUsers = await UserModel.find({ status: 'pending' }).select('email fullName createdAt role');
+    return reply.status(200).send({ success: true, users: pendingUsers });
   });
 }

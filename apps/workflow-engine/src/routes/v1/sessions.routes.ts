@@ -68,41 +68,66 @@ async function getLiveSessions(): Promise<MessagingLiveSession[]> {
 export async function registerSessionV1Routes(fastify: FastifyInstance) {
   fastify.post('/api/v1/sessions/bootstrap', {
     schema: {
-      description: 'Bootstrap a WhatsApp session for an agency/tenant pair',
+      summary: 'Bootstrap Session',
+      description: 'Initialize a new WhatsApp messaging session for a specific agency and tenant. If a session already exists, it returns the current status.',
       tags: ['Sessions'],
       body: {
         type: 'object',
         required: ['agencyId', 'tenantId'],
         properties: {
-          agencyId: { type: 'string', example: 'agency_123' },
-          tenantId: { type: 'string', example: 'tenant_456' },
-          accountName: { type: 'string', example: 'Noxivo Sales' }
+          agencyId: { 
+            type: 'string', 
+            description: 'The unique identifier for the agency.',
+            example: '64a1b2c3d4e5f6g7h8i9j0k1' 
+          },
+          tenantId: { 
+            type: 'string', 
+            description: 'The unique identifier for the tenant (sub-account).',
+            example: '75b2c3d4e5f6g7h8i9j0k1l2' 
+          },
+          accountName: { 
+            type: 'string', 
+            description: 'A friendly name for this messaging account.',
+            example: 'Noxivo Customer Support' 
+          }
         }
       },
       response: {
         200: {
+          description: 'Session bootstrapped successfully',
           type: 'object',
           properties: {
-            sessionName: { type: 'string', example: 'wa_agency_123_tenant_456' },
-            status: { type: 'string', example: 'SCAN_QR_CODE' }
+            sessionName: { 
+              type: 'string', 
+              description: 'The internal name of the session used for subsequent API calls.',
+              example: 'wa_agency_64a1_tenant_75b2' 
+            },
+            status: { 
+              type: 'string', 
+              description: 'Current connection status of the session.',
+              example: 'SCAN_QR_CODE' 
+            }
+          }
+        },
+        400: {
+          description: 'Invalid input parameters',
+          type: 'object',
+          properties: {
+            error: { type: 'string', example: 'agencyId and tenantId are required' }
           }
         },
         404: {
+          description: 'Agency or Tenant not found',
           type: 'object',
           properties: {
-            error: { type: 'string' }
+            error: { type: 'string', example: 'Tenant not found' }
           }
         },
         502: {
+          description: 'Bad Gateway - Failed to communicate with the messaging provider',
           type: 'object',
           properties: {
-            error: { type: 'string' }
-          }
-        },
-        503: {
-          type: 'object',
-          properties: {
-            error: { type: 'string' }
+            error: { type: 'string', example: 'Provider connection refused' }
           }
         }
       },
@@ -258,7 +283,8 @@ export async function registerSessionV1Routes(fastify: FastifyInstance) {
 
   fastify.get('/api/v1/sessions/by-tenant', {
     schema: {
-      description: 'Get session by agency and tenant ID',
+      summary: 'Get Session by Tenant',
+      description: 'Locate a specific WhatsApp session using agency and tenant identifiers. Returns the internal engine ID and friendly session name.',
       tags: ['Sessions'],
       querystring: {
         type: 'object',
@@ -447,7 +473,8 @@ export async function registerSessionV1Routes(fastify: FastifyInstance) {
 
   fastify.post('/api/v1/sessions/logout', {
     schema: {
-      description: 'Logout session in MessagingProvider',
+      summary: 'Logout Session',
+      description: 'Terminate the WhatsApp session and unpair the device. A new QR scan will be required to reconnect.',
       tags: ['Sessions'],
       body: {
         type: 'object',

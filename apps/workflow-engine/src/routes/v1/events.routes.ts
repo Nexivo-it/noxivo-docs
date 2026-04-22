@@ -7,7 +7,8 @@ export async function registerEventRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/v1/events/stream', {
     schema: {
-      description: 'Real-time event stream for the engine Mission Control',
+      summary: 'Real-time Event Stream',
+      description: 'Establish a Server-Sent Events (SSE) connection to receive real-time system events, heartbeats, and mission control updates.',
       tags: ['Events'],
       security: [{ apiKey: [] }]
     }

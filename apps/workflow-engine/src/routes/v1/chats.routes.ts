@@ -13,7 +13,8 @@ export async function registerChatRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/v1/chats', {
     schema: {
-      description: 'Retrieve a list of active conversation threads',
+      summary: 'List Conversations',
+      description: 'Retrieve a paginated list of active conversation threads for a specific tenant.',
       tags: ['Chats'],
       querystring: {
         type: 'object',

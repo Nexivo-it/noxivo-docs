@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "vitest run",
+    "gen-openapi": "tsx scripts/generate-openapi.ts",
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

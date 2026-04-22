@@ -71,6 +71,7 @@ import { catalogRoutes } from './modules/catalog/routes/index.js';
 import { workflowsRoutes } from './modules/workflows/routes/index.js';
 import { teamInboxRoutes } from './modules/team-inbox/routes/index.js';
 import { settingsRoutes } from './modules/settings/routes/index.js';
+import { DOCS_ACCESS_COOKIE_NAME, resolveDashboardDocsEntryUrl, verifyWorkflowEngineDocsBridgeToken } from './modules/docs/docs-access.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -193,16 +194,26 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   fastify.addHook('preHandler', async (request, reply) => {
-    const requestPath = getRequestPath(request.raw.url);
+    const requestUrl = request.raw.url ?? '/';
+    const requestPath = getRequestPath(requestUrl);
     const isAdminStaticPath = requestPath === '/admin' || requestPath.startsWith('/admin/');
     const isAdminApiPath = requestPath.startsWith('/api/v1/admin/');
     const isAdminLoginPath = requestPath === '/api/v1/admin/login';
+    const isDocsAuthorizePath = requestPath === '/docs/authorize';
+    const isDocPath = requestPath.startsWith('/docs') || requestPath.startsWith('/v1/docs');
 
-    if (isAdminLoginPath) {
+    if (isAdminLoginPath || isDocsAuthorizePath) {
       return;
     }
 
-    if (!isAdminStaticPath && !isAdminApiPath) {
+    if (isDocPath) {
+      const docsAccessToken = readCookieValue(request.headers.cookie, DOCS_ACCESS_COOKIE_NAME);
+      if (verifyWorkflowEngineDocsBridgeToken(docsAccessToken)) {
+        return;
+      }
+    }
+
+    if (!isAdminStaticPath && !isAdminApiPath && !isDocPath) {
       return;
     }
 
@@ -213,7 +224,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (isAdminApiPath) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
-      return reply.redirect('/');
+      if (isDocPath) {
+        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
+      }
+      return reply.redirect('/admin/login');
     }
 
     const authSession = await AuthSessionModel.findOne({
@@ -225,7 +239,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (isAdminApiPath) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
-      return reply.redirect('/');
+      if (isDocPath) {
+        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
+      }
+      return reply.redirect('/admin/login');
     }
 
     const user = await UserModel.findById(authSession.userId).lean();
@@ -233,7 +250,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (isAdminApiPath) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
-      return reply.redirect('/');
+      if (isDocPath) {
+        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
+      }
+      return reply.redirect('/admin/login');
     }
 
     const roleCandidates: Array<string | null | undefined> = [typeof user.role === 'string' ? user.role : null];
@@ -245,12 +265,19 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       }
     }
 
-    const isOwner = roleCandidates.some((roleCandidate) => normalizeStoredUserRole(roleCandidate) === 'owner');
-    if (!isOwner) {
+    const isAuthorized = roleCandidates.some((roleCandidate) => {
+      const normalizedRole = normalizeStoredUserRole(roleCandidate);
+      return normalizedRole === 'owner' || normalizedRole === 'developer';
+    });
+
+    if (!isAuthorized) {
       if (isAdminApiPath) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
-      return reply.redirect('/');
+      if (isDocPath) {
+        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
+      }
+      return reply.redirect('/admin/');
     }
   });
 

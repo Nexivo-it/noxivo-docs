@@ -108,7 +108,7 @@ describe('mission control admin auth and hierarchy routes', () => {
       });
 
       expect(response.statusCode).toBe(302);
-      expect(response.headers.location).toBe('/');
+      expect(response.headers.location).toBe('/admin/login');
     } finally {
       await server.close();
     }

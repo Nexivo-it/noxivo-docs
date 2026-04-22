@@ -144,8 +144,9 @@ export async function registerApiKeysRoutes(fastify: FastifyInstance) {
   
   fastify.get('/api/v1/keys', {
     schema: {
-      description: 'List MessagingProvider API keys (Master only)',
-      tags: ['Api Keys'],
+      summary: 'List Master Keys',
+      description: 'Retrieve a list of all top-level MessagingProvider API keys. Restricted to Master Key holders.',
+      tags: ['API Keys'],
       security: [{ apiKey: [] }],
     },
   }, async (request, reply) => {
