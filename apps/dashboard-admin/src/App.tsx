@@ -4,24 +4,38 @@ import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import Overview from './pages/Overview';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Sessions from './pages/Sessions';
 import Workers from './pages/Workers';
 import Events from './pages/Events';
 import Explorer from './pages/Explorer';
 import Webhooks from './pages/Webhooks';
+import EngineDocs from './pages/EngineDocs';
+import DeveloperGuides from './pages/DeveloperGuides';
+import PendingUsers from './pages/PendingUsers';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { Toaster } from 'sonner';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-surface-base text-on-surface">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen bg-surface-base text-on-surface font-mono text-sm tracking-widest uppercase animate-pulse">Initializing System...</div>;
   }
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+
+  return <>{children}</>;
+};
+
+const AdminOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (user?.role !== 'owner') return <Navigate to="/" replace />;
 
   return <>{children}</>;
 };
@@ -44,12 +58,39 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       
       <Route path="/" element={
         <ProtectedRoute>
           <Layout>
             <Overview />
           </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/docs" element={
+        <ProtectedRoute>
+          <Layout>
+            <EngineDocs />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/guides" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeveloperGuides />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/admin/users" element={
+        <ProtectedRoute>
+          <AdminOnlyRoute>
+            <Layout>
+              <PendingUsers />
+            </Layout>
+          </AdminOnlyRoute>
         </ProtectedRoute>
       } />
 
@@ -97,8 +138,6 @@ const AppRoutes: React.FC = () => {
     </Routes>
   );
 };
-
-import { Toaster } from 'sonner';
 
 const App: React.FC = () => {
   return (

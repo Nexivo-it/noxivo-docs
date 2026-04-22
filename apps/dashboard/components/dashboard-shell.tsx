@@ -15,11 +15,11 @@ import {
   PanelLeftOpen,
   Settings,
   UserRound,
-  Waypoints,
   X,
 } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { AccessRoleIcon, formatPlanLabel, formatRoleLabel } from './dashboard-workspace-ui';
+import { NoxivoLogo } from './noxivo-logo';
 import { getDashboardNavigation } from '../lib/dashboard/navigation';
 
 const COLLAPSE_KEY = 'nf_sidebar_collapsed';
@@ -415,9 +415,9 @@ export function DashboardShell({ user, agency, allAgencies, clientTenants, activ
   const renderSidebarContent = (collapsed: boolean, isMobile = false) => (
     <div className="flex h-full flex-col py-6">
       <div className={`mb-8 flex shrink-0 items-center px-8 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-        <div className="flex min-w-0 items-center gap-5 overflow-hidden">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-primary-glow lumina-glow group transition-transform hover:scale-110 duration-500">
-            <Waypoints className="h-6 w-6 transition-transform group-hover:rotate-12" />
+        <div className="flex min-w-0 items-center gap-4 overflow-hidden">
+          <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl border border-border-ghost bg-surface-card px-4 shadow-ambient backdrop-blur-md">
+            <NoxivoLogo alt="Noxivo" height={28} priority variant="auto" width={108} />
           </div>
           <div
             className={`min-w-0 overflow-hidden transition-all duration-700 ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}

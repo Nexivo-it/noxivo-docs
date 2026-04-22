@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ArrowRight, CheckCircle2, ShieldCheck, Globe } from 'lucide-react';
+import { Loader2, Mail, Lock, ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { buildAuthPath } from '../lib/auth/paths';
 import Image from 'next/image';
+import { NoxivoLogo } from './noxivo-logo';
 
 interface LoginFormProps {
   brandName?: string;
@@ -85,11 +86,10 @@ export function LoginForm({
         
         <div className="relative z-20 flex flex-col justify-between p-16 w-full">
           <div>
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-2 bg-brand-500 rounded-lg shadow-[0_0_20px_rgba(99,102,241,0.5)]">
-                <Globe className="h-8 w-8 text-white" />
+            <div className="mb-8 flex items-center gap-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-[0_0_20px_rgba(99,102,241,0.18)] backdrop-blur-md">
+                <NoxivoLogo alt={brandName ? `${brandName} logo` : 'Noxivo logo'} height={36} priority variant="light" width={132} />
               </div>
-              <h1 className="text-3xl font-bold tracking-tighter text-white">{brandName}</h1>
             </div>
             
             <h2 className="text-5xl font-extrabold text-white leading-tight mb-6 max-w-xl">
@@ -132,11 +132,10 @@ export function LoginForm({
         />
 
         <div className="w-full max-w-md mx-auto relative z-10">
-          <div className="lg:hidden mb-12 flex items-center gap-3">
-             <div className="p-2 bg-brand-500 rounded-lg">
-                <Globe className="h-6 w-6 text-white" />
-              </div>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary">{brandName}</h1>
+          <div className="lg:hidden mb-12 flex items-center">
+            <div className="rounded-2xl border border-border-ghost bg-surface-card px-4 py-3 shadow-ambient backdrop-blur-md">
+              <NoxivoLogo alt={brandName ? `${brandName} logo` : 'Noxivo logo'} height={32} priority variant="auto" width={118} />
+            </div>
           </div>
 
           <div className="mb-10">

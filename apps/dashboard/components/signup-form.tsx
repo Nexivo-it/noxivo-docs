@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, User, Building2, ArrowRight, Check } from 'lucide-react';
 import { buildAuthPath } from '../lib/auth/paths';
+import { NoxivoLogo } from './noxivo-logo';
 
 interface SignupFormProps {
   brandName?: string;
@@ -96,8 +97,12 @@ export function SignupForm({
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-text-primary mb-2 tracking-tight">{brandName}</h1>
+        <div className="mb-8 text-center">
+          <div className="mb-5 flex justify-center">
+            <div className="rounded-2xl border border-border-ghost bg-surface-card px-5 py-3 shadow-ambient backdrop-blur-md">
+              <NoxivoLogo alt={brandName ? `${brandName} logo` : 'Noxivo logo'} height={40} priority variant="auto" width={148} />
+            </div>
+          </div>
           <p className="text-text-muted">{invitationToken ? 'Join your agency team' : 'Create your agency account'}</p>
           {invitationToken ? <p className="text-sm text-brand-400 mt-2">You are signing up from an invitation link.</p> : null}
           {supportEmail ? <p className="text-xs text-text-muted mt-2">Support: {supportEmail}</p> : null}

@@ -7,10 +7,17 @@ import {
   Activity, 
   ShieldCheck,
   Code2,
-  Webhook
+  Webhook,
+  BookOpen,
+  Users,
+  Map
 } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
 const Sidebar: React.FC = () => {
+  const { user } = useAuth();
+  const isOwner = user?.role === 'owner';
+
   return (
     <aside className="w-64 bg-surface-section border-r border-border-ghost flex flex-col h-full z-20">
       {/* Brand Header */}
@@ -39,19 +46,34 @@ const Sidebar: React.FC = () => {
           <NavItem to="/explorer" icon={<Code2 size={18} />} label="MessagingProvider Explorer" />
           <NavItem to="/webhooks" icon={<Webhook size={18} />} label="Webhook Tools" />
         </div>
+
+        <div className="space-y-1">
+          <p className="px-4 mb-2 text-[10px] font-mono text-on-surface-muted uppercase tracking-[0.2em]">Resources</p>
+          <NavItem to="/docs" icon={<BookOpen size={18} />} label="Engine API Docs" />
+          <NavItem to="/guides" icon={<Map size={18} />} label="Architecture Guides" />
+        </div>
+
+        {isOwner && (
+          <div className="space-y-1">
+            <p className="px-4 mb-2 text-[10px] font-mono text-on-surface-muted uppercase tracking-[0.2em]">System Admin</p>
+            <NavItem to="/admin/users" icon={<Users size={18} />} label="User Registry" />
+          </div>
+        )}
       </nav>
 
       {/* Footer Profile */}
       <div className="p-4 mt-auto border-t border-border-ghost bg-white/[0.02]">
         <div className="flex items-center gap-3 px-2">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-bold border border-white/10">
-            SY
+          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-bold border border-white/10 tracking-tighter">
+            {user?.name.split(' ').map(n => n[0]).join('').toUpperCase() || '??'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold truncate">System Admin</p>
+            <p className="text-xs font-semibold truncate">{user?.name || 'Unknown User'}</p>
             <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
-              <p className="text-[10px] text-on-surface-muted uppercase font-mono">Production ACTIVE</p>
+              <span className={`w-1.5 h-1.5 rounded-full ${isOwner ? 'bg-primary animate-pulse' : 'bg-blue-400'}`}></span>
+              <p className="text-[10px] text-on-surface-muted uppercase font-mono truncate">
+                {user?.role === 'owner' ? 'System Owner' : 'Internal Dev'}
+              </p>
             </div>
           </div>
         </div>
