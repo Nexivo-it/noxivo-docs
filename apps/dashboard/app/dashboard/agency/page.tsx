@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation';
 import { ArrowRight, Building2, Globe, MessagesSquare, Users, Workflow } from 'lucide-react';
 import { requireCurrentSession } from '../../../lib/auth/current-user';
 import { canManageAgencySettings } from '../../../lib/auth/authorization';
-import { queryAgencyOverview, queryDashboardOverview } from '../../../lib/dashboard/queries';
+import { workflowEngineServerFetch } from '../../../lib/api/workflow-engine-server';
+import type { AgencyOverviewData, DashboardOverviewData } from '../../../lib/api/dashboard-aggregates';
 import {
   AccessRoleIcon,
   Badge,
@@ -28,8 +29,8 @@ export default async function AgencyPage() {
     redirect('/dashboard/conversations');
   }
   const [agencyOverview, dashboardOverview] = await Promise.all([
-    queryAgencyOverview(session),
-    queryDashboardOverview(session),
+    workflowEngineServerFetch<AgencyOverviewData>(`/api/v1/agencies/${session.actor.agencyId}`),
+    workflowEngineServerFetch<DashboardOverviewData>('/api/v1/dashboard-data/overview'),
   ]);
 
   const agencyStatus = badgeForAgencyStatus(agencyOverview.agency.status);

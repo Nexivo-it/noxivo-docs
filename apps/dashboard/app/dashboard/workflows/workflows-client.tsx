@@ -23,6 +23,7 @@ import {
 } from '../../../components/dashboard-workspace-ui';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { dashboardApi } from '../../../lib/api/dashboard-api';
 
 export interface WorkflowItem {
   id: string;
@@ -59,19 +60,13 @@ export function WorkflowsClient({ initialWorkflows, canManage }: WorkflowsClient
     
     setLoading(workflowId);
     try {
-      const res = await fetch(`/api/workflows/${workflowId}/toggle`, {
-        method: 'POST',
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setWorkflows(prev => prev.map(w => 
-          w.id === workflowId 
-            ? { ...w, status: data.isActive ? 'active' : 'paused' } 
-            : w
-        ));
-        router.refresh();
-      }
+      const data = await dashboardApi.toggleWorkflow(workflowId);
+      setWorkflows(prev => prev.map(w => 
+        w.id === workflowId 
+          ? { ...w, status: data.isActive ? 'active' : 'paused' } 
+          : w
+      ));
+      router.refresh();
     } catch (error) {
       console.error('Failed to toggle workflow:', error);
     } finally {
@@ -84,19 +79,12 @@ export function WorkflowsClient({ initialWorkflows, canManage }: WorkflowsClient
     if (!editWorkflow) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/workflows/${editWorkflow.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: editName, description: editDesc })
-      });
-      if (res.ok) {
-        setWorkflows(prev => prev.map(w => w.id === editWorkflow.id ? { ...w, name: editName, description: editDesc } : w));
-        setEditWorkflow(null);
-        router.refresh();
-      } else {
-        alert('Failed to update workflow');
-      }
+      await dashboardApi.updateWorkflow(editWorkflow.id, { name: editName, description: editDesc });
+      setWorkflows(prev => prev.map(w => w.id === editWorkflow.id ? { ...w, name: editName, description: editDesc } : w));
+      setEditWorkflow(null);
+      router.refresh();
     } catch (err) {
+      alert('Failed to update workflow');
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -110,17 +98,12 @@ export function WorkflowsClient({ initialWorkflows, canManage }: WorkflowsClient
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/workflows/${editWorkflow.id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setWorkflows(prev => prev.filter(w => w.id !== editWorkflow.id));
-        setEditWorkflow(null);
-        router.refresh();
-      } else {
-        alert('Failed to delete workflow');
-      }
+      await dashboardApi.deleteWorkflow(editWorkflow.id);
+      setWorkflows(prev => prev.filter(w => w.id !== editWorkflow.id));
+      setEditWorkflow(null);
+      router.refresh();
     } catch (err) {
+      alert('Failed to delete workflow');
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -153,31 +136,21 @@ export function WorkflowsClient({ initialWorkflows, canManage }: WorkflowsClient
               e.preventDefault();
               setIsSubmitting(true);
               try {
-                const res = await fetch('/api/workflows', {
-                  method: 'POST',
-                  headers: { 'content-type': 'application/json' },
-                  body: JSON.stringify({ name, description })
-                });
-                if (res.ok) {
-                  setName('');
-                  setDescription('');
-                  setShowCreateForm(false);
-                  const data = await res.json();
-                  const newWorkflow: WorkflowItem = {
-                    id: data.id,
-                    name: data.name,
-                    description: description || 'Workflow for whatsapp',
-                    status: 'paused',
-                    lastRun: 'Never',
-                    executions: 0,
-                    type: 'Standard'
-                  };
-                  setWorkflows(prev => [...prev, newWorkflow]);
-                  router.refresh();
-                } else {
-                  const data = await res.json().catch(() => null);
-                  alert(data?.error || 'Failed to create workflow');
-                }
+                const data = await dashboardApi.createWorkflow({ name, description });
+                setName('');
+                setDescription('');
+                setShowCreateForm(false);
+                const newWorkflow: WorkflowItem = {
+                  id: data.id,
+                  name: data.name,
+                  description: description || 'Workflow for whatsapp',
+                  status: 'paused',
+                  lastRun: 'Never',
+                  executions: 0,
+                  type: 'Standard'
+                };
+                setWorkflows(prev => [...prev, newWorkflow]);
+                router.refresh();
               } catch (err) {
                 console.error(err);
                 alert('An error occurred');
@@ -376,4 +349,3 @@ export function WorkflowsClient({ initialWorkflows, canManage }: WorkflowsClient
     </div>
   );
 }
-

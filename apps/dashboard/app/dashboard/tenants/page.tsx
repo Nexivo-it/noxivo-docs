@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { requireCurrentSession } from '../../../lib/auth/current-user';
 import { canManageAgencySettings } from '../../../lib/auth/authorization';
-import { queryAgencyOverview } from '../../../lib/dashboard/queries';
+import type { AgencyOverviewData } from '../../../lib/api/dashboard-aggregates';
+import { workflowEngineServerFetch } from '../../../lib/api/workflow-engine-server';
 import { TenantsWorkspace } from '../../../components/tenants-workspace';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,9 @@ export default async function TenantsPage() {
   if (!canManageAgencySettings(session)) {
     redirect('/dashboard/conversations');
   }
-  const agencyOverview = await queryAgencyOverview(session);
+  const agencyOverview = await workflowEngineServerFetch<AgencyOverviewData>(
+    `/api/v1/agencies/${encodeURIComponent(session.actor.agencyId)}`,
+  );
 
   return (
     <TenantsWorkspace

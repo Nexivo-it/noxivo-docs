@@ -9,6 +9,7 @@ import {
   MediaStorageConfigModel,
   MessagingClusterModel,
   MessagingSessionBindingModel,
+  NotificationModel,
   PluginInstallationModel,
   TenantCredentialModel,
   TenantModel,
@@ -141,6 +142,7 @@ describe('settings routes on workflow-engine', () => {
       WebhookInboxSourceModel.init(),
       MessagingSessionBindingModel.init(),
       MessagingClusterModel.init(),
+      NotificationModel.init(),
     ]);
   });
 
@@ -513,6 +515,116 @@ describe('settings routes on workflow-engine', () => {
       expect(qrDeleteResponse.json()).toEqual(
         expect.objectContaining({
           ok: true,
+        }),
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('owns notifications and imagekit auth support endpoints', async () => {
+    const actor = await seedSettingsActor();
+    const cookie = await createSessionCookie(actor);
+
+    await MediaStorageConfigModel.create({
+      agencyId: actor.agencyId,
+      provider: 'imagekit',
+      isActive: true,
+      publicBaseUrl: 'https://ik.imagekit.io/noxivo',
+      publicConfig: {
+        publicKey: 'public_test_key',
+      },
+      secretConfig: {
+        privateKey: 'private_test_key',
+      },
+      pathPrefix: 'assets',
+    });
+
+    await NotificationModel.create({
+      agencyId: actor.agencyId,
+      tenantId: actor.tenantId,
+      type: 'workflow_failure',
+      title: 'Workflow failed',
+      message: 'Failure in production flow',
+      severity: 'error',
+      isRead: false,
+      metadata: {
+        workflowId: 'workflow-1',
+      },
+      createdAt: new Date(),
+    });
+
+    const server = await buildServer({ logger: false });
+
+    try {
+      const notificationsGetResponse = await server.inject({
+        method: 'GET',
+        url: '/api/v1/settings/notifications',
+        headers: { cookie },
+      });
+
+      expect(notificationsGetResponse.statusCode).toBe(200);
+      expect(notificationsGetResponse.json()).toEqual({
+        notifications: [
+          expect.objectContaining({
+            title: 'Workflow failed',
+            isRead: false,
+          }),
+        ],
+        unreadCount: 1,
+      });
+
+      const notificationId = (notificationsGetResponse.json() as {
+        notifications: Array<{ id: string }>;
+      }).notifications[0]?.id;
+
+      expect(notificationId).toBeTruthy();
+
+      const markAsReadResponse = await server.inject({
+        method: 'POST',
+        url: '/api/v1/settings/notifications',
+        headers: {
+          cookie,
+          'content-type': 'application/json',
+        },
+        payload: {
+          action: 'markAsRead',
+          notificationId,
+        },
+      });
+
+      expect(markAsReadResponse.statusCode).toBe(200);
+      expect(markAsReadResponse.json()).toEqual({ success: true });
+
+      const notificationsAfterRead = await server.inject({
+        method: 'GET',
+        url: '/api/v1/settings/notifications',
+        headers: { cookie },
+      });
+      expect(notificationsAfterRead.statusCode).toBe(200);
+      expect(notificationsAfterRead.json()).toEqual({
+        notifications: [
+          expect.objectContaining({
+            id: notificationId,
+            isRead: true,
+          }),
+        ],
+        unreadCount: 0,
+      });
+
+      const imagekitAuthResponse = await server.inject({
+        method: 'GET',
+        url: '/api/v1/settings/imagekit-auth',
+        headers: { cookie },
+      });
+
+      expect(imagekitAuthResponse.statusCode).toBe(200);
+      expect(imagekitAuthResponse.json()).toEqual(
+        expect.objectContaining({
+          signature: expect.any(String),
+          token: expect.any(String),
+          expire: expect.any(Number),
+          publicKey: 'public_test_key',
         }),
       );
     } finally {

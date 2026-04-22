@@ -1,5 +1,6 @@
 import { requireCurrentSession } from '../../../../lib/auth/current-user';
-import { queryAgencyOverview, queryTeamManagement } from '../../../../lib/dashboard/queries';
+import type { AgencyOverviewData, TeamManagementData } from '../../../../lib/api/dashboard-aggregates';
+import { workflowEngineServerFetch } from '../../../../lib/api/workflow-engine-server';
 import { TeamWorkspace } from '../../../../components/team-workspace';
 import { TenantsWorkspace } from '../../../../components/tenants-workspace';
 
@@ -13,8 +14,8 @@ export default async function PlatformAgencyDetailPage({
   const session = await requireCurrentSession();
   const { agencyId } = await params;
   const [agencyOverview, teamManagement] = await Promise.all([
-    queryAgencyOverview(session, agencyId),
-    queryTeamManagement(session, agencyId),
+    workflowEngineServerFetch<AgencyOverviewData>(`/api/v1/agencies/${encodeURIComponent(agencyId)}`),
+    workflowEngineServerFetch<TeamManagementData>(`/api/v1/agencies/${encodeURIComponent(agencyId)}/team`),
   ]);
 
   return (

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Globe, Loader2, Plus, Users } from 'lucide-react';
 import type { AgencySummary } from '@noxivo/contracts';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 import {
   Badge,
   EmptyWorkspaceState,
@@ -57,16 +58,6 @@ function getTenantStatusBadge(status: string): { label: string; tone: 'success' 
   }
 }
 
-async function readErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
-  const payload = await response.json().catch(() => null);
-
-  if (payload && typeof payload === 'object' && typeof (payload as { error?: unknown }).error === 'string') {
-    return (payload as { error: string }).error;
-  }
-
-  return fallbackMessage;
-}
-
 export function TenantsWorkspace({ actorRole, agency, tenants }: TenantsWorkspaceProps) {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -90,20 +81,12 @@ export function TenantsWorkspace({ actorRole, agency, tenants }: TenantsWorkspac
     setFeedback(null);
 
     try {
-      const response = await fetch(`/api/agencies/${agency.id}/tenants`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          slug,
-          region,
-          billingMode,
-        }),
+      await dashboardApi.createAgencyTenant(agency.id, {
+        name,
+        slug,
+        region,
+        billingMode,
       });
-
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Unable to create tenant workspace'));
-      }
 
       setName('');
       setSlug('');

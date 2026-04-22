@@ -111,6 +111,11 @@ export const apiAuthPlugin = fp(async (fastify: FastifyInstance) => {
                      requestPath === '/api/v1/workflows' ||
                      requestPath.startsWith('/api/v1/settings/') ||
                      requestPath === '/api/v1/settings' ||
+                     requestPath.startsWith('/api/v1/memories') ||
+                     requestPath.startsWith('/api/v1/dashboard-auth/') ||
+                     requestPath === '/api/v1/dashboard-auth' ||
+                     requestPath.startsWith('/api/v1/dashboard-data/') ||
+                     requestPath === '/api/v1/dashboard-data' ||
                      requestPath === '/api/v1/agencies' ||
                      requestPath.startsWith('/api/v1/agencies/') ||
                      requestPath.startsWith('/v1/internal/') || 

@@ -189,7 +189,7 @@ describe('inbox realtime pagination cursor handling', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString();
 
-      if (url.startsWith('/api/team-inbox?')) {
+      if (url === 'http://localhost:3001/api/v1/team-inbox' || url.startsWith('http://localhost:3001/api/v1/team-inbox?')) {
         return new Response(JSON.stringify([
           {
             _id: 'conv-1',
@@ -212,7 +212,7 @@ describe('inbox realtime pagination cursor handling', () => {
         });
       }
 
-      if (url.startsWith('/api/team-inbox/conv-1/messages?')) {
+      if (url.startsWith('http://localhost:3001/api/v1/team-inbox/conv-1/messages?')) {
         const parsed = new URL(url, 'http://localhost');
         const cursor = parsed.searchParams.get('cursor');
         const syncPages = parsed.searchParams.get('syncPages');
@@ -252,7 +252,7 @@ describe('inbox realtime pagination cursor handling', () => {
         }
       }
 
-      if (url === '/api/team-inbox/conv-1/read' && init?.method === 'POST') {
+      if (url === 'http://localhost:3001/api/v1/team-inbox/conv-1/read' && init?.method === 'POST') {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
@@ -362,7 +362,7 @@ describe('inbox realtime pagination cursor handling', () => {
       .slice()
       .reverse()
       .find((requestUrl: string) => {
-        if (!requestUrl.startsWith('/api/team-inbox/conv-1/messages?')) {
+        if (!requestUrl.startsWith('http://localhost:3001/api/v1/team-inbox/conv-1/messages?')) {
           return false;
         }
         const parsed = new URL(requestUrl, 'http://localhost');

@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useState } from 'react';
 import { useSearchParams, useParams } from 'next/navigation';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 const AGENCY_CONTEXT_KEY = 'nf_admin_agency_ctx';
 const TENANT_CONTEXT_KEY = 'nf_admin_tenant_ctx';
@@ -18,8 +19,8 @@ function useUrlAgencyContext() {
 
   const validateAgency = useCallback(async (agencyId: string): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/agencies/${agencyId}`);
-      return res.ok;
+      await dashboardApi.getAgency(agencyId);
+      return true;
     } catch {
       return false;
     }
@@ -27,8 +28,8 @@ function useUrlAgencyContext() {
 
   const validateTenant = useCallback(async (tenantId: string, agencyId: string): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/agencies/${agencyId}/tenants/${tenantId}`);
-      return res.ok;
+      await dashboardApi.getAgencyTenant(agencyId, tenantId);
+      return true;
     } catch {
       return false;
     }

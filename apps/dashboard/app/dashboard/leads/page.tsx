@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2, RefreshCcw, Search, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
+import { dashboardApi } from '../../../lib/api/dashboard-api';
 
 type LeadSummary = {
   contactId: string;
@@ -19,14 +20,6 @@ type LeadSummary = {
   conversationStatus: string | null;
   avatarUrl: string | null;
 };
-
-async function parseJsonSafe<T>(response: Response): Promise<T | null> {
-  try {
-    return await response.json() as T;
-  } catch {
-    return null;
-  }
-}
 
 function formatDateTime(value: string | null): string {
   if (!value) {
@@ -54,17 +47,9 @@ export default function LeadsPage() {
     }
 
     try {
-      const searchParams = new URLSearchParams();
-      if (query.trim().length > 0) {
-        searchParams.set('query', query.trim());
-      }
-
-      const response = await fetch(`/api/team-inbox/leads?${searchParams.toString()}`);
-      const payload = await parseJsonSafe<LeadSummary[] | { error?: string }>(response);
-      if (!response.ok || !Array.isArray(payload)) {
-        throw new Error((payload as { error?: string } | null)?.error ?? 'Unable to load leads');
-      }
-
+      const payload = await dashboardApi.listTeamInboxLeads<LeadSummary>({
+        ...(query.trim().length > 0 ? { query: query.trim() } : {})
+      });
       setLeads(payload);
       setError(null);
     } catch (fetchError) {
@@ -92,12 +77,8 @@ export default function LeadsPage() {
 
     setIsRemoving(lead.contactId);
     try {
-      const response = await fetch(`/api/team-inbox/${lead.conversationId}/lead`, {
-        method: 'DELETE'
-      });
-      const payload = await parseJsonSafe<{ success?: boolean; error?: string }>(response);
-
-      if (!response.ok || payload?.success !== true) {
+      const payload = await dashboardApi.deleteTeamInboxLead(lead.conversationId);
+      if (payload?.success !== true) {
         throw new Error(payload?.error ?? 'Unable to remove lead');
       }
 

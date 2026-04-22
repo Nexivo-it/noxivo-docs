@@ -57,6 +57,7 @@ import { registerPairingRoutes } from './routes/v1/pairing.routes.js';
 import { registerProfileRoutes } from './routes/v1/profile.routes.js';
 import { registerContactRoutes } from './routes/v1/contacts.routes.js';
 import { registerMediaRoutes } from './routes/v1/media.routes.js';
+import { registerMemoriesRoutes } from './routes/v1/memories.routes.js';
 import { registerObservabilityRoutes } from './routes/v1/observability.routes.js';
 import { registerStatusRoutes } from './routes/v1/status.routes.js';
 import { registerStorageRoutes } from './routes/v1/storage.routes.js';
@@ -71,7 +72,9 @@ import { catalogRoutes } from './modules/catalog/routes/index.js';
 import { workflowsRoutes } from './modules/workflows/routes/index.js';
 import { teamInboxRoutes } from './modules/team-inbox/routes/index.js';
 import { settingsRoutes } from './modules/settings/routes/index.js';
-import { DOCS_ACCESS_COOKIE_NAME, resolveDashboardDocsEntryUrl, verifyWorkflowEngineDocsBridgeToken } from './modules/docs/docs-access.js';
+import { dashboardAuthRoutes } from './modules/dashboard-auth/routes/index.js';
+import { dashboardDataRoutes } from './modules/dashboard-data/routes/index.js';
+import { webhookInboxIngressRoute } from './modules/webhook-inbox/ingress.route.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -194,26 +197,16 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   fastify.addHook('preHandler', async (request, reply) => {
-    const requestUrl = request.raw.url ?? '/';
-    const requestPath = getRequestPath(requestUrl);
+    const requestPath = getRequestPath(request.raw.url);
     const isAdminStaticPath = requestPath === '/admin' || requestPath.startsWith('/admin/');
     const isAdminApiPath = requestPath.startsWith('/api/v1/admin/');
     const isAdminLoginPath = requestPath === '/api/v1/admin/login';
-    const isDocsAuthorizePath = requestPath === '/docs/authorize';
-    const isDocPath = requestPath.startsWith('/docs') || requestPath.startsWith('/v1/docs');
 
-    if (isAdminLoginPath || isDocsAuthorizePath) {
+    if (isAdminLoginPath) {
       return;
     }
 
-    if (isDocPath) {
-      const docsAccessToken = readCookieValue(request.headers.cookie, DOCS_ACCESS_COOKIE_NAME);
-      if (verifyWorkflowEngineDocsBridgeToken(docsAccessToken)) {
-        return;
-      }
-    }
-
-    if (!isAdminStaticPath && !isAdminApiPath && !isDocPath) {
+    if (!isAdminStaticPath && !isAdminApiPath) {
       return;
     }
 
@@ -224,10 +217,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (isAdminApiPath) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
-      if (isDocPath) {
-        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
-      }
-      return reply.redirect('/admin/login');
+      return reply.redirect('/');
     }
 
     const authSession = await AuthSessionModel.findOne({
@@ -239,10 +229,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (isAdminApiPath) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
-      if (isDocPath) {
-        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
-      }
-      return reply.redirect('/admin/login');
+      return reply.redirect('/');
     }
 
     const user = await UserModel.findById(authSession.userId).lean();
@@ -250,10 +237,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (isAdminApiPath) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
-      if (isDocPath) {
-        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
-      }
-      return reply.redirect('/admin/login');
+      return reply.redirect('/');
     }
 
     const roleCandidates: Array<string | null | undefined> = [typeof user.role === 'string' ? user.role : null];
@@ -265,19 +249,12 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       }
     }
 
-    const isAuthorized = roleCandidates.some((roleCandidate) => {
-      const normalizedRole = normalizeStoredUserRole(roleCandidate);
-      return normalizedRole === 'owner' || normalizedRole === 'developer';
-    });
-
-    if (!isAuthorized) {
+    const isOwner = roleCandidates.some((roleCandidate) => normalizeStoredUserRole(roleCandidate) === 'owner');
+    if (!isOwner) {
       if (isAdminApiPath) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
-      if (isDocPath) {
-        return reply.redirect(resolveDashboardDocsEntryUrl(requestUrl));
-      }
-      return reply.redirect('/admin/');
+      return reply.redirect('/');
     }
   });
 
@@ -312,6 +289,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await registerProfileRoutes(fastify);
   await registerContactRoutes(fastify);
   await registerMediaRoutes(fastify);
+  await registerMemoriesRoutes(fastify);
   await registerObservabilityRoutes(fastify);
   await registerStatusRoutes(fastify);
   await registerStorageRoutes(fastify);
@@ -324,6 +302,9 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await fastify.register(workflowsRoutes, { prefix: '/api/v1/workflows' });
   await fastify.register(teamInboxRoutes, { prefix: '/api/v1/team-inbox' });
   await fastify.register(settingsRoutes, { prefix: '/api/v1/settings' });
+  await fastify.register(dashboardAuthRoutes, { prefix: '/api/v1/dashboard-auth' });
+  await fastify.register(dashboardDataRoutes, { prefix: '/api/v1/dashboard-data' });
+  await fastify.register(webhookInboxIngressRoute, { prefix: '/api/webhook-inbox' });
 
   const { MediaStorageService } = await import('./modules/storage/media-storage.service.js');
   const mediaStorageService = new MediaStorageService();

@@ -1,6 +1,5 @@
-import { AgencyModel } from '@noxivo/database';
 import { parseWhiteLabelConfig, type WhiteLabelConfig } from '@noxivo/contracts';
-import dbConnect from './mongodb';
+import { workflowEngineFetch } from './api/workflow-engine-client';
 
 export interface AgencyBrandingPayload {
   agencyId: string;
@@ -10,17 +9,27 @@ export interface AgencyBrandingPayload {
 }
 
 export async function getAgencyBrandingBySlug(agencySlug: string): Promise<AgencyBrandingPayload | null> {
-  await dbConnect();
-  const agency = await AgencyModel.findOne({ slug: agencySlug }).lean();
-
-  if (!agency) {
+  const normalizedSlug = agencySlug.trim().toLowerCase();
+  if (!normalizedSlug) {
     return null;
   }
 
-  return {
-    agencyId: agency._id.toString(),
-    agencyName: agency.name,
-    agencySlug: agency.slug,
-    branding: parseWhiteLabelConfig(agency.whiteLabelDefaults)
-  };
+  try {
+    const payload = await workflowEngineFetch<AgencyBrandingPayload>(
+      `/api/v1/dashboard-auth/branding/${encodeURIComponent(normalizedSlug)}`,
+    );
+
+    return {
+      agencyId: payload.agencyId,
+      agencyName: payload.agencyName,
+      agencySlug: payload.agencySlug,
+      branding: parseWhiteLabelConfig(payload.branding),
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Not found') {
+      return null;
+    }
+
+    throw error;
+  }
 }

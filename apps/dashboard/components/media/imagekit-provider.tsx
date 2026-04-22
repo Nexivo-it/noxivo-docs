@@ -8,6 +8,7 @@ import {
   upload,
   ImageKitContext
 } from '@imagekit/react';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 /**
  * Global authenticator function for ImageKit client-side uploads.
@@ -15,15 +16,7 @@ import {
  */
 const authenticator = async () => {
   try {
-    const response = await fetch('/api/media/imagekit-auth');
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Authentication failed with status ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data; // { signature, token, expire }
+    return await dashboardApi.getImagekitAuth(); // { signature, token, expire, publicKey }
   } catch (error: any) {
     throw new Error(`Authentication request failed: ${error.message}`);
   }
@@ -84,15 +77,15 @@ export const IKUpload = ({
 
     try {
       const auth = await authenticator();
+      const { publicKey: authPublicKey, ...authParams } = auth;
       const result = await upload({
         file,
         fileName: fileName || file.name,
         useUniqueFileName,
         tags,
         folder,
-        publicKey: propPublicKey || auth.publicKey, // Use publicKey from auth response if not provided as prop
-        urlEndpoint,
-        ...auth,
+        publicKey: propPublicKey || authPublicKey,
+        ...authParams,
       });
 
       if (onSuccess) onSuccess(result);

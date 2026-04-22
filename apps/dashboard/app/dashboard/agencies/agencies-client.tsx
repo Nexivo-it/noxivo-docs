@@ -15,6 +15,7 @@ import {
   formatDateLabel,
   formatPlanLabel,
 } from '../../../components/dashboard-workspace-ui';
+import { dashboardApi, type CreateAgencyInput } from '../../../lib/api/dashboard-api';
 
 interface AgenciesClientPageProps {
   agencies: AgencySummary[];
@@ -56,22 +57,21 @@ export function AgenciesClientPage({ agencies }: AgenciesClientPageProps) {
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/agencies', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          slug,
-          plan,
-          ownerEmail: ownerEmail || undefined,
-          ownerFullName: ownerFullName || undefined,
-        }),
-      });
+      const payload: CreateAgencyInput = {
+        name,
+        slug,
+        plan,
+      };
 
-      const payload = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) {
-        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Unable to create agency');
+      if (ownerEmail) {
+        payload.ownerEmail = ownerEmail;
       }
+
+      if (ownerFullName) {
+        payload.ownerFullName = ownerFullName;
+      }
+
+      await dashboardApi.createAgency(payload);
 
       setFeedback({ tone: 'success', message: 'Agency created successfully. Refresh to see the newest directory entry.' });
       setName('');

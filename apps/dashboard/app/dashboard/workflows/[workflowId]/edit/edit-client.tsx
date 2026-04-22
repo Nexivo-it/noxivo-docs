@@ -6,6 +6,7 @@ import { compileGraphToDag } from '../../../../../lib/workflows/graph-to-dag';
 import { WorkspaceHeader } from '../../../../../components/dashboard-workspace-ui';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { dashboardApi } from '../../../../../lib/api/dashboard-api';
 
 export function WorkflowEditClient({
   workflowId,
@@ -38,13 +39,7 @@ export function WorkflowEditClient({
       };
 
       // 3. Save to API
-      const res = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('Failed to save workflow');
+      await dashboardApi.saveWorkflowDefinition(workflowId, payload);
 
       toast.success('Workflow deployed successfully');
       router.refresh();

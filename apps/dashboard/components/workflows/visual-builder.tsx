@@ -20,6 +20,8 @@ import '@xyflow/react/dist/style.css';
 import { MessageSquare, Zap, Split, Clock, UserPlus, Save, Database, List, Loader2, CheckCircle, Bug, Trash2 } from 'lucide-react';
 import { compileGraphToDag } from '../../lib/workflows/graph-to-dag';
 import { WorkflowExecutionEvent } from '@noxivo/contracts';
+import { dashboardApi } from '../../lib/api/dashboard-api';
+import { buildWorkflowEngineUrl } from '../../lib/api/workflow-engine-client';
 
 // --- CUSTOM NODES (LUMINA STYLE) ---
 
@@ -47,6 +49,15 @@ interface CustomNodeData {
   };
   [key: string]: unknown;
 }
+
+type WorkflowDetailResponse = {
+  workflow?: {
+    editorGraph?: {
+      nodes?: Node[];
+      edges?: Edge[];
+    };
+  };
+};
 
 type CustomNodeProps = NodeProps<Node<CustomNodeData>>;
 
@@ -190,7 +201,10 @@ export function VisualBuilder({
       return;
     }
 
-    const eventSource = new EventSource(`/api/workflows/${workflowId}/execution-events`);
+    const eventSource = new EventSource(
+      buildWorkflowEngineUrl(`/api/v1/workflows/${workflowId}/execution-events`),
+      { withCredentials: true }
+    );
 
     eventSource.onmessage = (event) => {
       try {
@@ -260,8 +274,7 @@ export function VisualBuilder({
     }
     async function loadWorkflow() {
       try {
-        const res = await fetch(`/api/workflows/${workflowId}`);
-        const data = await res.json();
+        const data = await dashboardApi.getWorkflowDetail<WorkflowDetailResponse>(workflowId);
         
         if (data.workflow?.editorGraph) {
           const { nodes: graphNodes, edges: graphEdges } = data.workflow.editorGraph;
@@ -334,16 +347,10 @@ export function VisualBuilder({
       const graph = { nodes, edges };
       const compiledDag = compileGraphToDag(graph);
 
-      const res = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          editorGraph: graph,
-          compiledDag
-        })
+      await dashboardApi.saveWorkflowDefinition(workflowId, {
+        editorGraph: graph,
+        compiledDag,
       });
-
-      if (!res.ok) throw new Error('Failed to save to cloud.');
       
       setLastSaved(new Date());
     } catch (err: any) {

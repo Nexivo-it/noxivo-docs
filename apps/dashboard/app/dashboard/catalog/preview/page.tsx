@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Search, Clock, DollarSign, ExternalLink, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { CatalogItem } from '@/lib/catalog/types';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 export default function CatalogPreview() {
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -14,8 +15,7 @@ export default function CatalogPreview() {
   useEffect(() => {
     async function fetchItems() {
       try {
-        const response = await fetch('/api/catalog');
-        const data = await response.json();
+        const data = await dashboardApi.getCatalog();
         if (data.items) {
           setItems(data.items);
         }

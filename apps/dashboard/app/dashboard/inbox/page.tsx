@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronLeft, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { dashboardApi } from '../../../lib/api/dashboard-api';
+import { buildWorkflowEngineUrl } from '../../../lib/api/workflow-engine-client';
 import { ChatList } from '../../../components/team-inbox/chat-list';
 import { ChatWindow } from '../../../components/team-inbox/chat-window';
 import { ChatInputActionBar } from '../../../components/team-inbox/chat-input-action-bar';
@@ -446,25 +448,17 @@ export default function InboxPage() {
     }
 
     try {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) {
-        params.set('query', searchQuery.trim());
-      }
-      if (sourceFilter !== 'all') {
-        params.set('source', sourceFilter);
-      }
-      if (statusFilter !== 'active') {
-        params.set('status', statusFilter);
-      }
-
-      const response = await fetch(`/api/team-inbox?${params.toString()}`);
-      const payload = await parseJsonSafe<ChatSummary[] | { error?: string }>(response);
+      const payload = await dashboardApi.listTeamInboxConversations<ChatSummary>({
+        ...(searchQuery.trim() ? { query: searchQuery.trim() } : {}),
+        ...(sourceFilter !== 'all' ? { source: sourceFilter } : {}),
+        ...(statusFilter !== 'active' ? { status: statusFilter } : {})
+      });
       const selectedConversationIdValue = selectedConversationIdRef.current;
       const currentChats = chatsRef.current;
       const requestedConversationId = requestedConversationIdRef.current;
 
-      if (!response.ok || !Array.isArray(payload)) {
-        throw new Error((payload as { error?: string } | null)?.error ?? 'Unable to load conversations');
+      if (!Array.isArray(payload)) {
+        throw new Error('Unable to load conversations');
       }
 
       const sortedPayload = collapseDuplicateChats(payload);
@@ -535,22 +529,15 @@ export default function InboxPage() {
     }
 
     try {
-      const params = new URLSearchParams({
-        paginated: '1',
-        limit: String(MESSAGE_PAGE_LIMIT)
+      const payload = await dashboardApi.getTeamInboxConversationMessages<PaginatedMessagesResponse>(conversationId, {
+        paginated: 1,
+        limit: MESSAGE_PAGE_LIMIT,
+        ...(options.loadOlder && messagesCursor ? { cursor: messagesCursor } : {}),
+        ...(!options.loadOlder ? { syncPages: options.syncPages ?? 4 } : {})
       });
 
-      if (options.loadOlder && messagesCursor) {
-        params.set('cursor', messagesCursor);
-      } else {
-        params.set('syncPages', String(options.syncPages ?? 4));
-      }
-
-      const response = await fetch(`/api/team-inbox/${conversationId}/messages?${params.toString()}`);
-      const payload = await parseJsonSafe<PaginatedMessagesResponse | { error?: string }>(response);
-
-      if (!response.ok || !isPaginatedMessagesResponse(payload)) {
-        throw new Error((payload as { error?: string } | null)?.error ?? 'Unable to load messages');
+      if (!isPaginatedMessagesResponse(payload)) {
+        throw new Error('Unable to load messages');
       }
 
       if (payload.conversation) {
@@ -577,7 +564,7 @@ export default function InboxPage() {
       }
       setError(null);
       if (!options.loadOlder && !options.skipMarkRead) {
-        await fetch(`/api/team-inbox/${conversationId}/read`, { method: 'POST' });
+        await dashboardApi.markTeamInboxConversationRead(conversationId);
       }
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Unable to load messages');
@@ -696,7 +683,10 @@ export default function InboxPage() {
         return;
       }
 
-      eventSource = new EventSource('/api/team-inbox/events');
+      eventSource = new EventSource(
+        buildWorkflowEngineUrl('/api/v1/team-inbox/events'),
+        { withCredentials: true }
+      );
 
       eventSource.onopen = () => {
         sseReconnectAttemptRef.current = 0;
@@ -973,18 +963,13 @@ export default function InboxPage() {
     setDraft('');
 
     try {
-      const response = await fetch(`/api/team-inbox/${selectedConversation._id}/messages`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          content: optimisticMessage.content,
-          to: selectedConversation.contactId
-        })
+      const payload = await dashboardApi.sendTeamInboxConversationMessage<ChatMessage>(selectedConversation._id, {
+        content: optimisticMessage.content,
+        to: selectedConversation.contactId
       });
-      const payload = await parseJsonSafe<ChatMessage | { error?: string }>(response);
 
-      if (!response.ok || !payload || !('_id' in payload)) {
-        throw new Error((payload as { error?: string } | null)?.error ?? 'Unable to send message');
+      if (!payload || !('_id' in payload)) {
+        throw new Error('Unable to send message');
       }
 
       setMessages((current) => {
@@ -1022,16 +1007,9 @@ export default function InboxPage() {
     setError(null);
     const toastId = toast.loading('Pausing AI and joining chat...');
     try {
-      const response = await fetch(`/api/team-inbox/${selectedConversation._id}/assign`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      const payload = await parseJsonSafe<{ status: string; assignedTo: string | null; error?: string }>(response);
-
-      if (!response.ok) {
-        throw new Error(payload?.error ?? 'Unable to pause AI');
-      }
+      const payload = await dashboardApi.assignTeamInboxConversation<{ status: string; assignedTo: string | null; error?: string }>(
+        selectedConversation._id
+      );
 
       if (!payload) {
         throw new Error('Unable to pause AI');
@@ -1063,14 +1041,9 @@ export default function InboxPage() {
     setError(null);
     const toastId = toast.loading('Returning conversation to AI...');
     try {
-      const response = await fetch(`/api/team-inbox/${selectedConversation._id}/unhandoff`, {
-        method: 'POST'
-      });
-      const payload = await parseJsonSafe<{ status: string; error?: string }>(response);
-
-      if (!response.ok) {
-        throw new Error(payload?.error ?? 'Unable to return to AI');
-      }
+      const payload = await dashboardApi.unhandoffTeamInboxConversation<{ status: string; error?: string }>(
+        selectedConversation._id
+      );
 
       if (!payload) {
         throw new Error('Unable to return to AI');
@@ -1105,17 +1078,12 @@ export default function InboxPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/team-inbox/${selectedConversation._id}/actions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          ...(payload ? { payload } : {})
-        })
+      const result = await dashboardApi.runTeamInboxConversationAction<TeamInboxActionResponse>(selectedConversation._id, {
+        action,
+        ...(payload ? { payload } : {})
       });
-      const result = await parseJsonSafe<TeamInboxActionResponse>(response);
 
-      if (!response.ok || !result?.success) {
+      if (!result?.success) {
         throw new Error(result?.error?.message ?? 'Conversation action failed');
       }
 
@@ -1179,20 +1147,15 @@ export default function InboxPage() {
     }
 
     try {
-      const response = await fetch(
-        `/api/team-inbox/${selectedConversation._id}/messages/${encodeURIComponent(message._id)}/actions`,
+      const result = await dashboardApi.runTeamInboxMessageAction<TeamInboxActionResponse>(
+        selectedConversation._id,
+        message._id,
         {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            action,
-            ...(payload ? { payload } : {})
-          })
+          action,
+          ...(payload ? { payload } : {})
         }
       );
-
-      const result = await parseJsonSafe<TeamInboxActionResponse>(response);
-      if (!response.ok || !result?.success) {
+      if (!result?.success) {
         throw new Error(result?.error?.message ?? 'Message action failed');
       }
 
@@ -1218,12 +1181,9 @@ export default function InboxPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/team-inbox/${selectedConversation._id}/lead`, {
-        method: 'POST'
-      });
-      const payload = await parseJsonSafe<{ success?: boolean; error?: string }>(response);
+      const payload = await dashboardApi.saveTeamInboxLead(selectedConversation._id);
 
-      if (!response.ok || payload?.success !== true) {
+      if (payload?.success !== true) {
         throw new Error(payload?.error ?? 'Unable to save contact to leads');
       }
 

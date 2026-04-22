@@ -3,6 +3,7 @@
 import { Copy, Key, RefreshCcw, ToggleLeft, ToggleRight, Webhook } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { WorkspacePanel } from '../../../../components/dashboard-workspace-ui';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 type WebhookInboxActivationStatus = {
   isActive: boolean;
@@ -42,20 +43,13 @@ export function WebhookInboxActivationPanel() {
     setError(null);
 
     try {
-      const response = await fetch('/api/settings/webhook-inbox-activation', { cache: 'no-store' });
-      const payload = await response.json().catch(() => null) as {
+      const payload = await dashboardApi.getWebhookInboxActivation() as {
         error?: string;
         isActive?: boolean;
         webhookUrl?: string | null;
         apiKey?: string | null;
         activatedAt?: string | null;
       } | null;
-
-      if (!response.ok) {
-        setError(payload?.error ?? 'Failed to load webhook inbox status');
-        setStatus(defaultActivationStatus);
-        return;
-      }
 
       setStatus({
         isActive: payload?.isActive ?? false,
@@ -82,13 +76,9 @@ export function WebhookInboxActivationPanel() {
     setError(null);
 
     try {
-      const method = status.isActive ? 'DELETE' : 'POST';
-      const response = await fetch('/api/settings/webhook-inbox-activation', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const payload = await response.json().catch(() => null) as {
+      const payload = (status.isActive
+        ? await dashboardApi.deleteWebhookInboxActivation()
+        : await dashboardApi.postWebhookInboxActivation()) as {
         error?: string;
         isActive?: boolean;
         webhookUrl?: string | null;
@@ -96,16 +86,13 @@ export function WebhookInboxActivationPanel() {
         activatedAt?: string | null;
       } | null;
 
-      if (!response.ok) {
-        setError(payload?.error ?? 'Failed to update webhook inbox');
-        return;
-      }
+      const nextIsActive = payload?.isActive ?? !status.isActive;
 
       setStatus({
-        isActive: payload?.isActive ?? !status.isActive,
-        webhookUrl: payload?.webhookUrl ?? status.webhookUrl,
-        apiKey: payload?.apiKey ?? (payload?.isActive ? status.apiKey : null),
-        activatedAt: payload?.activatedAt ?? status.activatedAt,
+        isActive: nextIsActive,
+        webhookUrl: nextIsActive ? (payload?.webhookUrl ?? status.webhookUrl) : (payload?.webhookUrl ?? null),
+        apiKey: nextIsActive ? (payload?.apiKey ?? status.apiKey) : (payload?.apiKey ?? null),
+        activatedAt: nextIsActive ? (payload?.activatedAt ?? status.activatedAt) : (payload?.activatedAt ?? null),
       });
     } catch {
       setError('Failed to update webhook inbox');
@@ -121,21 +108,11 @@ export function WebhookInboxActivationPanel() {
     setError(null);
 
     try {
-      const response = await fetch('/api/settings/webhook-inbox-activation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const payload = await response.json().catch(() => null) as {
+      const payload = await dashboardApi.postWebhookInboxActivation() as {
         error?: string;
         webhookUrl?: string | null;
         apiKey?: string | null;
       } | null;
-
-      if (!response.ok) {
-        setError(payload?.error ?? 'Failed to regenerate credentials');
-        return;
-      }
 
       setStatus((prev) => ({
         ...prev,
