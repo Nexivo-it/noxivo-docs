@@ -57,6 +57,7 @@ import { registerPairingRoutes } from './routes/v1/pairing.routes.js';
 import { registerProfileRoutes } from './routes/v1/profile.routes.js';
 import { registerContactRoutes } from './routes/v1/contacts.routes.js';
 import { registerMediaRoutes } from './routes/v1/media.routes.js';
+import { registerMemoriesRoutes } from './routes/v1/memories.routes.js';
 import { registerObservabilityRoutes } from './routes/v1/observability.routes.js';
 import { registerStatusRoutes } from './routes/v1/status.routes.js';
 import { registerStorageRoutes } from './routes/v1/storage.routes.js';
@@ -71,6 +72,9 @@ import { catalogRoutes } from './modules/catalog/routes/index.js';
 import { workflowsRoutes } from './modules/workflows/routes/index.js';
 import { teamInboxRoutes } from './modules/team-inbox/routes/index.js';
 import { settingsRoutes } from './modules/settings/routes/index.js';
+import { dashboardAuthRoutes } from './modules/dashboard-auth/routes/index.js';
+import { dashboardDataRoutes } from './modules/dashboard-data/routes/index.js';
+import { webhookInboxIngressRoute } from './modules/webhook-inbox/ingress.route.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -285,6 +289,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await registerProfileRoutes(fastify);
   await registerContactRoutes(fastify);
   await registerMediaRoutes(fastify);
+  await registerMemoriesRoutes(fastify);
   await registerObservabilityRoutes(fastify);
   await registerStatusRoutes(fastify);
   await registerStorageRoutes(fastify);
@@ -297,6 +302,9 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await fastify.register(workflowsRoutes, { prefix: '/api/v1/workflows' });
   await fastify.register(teamInboxRoutes, { prefix: '/api/v1/team-inbox' });
   await fastify.register(settingsRoutes, { prefix: '/api/v1/settings' });
+  await fastify.register(dashboardAuthRoutes, { prefix: '/api/v1/dashboard-auth' });
+  await fastify.register(dashboardDataRoutes, { prefix: '/api/v1/dashboard-data' });
+  await fastify.register(webhookInboxIngressRoute, { prefix: '/api/webhook-inbox' });
 
   const { MediaStorageService } = await import('./modules/storage/media-storage.service.js');
   const mediaStorageService = new MediaStorageService();

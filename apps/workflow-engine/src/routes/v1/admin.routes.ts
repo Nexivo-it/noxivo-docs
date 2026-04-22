@@ -898,6 +898,23 @@ export async function registerAdminRoutes(fastify: FastifyInstance) {
     return reply.status(200).send({ success: true });
   });
 
+  fastify.post('/api/v1/admin/sessions/:id/restart', {
+    schema: {
+      description: 'Owner-only restart MessagingProvider session binding by id',
+      tags: ['Admin'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+    },
+  }, async (request, reply) => {
+    const { id } = SessionIdParamsSchema.parse(request.params);
+    const resolved = await resolveMessagingSessionName(id);
+    await proxyToMessaging(`/api/sessions/${resolved.sessionName}/restart`, { method: 'POST' });
+    return reply.status(200).send({ success: true });
+  });
+
   fastify.post('/api/v1/admin/sessions/:id/logout', {
     schema: {
       description: 'Owner-only logout MessagingProvider session binding by id',
@@ -912,6 +929,23 @@ export async function registerAdminRoutes(fastify: FastifyInstance) {
     const { id } = SessionIdParamsSchema.parse(request.params);
     const resolved = await resolveMessagingSessionName(id);
     await proxyToMessaging(`/api/sessions/${resolved.sessionName}/logout`, { method: 'POST' });
+    return reply.status(200).send({ success: true });
+  });
+
+  fastify.delete('/api/v1/admin/sessions/:id', {
+    schema: {
+      description: 'Owner-only delete MessagingProvider session binding by id',
+      tags: ['Admin'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+    },
+  }, async (request, reply) => {
+    const { id } = SessionIdParamsSchema.parse(request.params);
+    const resolved = await resolveMessagingSessionName(id);
+    await proxyToMessaging(`/api/sessions/${resolved.sessionName}`, { method: 'DELETE' });
     return reply.status(200).send({ success: true });
   });
 

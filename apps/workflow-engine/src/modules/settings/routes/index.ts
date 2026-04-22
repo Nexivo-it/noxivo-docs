@@ -12,11 +12,13 @@ import {
   ApiKeyModel,
   DataSourceModel,
   MediaStorageConfigModel,
+  NotificationModel,
   PluginInstallationModel,
   TenantCredentialModel,
   WebhookInboxActivationModel,
   WebhookInboxSourceModel,
 } from '@noxivo/database';
+import ImageKit from '@imagekit/nodejs';
 import { getSessionFromRequest, type SessionRecord } from '../../agency/session-auth.js';
 import { canManageAgencySettings, canManageCredentials } from '../../agency/authorization.js';
 
@@ -604,6 +606,10 @@ async function requireAgencySettingsContext(request: FastifyRequest, reply: Fast
   return requireSessionContext(request, reply, canManageAgencySettings);
 }
 
+async function requireAuthenticatedContext(request: FastifyRequest, reply: FastifyReply): Promise<SettingsContext | null> {
+  return requireSessionContext(request, reply, () => true);
+}
+
 function parseInternalResponse<T>(payload: string): T | null {
   try {
     return JSON.parse(payload) as T;
@@ -1158,6 +1164,105 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
     } catch {
       return reply.status(400).send({ error: 'Failed to update storage configuration' });
     }
+  });
+
+  fastify.get('/notifications', async (request, reply) => {
+    const context = await requireAuthenticatedContext(request, reply);
+    if (!context) {
+      return;
+    }
+
+    const notifications = await NotificationModel.find({
+      agencyId: context.agencyId,
+      tenantId: context.tenantId,
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean()
+      .exec();
+
+    const unreadCount = await NotificationModel.countDocuments({
+      agencyId: context.agencyId,
+      tenantId: context.tenantId,
+      isRead: false,
+    });
+
+    return reply.status(200).send({
+      notifications: notifications.map((notification) => ({
+        id: notification._id.toString(),
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        severity: notification.severity,
+        isRead: notification.isRead,
+        createdAt: notification.createdAt,
+        workflowName: notification.workflowName,
+        nodeId: notification.nodeId,
+      })),
+      unreadCount,
+    });
+  });
+
+  fastify.post('/notifications', async (request, reply) => {
+    const context = await requireAuthenticatedContext(request, reply);
+    if (!context) {
+      return;
+    }
+
+    const body = isRecord(request.body) ? request.body : {};
+    const action = toOptionalString(body.action);
+    const notificationId = toOptionalString(body.notificationId);
+
+    if (action === 'markAsRead' && notificationId) {
+      await NotificationModel.findOneAndUpdate(
+        { _id: notificationId, agencyId: context.agencyId, tenantId: context.tenantId },
+        { isRead: true, readAt: new Date() },
+      ).exec();
+    } else if (action === 'markAllAsRead') {
+      await NotificationModel.updateMany(
+        { agencyId: context.agencyId, tenantId: context.tenantId, isRead: false },
+        { isRead: true, readAt: new Date() },
+      ).exec();
+    }
+
+    return reply.status(200).send({ success: true });
+  });
+
+  fastify.get('/imagekit-auth', async (request, reply) => {
+    const context = await requireAgencySettingsContext(request, reply);
+    if (!context) {
+      return;
+    }
+
+    const storageConfig = await MediaStorageConfigModel.findOne({
+      agencyId: context.agencyId,
+      provider: 'imagekit',
+      isActive: true,
+    }).lean();
+
+    const privateKey =
+      storageConfig && isRecord(storageConfig.secretConfig)
+        ? toOptionalString(storageConfig.secretConfig.privateKey)
+        : undefined;
+    const publicKey =
+      storageConfig && isRecord(storageConfig.publicConfig)
+        ? toOptionalString(storageConfig.publicConfig.publicKey)
+        : undefined;
+
+    if (!storageConfig || !privateKey) {
+      return reply.status(404).send({ error: 'ImageKit is not configured for this agency' });
+    }
+
+    const imagekit = new ImageKit({
+      privateKey,
+      baseURL: storageConfig.publicBaseUrl || undefined,
+    });
+
+    const authParams = imagekit.helper.getAuthenticationParameters();
+    return reply.status(200).send({
+      ...authParams,
+      publicKey: publicKey ?? '',
+    });
   });
 
   fastify.get('/webhook-inbox-activation', async (request, reply) => {
