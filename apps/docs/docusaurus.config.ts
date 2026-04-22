@@ -14,7 +14,13 @@ const config: Config = {
   projectName: 'noxivo-docs',
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  trailingSlash: false,
+  markdown: {
+    format: 'mdx',
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   i18n: {
     defaultLocale: 'en',
