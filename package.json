@@ -17,7 +17,8 @@
     "db:seed:prod": "tsx packages/database/scripts/seed-prod.ts",
     "db:migrate:messaging": "tsx packages/database/scripts/migrate-messaging-fields.ts",
     "health:mesh": "tsx scripts/deep-health-check.ts",
-    "dev:auto": "NODE_OPTIONS='--import tsx --no-warnings' tsx scripts/dev-launcher.ts"
+    "dev:auto": "NODE_OPTIONS='--import tsx --no-warnings' tsx scripts/dev-launcher.ts",
+    "deploy:docs": "git push docs $(git subtree split --prefix apps/docs main):main --force"
   },
   "devDependencies": {
     "chrome-devtools-mcp": "^0.21.0",

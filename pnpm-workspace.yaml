@@ -1,4 +1,5 @@
 packages:
   - apps/dashboard
   - apps/workflow-engine
+  - apps/workflow-engine/docs
   - packages/*

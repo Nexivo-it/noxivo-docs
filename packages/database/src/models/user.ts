@@ -10,7 +10,7 @@ export const LegacyUserRoleValues = [
 ] as const;
 export type LegacyUserRole = (typeof LegacyUserRoleValues)[number];
 
-export const ScopeRoleValues = ['owner', 'agency_admin', 'client_admin', 'agent'] as const;
+export const ScopeRoleValues = ['owner', 'agency_admin', 'client_admin', 'agent', 'developer'] as const;
 export type ScopeRole = (typeof ScopeRoleValues)[number];
 
 export const SupportedUserRoleValues = [...LegacyUserRoleValues, ...ScopeRoleValues] as const;
@@ -30,6 +30,8 @@ export function normalizeStoredUserRole(role: string | null | undefined): ScopeR
       return 'agency_admin';
     case 'client_admin':
       return 'client_admin';
+    case 'developer':
+      return 'developer';
     case 'agent':
     case 'agency_member':
     case 'viewer':
@@ -162,7 +164,7 @@ const UserSchema = new Schema({
   status: {
     type: String,
     required: true,
-    enum: ['active', 'suspended'],
+    enum: ['active', 'suspended', 'pending'],
     default: 'active'
   },
   lastLoginAt: {
