@@ -6,15 +6,15 @@ By leveraging **Scoped API Keys**, you can achieve a "Zero-Config" setup where t
 
 ---
 
-## 1. Global Setup & Authentication
+## 1. Global Setup & Authentication {#1-global-setup--authentication}
 
 In your n8n workflow, use the **HTTP Request** node to communicate with the engine.
 
-### Connection Details
+### Connection Details {#connection-details}
 - **Base URL**: `https://api-workflow-engine.noxivo.app`
 - **Authentication**: Header-based (`X-API-Key`)
 
-### Required Headers
+### Required Headers {#required-headers}
 | Header | Value | Description |
 | :--- | :--- | :--- |
 | `X-API-Key` | `nx_...` | Your Scoped API Key (found in Dashboard Settings) |
@@ -25,11 +25,11 @@ In your n8n workflow, use the **HTTP Request** node to communicate with the engi
 
 ---
 
-## 2. Sending Messages (SaaS Tracking)
+## 2. Sending Messages (SaaS Tracking) {#2-sending-messages-saas-tracking}
 
 Sending messages via `/api/v1/messages/send` ensures that all outbound traffic is recorded in your **Noxivo Team Inbox** for full visibility across your agency.
 
-### A. Send Simple Text
+### A. Send Simple Text {#a-send-simple-text}
 - **Method**: `POST`
 - **URL**: `https://api-workflow-engine.noxivo.app/api/v1/messages/send`
 
@@ -41,7 +41,7 @@ Sending messages via `/api/v1/messages/send` ensures that all outbound traffic i
 }
 ```
 
-### B. Send Image or PDF
+### B. Send Image or PDF {#b-send-image-or-pdf}
 - **Method**: `POST`
 - **URL**: `https://api-workflow-engine.noxivo.app/api/v1/messages/send`
 
@@ -63,11 +63,11 @@ Sending messages via `/api/v1/messages/send` ensures that all outbound traffic i
 
 ---
 
-## 3. Advanced Features (Passthrough)
+## 3. Advanced Features (Passthrough) {#3-advanced-features-passthrough}
 
 The Noxivo Engine provides a seamless passthrough to advanced WhatsApp features. These endpoints require more specific parameters but offer high interactivity.
 
-### Send Interactive Buttons
+### Send Interactive Buttons {#send-interactive-buttons}
 - **Method**: `POST`
 - **URL**: `https://api-workflow-engine.noxivo.app/api/v1/sendButtons`
 
@@ -86,7 +86,7 @@ The Noxivo Engine provides a seamless passthrough to advanced WhatsApp features.
 
 ---
 
-## 4. Inbound: Handling Customer Replies
+## 4. Inbound: Handling Customer Replies {#4-inbound-handling-customer-replies}
 
 To build an automated chatbot or response system, you must configure a Webhook in n8n.
 
@@ -94,7 +94,7 @@ To build an automated chatbot or response system, you must configure a Webhook i
 2.  **Toggle Production**: Copy the **Production URL**.
 3.  **Register Webhook**: Paste this URL into the **Webhook URL** field in your Noxivo Dashboard (Tenant Settings).
 
-### Inbound Payload Structure
+### Inbound Payload Structure {#inbound-payload-structure}
 When a message arrives, n8n will receive a JSON payload like this:
 
 ```json
@@ -112,7 +112,7 @@ When a message arrives, n8n will receive a JSON payload like this:
 }
 ```
 
-### n8n Expression Cheat Sheet
+### n8n Expression Cheat Sheet {#n8n-expression-cheat-sheet}
 | Target Data | n8n Expression |
 | :--- | :--- |
 | **Message Text** | `{{ $json.payload.body }}` |
@@ -121,7 +121,7 @@ When a message arrives, n8n will receive a JSON payload like this:
 
 ---
 
-## 5. Session & Profile info
+## 5. Session & Profile info {#5-session--profile-info}
 
 Check if your connection is live or fetch your own profile data.
 

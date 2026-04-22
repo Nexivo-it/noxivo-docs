@@ -2,7 +2,7 @@
 
 WhatsApp sessions are managed entirely through the **Noxivo Dashboard**. To use the Noxivo Engine API, your account must first be connected.
 
-## 0. Dashboard Setup
+## 0. Dashboard Setup {#0-dashboard-setup}
 1. Log in to your **Noxivo Dashboard**.
 2. Go to the **Connection** page.
 3. Scan the **QR Code** using your WhatsApp mobile application.
@@ -11,7 +11,7 @@ WhatsApp sessions are managed entirely through the **Noxivo Dashboard**. To use 
 
 ---
 
-## Session Status
+## Session Status {#session-status}
 You can programmatically check if your session is currently online and authenticated. Since you are using a Scoped API Key, the Engine automatically detects which session to check.
 
 **Endpoint**: `GET /api/v1/sessions/status`
@@ -34,7 +34,7 @@ curl https://api-workflow-engine.noxivo.app/api/v1/sessions/status \
 
 ---
 
-## Session Details
+## Session Details {#session-details}
 Retrieve technical metadata about the current session connection.
 
 **Endpoint**: `GET /api/v1/sessions/me`
@@ -55,7 +55,7 @@ Retrieve technical metadata about the current session connection.
 
 ---
 
-## Session Management
+## Session Management {#session-management}
 While primary control happens in the Dashboard, you can trigger a restart or logout via the API if needed.
 
 **Restart Session**: `POST /api/v1/sessions/restart`

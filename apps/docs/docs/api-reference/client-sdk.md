@@ -5,7 +5,7 @@ import TabItem from '@theme/TabItem';
 
 The Noxivo Engine provides a type-safe client for Node.js/TypeScript environments.
 
-## Installation
+## Installation {#installation}
 
 <Tabs>
   <TabItem value="npm" label="npm" default>
@@ -25,9 +25,9 @@ The Noxivo Engine provides a type-safe client for Node.js/TypeScript environment
   </TabItem>
 </Tabs>
 
-## Usage
+## Usage {#usage}
 
-### Importing the Client
+### Importing the Client {#importing-the-client}
 
 ```typescript
 import { MessagingSessionService } from '@noxivo/messaging-client';
@@ -57,7 +57,7 @@ async function sendMessage(sessionName: string, chatId: string, text: string) {
 
 ---
 
-## Shared Contracts
+## Shared Contracts {#shared-contracts}
 
 You can also use our shared Zod schemas and TypeScript types:
 

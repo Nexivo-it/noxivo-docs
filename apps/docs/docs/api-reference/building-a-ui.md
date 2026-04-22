@@ -2,7 +2,7 @@
 
 Learn how to use the Noxivo Engine to build a fully functional messaging interface with synchronization.
 
-## 0. Prerequisite: Connect Account
+## 0. Prerequisite: Connect Account {#0-prerequisite-connect-account}
 Before using the API, your client must connect their WhatsApp account and generate an API key.
 1. Log in to the **Noxivo Dashboard**.
 2. Scan the **QR Code** to link WhatsApp.
@@ -10,7 +10,7 @@ Before using the API, your client must connect their WhatsApp account and genera
 
 ---
 
-## 1. Listen for Webhooks
+## 1. Listen for Webhooks {#1-listen-for-webhooks}
 
 Set up a webhook listener in your application to receive incoming messages in real-time.
 
@@ -30,7 +30,7 @@ Set up a webhook listener in your application to receive incoming messages in re
 
 ---
 
-## 2. Display Message History
+## 2. Display Message History {#2-display-message-history}
 
 When a user opens a conversation, fetch the history with automated engine synchronization.
 
@@ -44,7 +44,7 @@ curl https://api-workflow-engine.noxivo.app/api/v1/inbox/conversations/64a1b2...
 
 ---
 
-## 3. Send a Reply (with Sync)
+## 3. Send a Reply (with Sync) {#3-send-a-reply-with-sync}
 
 To ensure the reply is tracked correctly by the Engine and has all relevant metadata, use the synchronized send endpoint.
 
@@ -61,7 +61,7 @@ curl -X POST https://api-workflow-engine.noxivo.app/api/v1/inbox/conversations/6
 
 ---
 
-## 4. Manage Handoff
+## 4. Manage Handoff {#4-manage-handoff}
 
 If you want to stop automated AI responses and hand the conversation to a human operator, use the Handoff API.
 

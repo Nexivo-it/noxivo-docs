@@ -2,17 +2,17 @@
 
 This guide provides a comprehensive technical reference for the Noxivo Engine API. It includes clean, copy-pasteable HTTP request blocks for developers and automation engineers (n8n, Make, Zapier).
 
-## 1. Authentication
+## 1. Authentication {#1-authentication}
 
 Noxivo uses **Scoped API Keys** to authenticate all requests. These keys are linked directly to your WhatsApp session in the background, allowing you to use the API without providing complex configuration IDs in every request.
 
-### How to Connect
+### How to Connect {#how-to-connect}
 1.  **Log in** to your Noxivo Agency Dashboard.
 2.  **Scan the QR Code** to connect your WhatsApp account.
 3.  Go to **Settings > API Keys** and click **Generate New Key**.
 4.  Copy the generated `API-Key`.
 
-### Zero-Config Usage
+### Zero-Config Usage {#zero-config-usage}
 Because your API key is "scoped" to your account, you do not need to provide an `agencyId` or `tenantId` in your requests. The Engine automatically detects the correct session.
 
 ```http
@@ -22,9 +22,9 @@ Content-Type: application/json
 
 ---
 
-## 2. Messaging & History
+## 2. Messaging & History {#2-messaging--history}
 
-### Send Message
+### Send Message {#send-message}
 Sends a message to a WhatsApp number. The Engine automatically routes it through your connected session.
 
 **Endpoint**: `POST /api/v1/messages/send`
@@ -37,7 +37,7 @@ Sends a message to a WhatsApp number. The Engine automatically routes it through
 }
 ```
 
-### Get Messaging History
+### Get Messaging History {#get-messaging-history}
 Retrieves synchronized chat logs and messages.
 
 **Endpoint**: `GET /api/v1/inbox/chats`
@@ -45,7 +45,7 @@ Retrieves synchronized chat logs and messages.
 
 ---
 
-## 3. Webhooks & Events
+## 3. Webhooks & Events {#3-webhooks--events}
 Receive real-time notifications for incoming messages and delivery status.
 
 **Configuration**: Set your webhook URL in the **Noxivo Dashboard**.
@@ -57,23 +57,23 @@ Receive real-time notifications for incoming messages and delivery status.
 
 ---
 
-## 3. Resource Management
+## 3. Resource Management {#3-resource-management}
 
-### Sessions & Status
+### Sessions & Status {#sessions--status}
 Check if your WhatsApp account is currently online.
 
 **Endpoint**: `GET /api/v1/sessions/status`
 
 ---
 
-### Contacts
+### Contacts {#contacts}
 Retrieve all contacts synchronized with your account.
 
 **Endpoint**: `GET /api/v1/sessions/contacts`
 
 ---
 
-### Media (Images & Audio)
+### Media (Images & Audio) {#media-images--audio}
 Send images, audio, and documents by including them in the `attachments` array.
 
 **Endpoint**: `POST /api/v1/messages/send`
@@ -96,7 +96,7 @@ Send images, audio, and documents by including them in the `attachments` array.
 
 ---
 
-## 4. AI Sales Agent
+## 4. AI Sales Agent {#4-ai-sales-agent}
 
 Toggle the automated AI responder and manage its persona.
 
@@ -105,6 +105,6 @@ Toggle the automated AI responder and manage its persona.
 
 ---
 
-## 5. n8n & Automation
+## 5. n8n & Automation {#5-n8n--automation}
 Noxivo is designed to be easily integrated with external automation tools. Simply use the **HTTP Request** node in n8n or Zapier with your **Scoped API Key** to start automating your WhatsApp messages without any additional configuration.
 

@@ -2,11 +2,11 @@
 
 Configure your system to receive real-time updates from WhatsApp.
 
-## Inbound Message Event
+## Inbound Message Event {#inbound-message-event}
 
 Fired whenever a customer sends a message to your WhatsApp number.
 
-### Payload Sample
+### Payload Sample {#payload-sample}
 ```json
 {
   "event": "message",
@@ -26,7 +26,7 @@ Fired whenever a customer sends a message to your WhatsApp number.
 
 ---
 
-## Event Types
+## Event Types {#event-types}
 
 | Event | Description |
 | :--- | :--- |
@@ -38,11 +38,11 @@ Fired whenever a customer sends a message to your WhatsApp number.
 
 ---
 
-## Message Ack (Delivery Status)
+## Message Ack (Delivery Status) {#message-ack-delivery-status}
 
 Fired when a message is sent, delivered, or read.
 
-### Status Values
+### Status Values {#status-values}
 - `1`: Sent (left the engine).
 - `2`: Delivered (received by customer).
 - `3` or `4`: Read (opened by customer).

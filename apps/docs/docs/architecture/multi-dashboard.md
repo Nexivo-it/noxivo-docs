@@ -1,10 +1,10 @@
 # Multi-Dashboard Architecture
 
-## Overview
+## Overview {#overview}
 
 The Workflow Engine is designed to serve **multiple independent dashboards** simultaneously. Each dashboard represents a separate project/tenant with its own users, agencies, and tenants. The engine acts as a centralized WhatsApp automation hub.
 
-## Architecture
+## Architecture {#architecture}
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -45,9 +45,9 @@ The Workflow Engine is designed to serve **multiple independent dashboards** sim
 └──────────────────────┘               └──────────────────────┘
 ```
 
-## How It Works
+## How It Works {#how-it-works}
 
-### 1. Dashboard Registration
+### 1. Dashboard Registration {#1-dashboard-registration}
 
 When a new dashboard connects to the engine, it registers itself:
 
@@ -75,7 +75,7 @@ Content-Type: application/json
 
 The dashboard stores this `apiKey` and uses it for all subsequent API calls.
 
-### 2. API Authentication
+### 2. API Authentication {#2-api-authentication}
 
 Every API call from a dashboard includes:
 - `X-API-Key` header with the dashboard's unique API key
@@ -86,17 +86,17 @@ GET /api/v1/sessions?agencyId=agency_abc123&tenantId=tenant_xyz789
 X-API-Key: dashboard-generated-api-key
 ```
 
-### 3. Webhook Routing
+### 3. Webhook Routing {#3-webhook-routing}
 
 When messaging sends webhooks, the engine identifies which agency/tenant the event belongs to and forwards it to the correct dashboard.
 
-### 4. Engine Admin Dashboard
+### 4. Engine Admin Dashboard {#4-engine-admin-dashboard}
 
 The engine's own admin dashboard shows all registered dashboards, all agencies across all dashboards, and all messaging sessions with agency/tenant metadata.
 
-## Dashboard Registry API Endpoints
+## Dashboard Registry API Endpoints {#dashboard-registry-api-endpoints}
 
-### Internal (Dashboard → Engine)
+### Internal (Dashboard → Engine) {#internal-dashboard--engine}
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -105,7 +105,7 @@ The engine's own admin dashboard shows all registered dashboards, all agencies a
 | PATCH | `/v1/internal/dashboard/config` | Update dashboard config |
 | GET | `/v1/internal/dashboard/agencies` | List all agencies |
 
-### Admin (Engine Admin Dashboard)
+### Admin (Engine Admin Dashboard) {#admin-engine-admin-dashboard}
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -115,9 +115,9 @@ The engine's own admin dashboard shows all registered dashboards, all agencies a
 | POST | `/api/v1/admin/dashboards/:agencyId/suspend` | Suspend dashboard |
 | POST | `/api/v1/admin/dashboards/:agencyId/activate` | Reactivate dashboard |
 
-## Environment Variables
+## Environment Variables {#environment-variables}
 
-### Engine Side
+### Engine Side {#engine-side}
 
 ```bash
 # Required
@@ -125,7 +125,7 @@ ENGINE_API_KEY=...                    # Master API key
 WORKFLOW_ENGINE_INTERNAL_PSK=...      # PSK for internal dashboard routes
 ```
 
-### Dashboard Side
+### Dashboard Side {#dashboard-side}
 
 ```bash
 # Dashboard configuration
@@ -134,18 +134,18 @@ ENGINE_API_KEY=...                    # API key from engine registration
 WORKFLOW_ENGINE_INTERNAL_PSK=...       # PSK for registration
 ```
 
-## Use Cases
+## Use Cases {#use-cases}
 
-### 1. SaaS Platform
+### 1. SaaS Platform {#1-saas-platform}
 A company builds a SaaS platform on top of the engine. They register their dashboard once and get an API key. All their customers' agencies are under their single `agencyId`.
 
-### 2. White-Label Solution
+### 2. White-Label Solution {#2-white-label-solution}
 A digital agency white-labels the engine for multiple clients. Each client gets their own `agencyId`, but all route through the same dashboard.
 
-### 3. Multi-Tenant Enterprise
+### 3. Multi-Tenant Enterprise {#3-multi-tenant-enterprise}
 An enterprise runs multiple divisions. Each division has its own dashboard, but all connect to one central engine.
 
-## Security Considerations
+## Security Considerations {#security-considerations}
 
 1. **API Key Rotation**: Dashboard should rotate API keys periodically
 2. **Webhook Validation**: Dashboard must validate webhook signatures using `webhookSecret`

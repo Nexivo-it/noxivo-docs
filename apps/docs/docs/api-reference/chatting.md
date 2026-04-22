@@ -2,15 +2,15 @@
 
 Methods for sending messages through the Noxivo Engine.
 
-## Send Message (Synchronized)
+## Send Message (Synchronized) {#send-message-synchronized}
 
 Sends a message and ensures it is tracked by the engine with full delivery lifecycle.
 
-### Endpoint
+### Endpoint {#endpoint}
 `POST /api/v1/messages/send`
 
 
-### Request Body
+### Request Body {#request-body}
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `agencyId` | string | **Required**. |
@@ -19,7 +19,7 @@ Sends a message and ensures it is tracked by the engine with full delivery lifec
 | `text` | string | Message content. |
 | `attachments` | array | Optional list of media. |
 
-### Full Attachment Example
+### Full Attachment Example {#full-attachment-example}
 ```json
 {
   "agencyId": "64a1b2c3...",
@@ -38,7 +38,7 @@ Sends a message and ensures it is tracked by the engine with full delivery lifec
 }
 ```
 
-### Example cURL
+### Example cURL {#example-curl}
 ```bash
 curl -X POST https://api-workflow-engine.noxivo.app/api/v1/messages/send \
      -H "X-API-Key: YOUR_ENGINE_KEY" \
@@ -53,14 +53,14 @@ curl -X POST https://api-workflow-engine.noxivo.app/api/v1/messages/send \
 
 ---
 
-## Send Interactive Buttons (Raw)
+## Send Interactive Buttons (Raw) {#send-interactive-buttons-raw}
 
 Sends a message with reply buttons or URL links.
 
-### Endpoint
+### Endpoint {#endpoint-1}
 `POST /api/v1/sendButtons`
 
-### JSON Body
+### JSON Body {#json-body}
 ```json
 {
   "session": "my-session",
@@ -77,14 +77,14 @@ Sends a message with reply buttons or URL links.
 
 ---
 
-## Send Interactive List (Raw)
+## Send Interactive List (Raw) {#send-interactive-list-raw}
 
 Sends a menu with sections and selectable rows.
 
-### Endpoint
+### Endpoint {#endpoint-2}
 `POST /api/v1/sendList`
 
-### JSON Body
+### JSON Body {#json-body-1}
 ```json
 {
   "session": "my-session",

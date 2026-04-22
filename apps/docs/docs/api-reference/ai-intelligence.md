@@ -2,11 +2,11 @@
 
 Advanced agentic capabilities of the Noxivo Engine.
 
-## AI Sales Agent Control <span class="badge badge--success">SaaS Managed</span>
+## AI Sales Agent Control <span class="badge badge--success">SaaS Managed</span> {#ai-sales-agent-control-span-classbadge-badge--successsaas-managedspan}
 
 Manage the status and behavior of the built-in AI Sales Agent for a specific tenant.
 
-### Get Agent State
+### Get Agent State {#get-agent-state}
 Retrieves whether the agent is enabled and its current operational mode.
 
 **Endpoint**: `POST /api/v1/ai-sales-agent/state`
@@ -30,7 +30,7 @@ Retrieves whether the agent is enabled and its current operational mode.
 
 ---
 
-### Update Agent State
+### Update Agent State {#update-agent-state}
 Enable/disable the agent or switch between AI and Human modes.
 
 **Endpoint**: `PUT /api/v1/ai-sales-agent/state`
@@ -47,7 +47,7 @@ Enable/disable the agent or switch between AI and Human modes.
 
 ---
 
-### Manage Agent Persona
+### Manage Agent Persona {#manage-agent-persona}
 Configure the AI's identity, tone, and system prompt.
 
 **Endpoints**:
@@ -71,9 +71,9 @@ Configure the AI's identity, tone, and system prompt.
 
 ---
 
-## Agentic Context & Memory
+## Agentic Context & Memory {#agentic-context--memory}
 
-### Get Inbox Context
+### Get Inbox Context {#get-inbox-context}
 Generates a hyper-contextual system prompt for an LLM by injecting contact memories and recent message history.
 
 **Endpoint**: `POST /api/v1/ai/inbox-context`
@@ -89,7 +89,7 @@ Generates a hyper-contextual system prompt for an LLM by injecting contact memor
 
 ---
 
-### Manage Memories
+### Manage Memories {#manage-memories}
 Create or delete contact-specific facts in the Memory Vault.
 
 **Endpoints**:

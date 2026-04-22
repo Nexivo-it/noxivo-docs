@@ -4,7 +4,7 @@ The Messaging History API provides endpoints to retrieve and synchronize WhatsAp
 
 ---
 
-## List Conversations
+## List Conversations {#list-conversations}
 Retrieves a paginated list of chats associated with your account. This endpoint automatically triggers a background synchronization with WhatsApp.
 
 **Endpoint**: `GET /api/v1/inbox/chats`
@@ -41,7 +41,7 @@ Retrieves a paginated list of chats associated with your account. This endpoint 
 
 ---
 
-## Get Message History
+## Get Message History {#get-message-history}
 Fetches messages for a specific conversation ID. The engine ensures missing history is fetched from WhatsApp before returning the results.
 
 **Endpoint**: `GET /api/v1/inbox/conversations/:conversationId/messages`
@@ -76,7 +76,7 @@ Fetches messages for a specific conversation ID. The engine ensures missing hist
 
 ---
 
-## Send Message (with Sync)
+## Send Message (with Sync) {#send-message-with-sync}
 Sends a message to a conversation. This is the preferred way to send messages to ensure they are properly tracked and synced across all engine services.
 
 **Endpoint**: `POST /api/v1/inbox/conversations/:conversationId/messages`
@@ -93,7 +93,7 @@ Sends a message to a conversation. This is the preferred way to send messages to
 
 ---
 
-## Message Delivery Status
+## Message Delivery Status {#message-delivery-status}
 Retrieves the real-time delivery status for a specific message.
 
 **Endpoint**: `GET /api/v1/inbox/messages/:messageId/status`
