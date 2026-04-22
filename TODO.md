@@ -2,6 +2,15 @@
 
 ## Active Sprint
 
+- [x] Dashboard UI-only branch (`dashboard-ui`): removed runtime dependency on dashboard `app/api/**`; dashboard auth, agencies, workflows, catalog, team-inbox, settings, notifications, imagekit auth, admin messaging, memories, webhook ingress, and dashboard aggregates now resolve through workflow-engine endpoints.
+- [x] Delete dashboard route layer and proxy helper: removed `apps/dashboard/app/api/**` and `apps/dashboard/lib/api/workflow-engine-proxy.ts`; dashboard build now emits UI pages only plus `/healthz`.
+- [x] Full verification on `dashboard-ui` branch:
+  - `pnpm --filter @noxivo/dashboard test` ✅ (132 passed, 1 skipped)
+  - `pnpm --filter @noxivo/dashboard build` ✅
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+  - `pnpm --filter @noxivo/workflow-engine test` ✅ (245 passed)
+
 - [x] Phase 7 backend modularization: cut dashboard `/api/{agencies,catalog,workflows,team-inbox,settings}/**` route trees over to workflow-engine proxy handlers via shared `proxyDashboardRouteToWorkflowEngine` helper
 - [x] Phase 8 cleanup: harden dashboard proxy dynamic-path encoding (`conversationId`/`messageId`/`sourceId`) and replace stale local-backend dashboard inbox tests with proxy-focused coverage
 - [x] Phase 8 cleanup (continued): migrate stale dashboard settings/team-management/smoke/CRM route tests to workflow-engine proxy assertions (remove pre-proxy local-backend expectations)
@@ -81,6 +90,8 @@
 - [x] Ensure public `/health` and `/` routes are prioritize and registered before auth hooks
 - [x] Relocated status routes to top of server initialization to guarantee accessibility
 - [x] Prevent `@noxivo/database` seeding from disconnecting MongoDB on startup
+- [x] Task 6d2: migrate dashboard auth branding-by-slug lookup off direct dashboard DB access to workflow-engine public endpoint (`/api/v1/dashboard-auth/branding/:agencySlug`)
+- [x] Task 6d3b: add workflow-engine dashboard aggregate endpoints (`/api/v1/dashboard-data/{shell,overview,billing}`) and migrate dashboard layout/overview/billing/agency pages to workflow-engine server fetches (no direct `queryDashboardShellData/queryDashboardOverview/queryBillingData` DB helpers)
 
 ## Multi-Dashboard Architecture (Completed Earlier)
 

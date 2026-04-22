@@ -1,6 +1,29 @@
 # Session Handoff - Backend Modularization Phase 8 (Proxy Cleanup)
 
 ## Recent Activity
+- Completed `dashboard-ui` runtime migration to a UI-only boundary:
+  - dashboard runtime no longer calls local `app/api/**`
+  - deleted dashboard `app/api/**`
+  - deleted `apps/dashboard/lib/api/workflow-engine-proxy.ts`
+- Added workflow-engine parity endpoints required for direct dashboard usage:
+  - dashboard auth + branding lookup
+  - dashboard aggregates (`/api/v1/dashboard-data/{shell,overview,billing}`)
+  - memories (`/api/v1/memories`)
+  - webhook inbox ingress (`/api/webhook-inbox/*`)
+  - settings support endpoints for notifications + ImageKit auth
+  - admin session restart/delete parity
+- Replaced dashboard runtime health route usage with static `/healthz`.
+- Redirected deprecated `/dashboard/admin/sessions` to `/dashboard/admin/messaging` and removed the old server action/client implementation.
+- Full verification now passes on `dashboard-ui`:
+  - dashboard tests: 132 passed, 1 skipped
+  - dashboard build: pass
+  - workflow-engine lint/build: pass
+  - workflow-engine tests: 245 passed
+- Implemented Task 6d2 (branding-by-slug migration): added public workflow-engine endpoint `GET /api/v1/dashboard-auth/branding/:agencySlug` so dashboard auth pages can resolve branding without direct dashboard DB reads.
+- Migrated dashboard branding helper (`apps/dashboard/lib/branding.ts`) from `AgencyModel` + `dbConnect` lookup to workflow-engine fetch (`/api/v1/dashboard-auth/branding/:agencySlug`) while preserving existing auth-page behavior (`null` => `notFound()`).
+- Added TDD coverage for both sides:
+  - Workflow-engine: `apps/workflow-engine/test/dashboard-auth-routes.test.ts` now verifies branding success payload + not-found path.
+  - Dashboard: `apps/dashboard/test/branding-helper.test.ts` verifies helper consumes workflow-engine endpoint and maps 404 to `null`.
 - Fixed workflow-engine verification failure in `test/spa-admin-routes.test.ts` by removing a stale expectation against the retired `/api/v1/spa/admin/media-storage` endpoint; test now validates the currently supported admin API surface.
 - Continued Phase 8 test cleanup by replacing stale pre-proxy dashboard route suites with workflow-engine proxy-focused tests for settings/team-management/smoke/CRM:
   - `test/settings-credentials-route.test.ts`
@@ -85,6 +108,11 @@
 - Added workflow-engine TDD coverage for settings module route behavior and verified RED→GREEN.
 
 ## Files Changed
+- `apps/workflow-engine/src/modules/dashboard-auth/routes/index.ts` (added public branding route `GET /branding/:agencySlug`)
+- `apps/workflow-engine/src/modules/dashboard-auth/service.ts` (added `getAgencyBrandingBySlug` service + response payload mapping)
+- `apps/workflow-engine/test/dashboard-auth-routes.test.ts` (added RED→GREEN tests for branding endpoint)
+- `apps/dashboard/lib/branding.ts` (switched from direct DB lookup to workflow-engine endpoint consumption)
+- `apps/dashboard/test/branding-helper.test.ts` (new, TDD coverage for helper endpoint usage + 404 handling)
 - `apps/workflow-engine/test/spa-admin-routes.test.ts` (removed stale media-storage assertion; aligned with active SPA admin endpoints)
 - `apps/dashboard/test/settings-credentials-route.test.ts` (rewritten to proxy-focused assertions)
 - `apps/dashboard/test/settings-shop-route.test.ts` (rewritten to proxy-focused assertions)
@@ -164,6 +192,27 @@
 - `TODO.md`
 
 ## Verification Run
+- RED (before workflow-engine implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/dashboard-auth-routes.test.ts` ❌
+  - Failed with `500` on missing branding-by-slug endpoint behavior.
+- GREEN (after workflow-engine implementation):
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/dashboard-auth-routes.test.ts` ✅
+- RED (before dashboard helper migration):
+  - `pnpm --filter @noxivo/dashboard exec vitest run test/branding-helper.test.ts` ❌
+  - Failed because helper still used direct DB lookup and did not call workflow-engine endpoint.
+- GREEN (after dashboard helper migration):
+  - `pnpm --filter @noxivo/dashboard exec vitest run test/branding-helper.test.ts` ✅
+- Type/build gates (task scope):
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+  - `pnpm --filter @noxivo/dashboard build` ✅
+  - `pnpm --filter @noxivo/dashboard lint` ⚠️ fails from pre-existing `.next/types/**/*.ts` include mismatch (missing generated type files; not introduced by Task 6d2)
+- LSP diagnostics (changed files):
+  - `apps/workflow-engine/src/modules/dashboard-auth/routes/index.ts` ✅ clean
+  - `apps/workflow-engine/src/modules/dashboard-auth/service.ts` ✅ clean
+  - `apps/workflow-engine/test/dashboard-auth-routes.test.ts` ✅ clean
+  - `apps/dashboard/lib/branding.ts` ✅ clean
+  - `apps/dashboard/test/branding-helper.test.ts` ✅ clean
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/spa-admin-routes.test.ts` ✅
 - `pnpm --filter @noxivo/workflow-engine lint && pnpm --filter @noxivo/workflow-engine build && pnpm --filter @noxivo/workflow-engine test` ✅ (44 files, 229 tests)
 - `pnpm --filter @noxivo/dashboard test` ✅ (33 files passed, 1 skipped)
@@ -240,22 +289,48 @@
   - `pnpm --filter @noxivo/workflow-engine lint` ✅
   - `pnpm --filter @noxivo/workflow-engine build` ✅
 
+## Latest Task Update (6d3b)
+- Added workflow-engine dashboard aggregate routes under cookie-session auth:
+  - `GET /api/v1/dashboard-data/shell`
+  - `GET /api/v1/dashboard-data/overview`
+  - `GET /api/v1/dashboard-data/billing`
+- Excluded `/api/v1/dashboard-data/**` from API-key auth guard so dashboard browser session cookie auth is used.
+- Implemented workflow-engine aggregate service logic matching previous dashboard query-helper behavior for shell bootstrap, overview metrics/activity, and billing usage/plan summary.
+- Migrated dashboard pages to workflow-engine server fetches (no direct DB helper calls for these responsibilities):
+  - `app/dashboard/layout.tsx`
+  - `app/dashboard/page.tsx`
+  - `app/dashboard/billing/page.tsx`
+  - `app/dashboard/agency/page.tsx`
+- Added shared dashboard aggregate API types in `apps/dashboard/lib/api/dashboard-aggregates.ts` and updated billing client type import.
+- TDD executed for workflow-engine aggregates (RED → GREEN) in `apps/workflow-engine/test/dashboard-aggregates-routes.test.ts`.
+- Remaining `lib/dashboard/queries.ts` imports after this task are type-only references in: `agencies/page.tsx`, `agencies/[agencyId]/page.tsx`, `team/page.tsx`, `tenants/page.tsx`, `workflows/page.tsx` plus legacy tests.
+
+## Verification Run (Task 6d3b)
+- RED:
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/dashboard-aggregates-routes.test.ts` ❌
+  - Failed as expected before implementation (`401` from API-key guard / missing route ownership).
+- GREEN:
+  - `pnpm --filter @noxivo/workflow-engine exec vitest run test/dashboard-aggregates-routes.test.ts` ✅
+- Type/build gates:
+  - `pnpm --filter @noxivo/workflow-engine lint` ✅
+  - `pnpm --filter @noxivo/workflow-engine build` ✅
+  - `pnpm --filter @noxivo/dashboard build` ✅
+- LSP diagnostics (changed files): ✅ no errors
+
 ## Assumptions / Risks
+- Public branding read is intentionally exposed under `/api/v1/dashboard-auth/branding/:agencySlug` and remains unauthenticated to support pre-login branded auth pages.
+- Dashboard lint remains blocked by existing `.next/types` include mismatch in `apps/dashboard/tsconfig.json`; this task does not change that baseline issue.
 - Agency endpoints are intentionally exposed under `/api/v1/agencies/**` with cookie-based session auth (not API-key auth).
 - Invitation signup URL remains path-based (`/<agencySlug>/auth/signup?invitationToken=...`) matching prior dashboard behavior.
 - Tenant/user/invitation “detail” GET routes are provided in workflow-engine for completeness of the migrated module.
 - Running `pnpm --filter @noxivo/dashboard test -- ...` currently executes broader dashboard tests that include legacy/local-backend expectations; prefer `pnpm --filter @noxivo/dashboard exec vitest run ...` for explicit proxy-focused subsets during this migration branch.
 
 ## Next Step
-- Prepare branch for PR: summarize Phase 2–8 backend modularization + dashboard proxy cutover, include verification evidence, and request review.
+- Prepare PR from `dashboard-ui`. Optional follow-up cleanup: remove dead legacy dashboard backend helper files/tests that are no longer on the runtime path.
 
 ## Commands Still Relevant
-- `pnpm --filter @noxivo/workflow-engine exec vitest run test/catalog-routes.test.ts`
-- `pnpm --filter @noxivo/workflow-engine exec vitest run test/agency-management-routes.test.ts`
-- `pnpm --filter @noxivo/workflow-engine exec vitest run test/workflows-routes.test.ts`
-- `pnpm --filter @noxivo/workflow-engine exec vitest run test/team-inbox-routes.test.ts`
-- `pnpm --filter @noxivo/workflow-engine exec vitest run test/settings-routes.test.ts`
+- `pnpm --filter @noxivo/dashboard test`
+- `pnpm --filter @noxivo/dashboard build`
 - `pnpm --filter @noxivo/workflow-engine lint`
 - `pnpm --filter @noxivo/workflow-engine build`
-- `pnpm --filter @noxivo/dashboard exec vitest run test/team-inbox-routes.test.ts test/inbox-events-route.test.ts test/phase7-dashboard-proxy-routes.test.ts`
-- `pnpm --filter @noxivo/dashboard build`
+- `pnpm --filter @noxivo/workflow-engine test`
