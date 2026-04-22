@@ -49,17 +49,16 @@ const config: Config = {
   ],
 
   plugins: [
-    () => ({
-      name: 'disable-progress-plugin',
-      configureWebpack(config) {
-        return {
-          plugins: config.plugins.filter((plugin) => {
-            return plugin.constructor.name !== 'ProgressPlugin' && plugin.constructor.name !== 'WebpackBar';
-          }),
-        };
-      },
-    }),
   ],
+
+  configureWebpack(config, isServer, utils) {
+    return {
+      plugins: config.plugins.filter((plugin) => {
+        const name = plugin.constructor.name;
+        return name !== 'ProgressPlugin' && name !== 'WebpackBar';
+      }),
+    };
+  },
 
   themeConfig: {
     colorMode: {
