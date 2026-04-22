@@ -1,0 +1,18 @@
+
+> docs@0.0.0 build /Users/salmenkhelifi/Developer/noxivo/noxivo-saas/apps/docs
+> docusaurus build
+
+
+[ERROR] Error: These field(s) ("configureWebpack",) are not recognized in docusaurus.config.ts.
+If you still want these fields to be in your configuration, put them in the "customFields" field.
+See https://docusaurus.io/docs/api/docusaurus-config/#customfields
+    at validateConfig (/Users/salmenkhelifi/Developer/noxivo/noxivo-saas/node_modules/.pnpm/@docusaurus+core@3.10.0_@mdx-js+react@3.1.1_@types+react@19.2.14_react@19.2.5__react-do_a20ab8bc09b1801f18440cd4db675b91/node_modules/@docusaurus/core/lib/server/configValidation.js:503:15)
+    at loadSiteConfig (/Users/salmenkhelifi/Developer/noxivo/noxivo-saas/node_modules/.pnpm/@docusaurus+core@3.10.0_@mdx-js+react@3.1.1_@types+react@19.2.14_react@19.2.5__react-do_a20ab8bc09b1801f18440cd4db675b91/node_modules/@docusaurus/core/lib/server/config.js:40:62)
+    at async getLocalesToBuild (/Users/salmenkhelifi/Developer/noxivo/noxivo-saas/node_modules/.pnpm/@docusaurus+core@3.10.0_@mdx-js+react@3.1.1_@types+react@19.2.14_react@19.2.5__react-do_a20ab8bc09b1801f18440cd4db675b91/node_modules/@docusaurus/core/lib/commands/build/build.js:52:28)
+    at async Command.build (/Users/salmenkhelifi/Developer/noxivo/noxivo-saas/node_modules/.pnpm/@docusaurus+core@3.10.0_@mdx-js+react@3.1.1_@types+react@19.2.14_react@19.2.5__react-do_a20ab8bc09b1801f18440cd4db675b91/node_modules/@docusaurus/core/lib/commands/build/build.js:29:21)
+    at async Promise.all (index 0)
+    at async runCLI (/Users/salmenkhelifi/Developer/noxivo/noxivo-saas/node_modules/.pnpm/@docusaurus+core@3.10.0_@mdx-js+react@3.1.1_@types+react@19.2.14_react@19.2.5__react-do_a20ab8bc09b1801f18440cd4db675b91/node_modules/@docusaurus/core/lib/commands/cli.js:56:5)
+    at async file:///Users/salmenkhelifi/Developer/noxivo/noxivo-saas/node_modules/.pnpm/@docusaurus+core@3.10.0_@mdx-js+react@3.1.1_@types+react@19.2.14_react@19.2.5__react-do_a20ab8bc09b1801f18440cd4db675b91/node_modules/@docusaurus/core/bin/docusaurus.mjs:44:3
+[INFO] Docusaurus version: 3.10.0
+Node version: v25.9.0
+ ELIFECYCLE  Command failed with exit code 1.
