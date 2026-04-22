@@ -1,0 +1,4849 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Noxivo Engine API",
+    "description": "Independent, headless WhatsApp & Automation engine. <br/><br/><b>Quick Links:</b><br/>• <a href=\"https://admin.noxivo.app/\" style=\"color: #25D366; font-weight: bold;\">Go to Admin Dashboard</a> | <a href=\"https://admin.noxivo.app/docs\" style=\"color: #25D366; font-weight: bold;\">Documentation</a>",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Noxivo Support",
+      "url": "https://noxivo.app"
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "name": "API-Key",
+        "in": "header",
+        "description": "Your secret API key. Get it from Client Dashboard > Settings > API Keys."
+      },
+      "psk": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "Internal PSK for admin and registration routes."
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/admin": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /admin",
+        "operationId": "get__admin"
+      }
+    },
+    "/api/v1/messages/send": {
+      "post": {
+        "summary": "Send a Message",
+        "tags": [
+          "Messages"
+        ],
+        "description": "Send a high-performance, white-labeled message (text or media) through the Noxivo engine. Supports multiple providers with automatic failover.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "to"
+                ],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Recipient phone number (e.g. \"1234567890\") or full WhatsApp ID (e.g. \"1234567890@c.us\")",
+                    "example": "1234567890"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "The text content of the message. Required if no attachments are provided.",
+                    "example": "Hello from Noxivo Engine!"
+                  },
+                  "agencyId": {
+                    "type": "string",
+                    "description": "Internal Agency Identifier. Required if using a non-scoped platform API key.",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Internal Tenant Identifier. Required if using a non-scoped platform API key.",
+                    "example": "75b2c3d4e5f6g7h8i9j0k1l2"
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "description": "Optional list of media attachments. Currently only one attachment per message is supported.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "url",
+                        "kind",
+                        "mimeType"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "Publicly accessible URL of the media file.",
+                          "example": "https://example.com/image.png"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "image",
+                            "video",
+                            "audio",
+                            "document"
+                          ],
+                          "description": "Type of media being sent.",
+                          "example": "image"
+                        },
+                        "fileName": {
+                          "type": "string",
+                          "description": "Original filename for documents.",
+                          "example": "invoice.pdf"
+                        },
+                        "mimeType": {
+                          "type": "string",
+                          "description": "Standard MIME type of the file.",
+                          "example": "image/png"
+                        },
+                        "caption": {
+                          "type": "string",
+                          "description": "Caption text to accompany the media.",
+                          "example": "Check out this report!"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "to": "1234567890",
+                  "text": "Check out our new catalog!",
+                  "attachments": [
+                    {
+                      "url": "https://noxivo.ai/assets/catalog.pdf",
+                      "kind": "document",
+                      "mimeType": "application/pdf",
+                      "fileName": "Noxivo_Catalog_2025.pdf"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Message sent successfully",
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "The unique message ID generated by the engine.",
+                      "example": "msg_8d2f5a1c3b4e9"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "Current delivery status.",
+                      "example": "sent"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of when the message was processed.",
+                      "example": "2025-04-22T10:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Invalid request parameters",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "agencyId and tenantId are required"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API Key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Unauthorized - Invalid or missing API Key",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Unauthorized"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error or provider failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Internal server error or provider failure",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "No active messaging session found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post__api_v1_messages_send"
+      }
+    },
+    "/api/v1/chats": {
+      "get": {
+        "tags": [
+          "Chats"
+        ],
+        "description": "Retrieve a list of active conversation threads",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "tenant_456"
+            },
+            "in": "query",
+            "name": "tenantId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "example": 20
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "example": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                      },
+                      "contactId": {
+                        "type": "string",
+                        "example": "1234567890@c.us"
+                      },
+                      "contactName": {
+                        "type": "string",
+                        "example": "John Doe"
+                      },
+                      "lastMessage": {
+                        "type": "string",
+                        "example": "Hey, how is it going?"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "example": "2026-04-16T11:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Internal Server Error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/chats",
+        "operationId": "get__api_v1_chats"
+      }
+    },
+    "/api/v1/sessions/bootstrap": {
+      "post": {
+        "summary": "Bootstrap Session",
+        "tags": [
+          "Sessions"
+        ],
+        "description": "Initialize a new WhatsApp messaging session for a specific agency and tenant. If a session already exists, it returns the current status.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "description": "The unique identifier for the agency.",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "The unique identifier for the tenant (sub-account).",
+                    "example": "75b2c3d4e5f6g7h8i9j0k1l2"
+                  },
+                  "accountName": {
+                    "type": "string",
+                    "description": "A friendly name for this messaging account.",
+                    "example": "Noxivo Customer Support"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session bootstrapped successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Session bootstrapped successfully",
+                  "type": "object",
+                  "properties": {
+                    "sessionName": {
+                      "type": "string",
+                      "description": "The internal name of the session used for subsequent API calls.",
+                      "example": "wa_agency_64a1_tenant_75b2"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "Current connection status of the session.",
+                      "example": "SCAN_QR_CODE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Invalid input parameters",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "agencyId and tenantId are required"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Agency or Tenant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Agency or Tenant not found",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Tenant not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway - Failed to communicate with the messaging provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Bad Gateway - Failed to communicate with the messaging provider",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Provider connection refused"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "post__api_v1_sessions_bootstrap"
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "description": "List all engine sessions with live status from MessagingProvider",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                      },
+                      "name": {
+                        "type": "string",
+                        "example": "wa_agency_123_tenant_456"
+                      },
+                      "status": {
+                        "type": "string",
+                        "example": "CONNECTED"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "example": "1234567890"
+                      },
+                      "accountName": {
+                        "type": "string",
+                        "example": "Noxivo Sales"
+                      },
+                      "platform": {
+                        "type": "string",
+                        "example": "WEBJS"
+                      },
+                      "server": {
+                        "type": "string",
+                        "example": "MessagingProvider"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "agencyId": {
+                            "type": "string",
+                            "example": "agency_123"
+                          },
+                          "tenantId": {
+                            "type": "string",
+                            "example": "tenant_456"
+                          },
+                          "clusterId": {
+                            "type": "string",
+                            "example": "cluster_789"
+                          },
+                          "sessionBindingId": {
+                            "type": "string",
+                            "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/sessions",
+        "operationId": "get__api_v1_sessions"
+      }
+    },
+    "/api/v1/sessions/by-tenant": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "description": "Get session by agency and tenant ID",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "agency_123"
+            },
+            "in": "query",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "tenant_456"
+            },
+            "in": "query",
+            "name": "tenantId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "wa_agency_123_tenant_456"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/sessions/by-tenant",
+        "operationId": "get__api_v1_sessions_by_tenant"
+      }
+    },
+    "/api/v1/sessions/start": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "description": "Start session in MessagingProvider",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/sessions/start",
+        "operationId": "post__api_v1_sessions_start"
+      }
+    },
+    "/api/v1/sessions/stop": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "description": "Stop session in MessagingProvider",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/sessions/stop",
+        "operationId": "post__api_v1_sessions_stop"
+      }
+    },
+    "/api/v1/sessions/restart": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "description": "Restart session in MessagingProvider",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/sessions/restart",
+        "operationId": "post__api_v1_sessions_restart"
+      }
+    },
+    "/api/v1/sessions/logout": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "description": "Logout session in MessagingProvider",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/sessions/logout",
+        "operationId": "post__api_v1_sessions_logout"
+      }
+    },
+    "/api/v1/events/stream": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "description": "Real-time event stream for the engine Mission Control",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/events/stream",
+        "operationId": "get__api_v1_events_stream"
+      }
+    },
+    "/api/v1/admin/me": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only profile for admin dashboard session bootstrap",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "session": {
+                      "type": "object",
+                      "properties": {
+                        "expiresAt": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/admin/me",
+        "operationId": "get__api_v1_admin_me"
+      }
+    },
+    "/api/v1/admin/logout": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only admin logout that clears dashboard session cookie",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/admin/logout",
+        "operationId": "post__api_v1_admin_logout"
+      }
+    },
+    "/api/v1/admin/messaging/spec": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only metadata view of Messaging Provider OpenAPI grouped by tags for API explorer",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "endpoints": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "method": {
+                                  "type": "string"
+                                },
+                                "pathTemplate": {
+                                  "type": "string"
+                                },
+                                "summary": {
+                                  "type": "string"
+                                },
+                                "operationId": {
+                                  "type": [
+                                    "null",
+                                    "string"
+                                  ]
+                                },
+                                "parameters": {
+                                  "type": "object",
+                                  "properties": {
+                                    "path": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "query": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                },
+                                "hasRequestBody": {
+                                  "type": "boolean"
+                                },
+                                "responseStatusCodes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "totalEndpoints": {
+                      "type": "number"
+                    },
+                    "generatedAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/admin/messaging/spec",
+        "operationId": "get__api_v1_admin_messaging_spec"
+      }
+    },
+    "/api/v1/admin/messaging/request": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only MessagingProvider explorer request executor with path+method allowlist validation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "method",
+                  "path"
+                ],
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "GET",
+                      "POST",
+                      "PUT",
+                      "PATCH",
+                      "DELETE"
+                    ]
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "query": {
+                    "type": "object"
+                  },
+                  "body": {
+                    "description": "Optional JSON request body forwarded upstream"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/messaging/request",
+        "operationId": "post__api_v1_admin_messaging_request"
+      }
+    },
+    "/api/v1/admin/sessions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only Mission Control hierarchical sessions payload (Agency -> Client -> Sessions)",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "agencyId": {
+                        "type": "string",
+                        "example": "agency_123"
+                      },
+                      "agencyName": {
+                        "type": "string",
+                        "example": "Noxivo Agency"
+                      },
+                      "agencySlug": {
+                        "type": "string",
+                        "example": "noxivo-agency"
+                      },
+                      "clients": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "tenantId": {
+                              "type": "string",
+                              "example": "tenant_456"
+                            },
+                            "tenantName": {
+                              "type": "string",
+                              "example": "Acme Corp"
+                            },
+                            "tenantSlug": {
+                              "type": "string",
+                              "example": "acme-corp"
+                            },
+                            "sessions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "example": "wa_agency_123_tenant_456"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "example": "CONNECTED"
+                                  },
+                                  "phone": {
+                                    "type": "string",
+                                    "example": "1234567890"
+                                  },
+                                  "accountName": {
+                                    "type": "string",
+                                    "example": "Acme Support"
+                                  },
+                                  "platform": {
+                                    "type": "string",
+                                    "example": "WEBJS"
+                                  },
+                                  "server": {
+                                    "type": "string",
+                                    "example": "MessagingProvider"
+                                  },
+                                  "metadata": {
+                                    "type": "object",
+                                    "properties": {
+                                      "agencyId": {
+                                        "type": "string",
+                                        "example": "agency_123"
+                                      },
+                                      "tenantId": {
+                                        "type": "string",
+                                        "example": "tenant_456"
+                                      },
+                                      "clusterId": {
+                                        "type": "string",
+                                        "example": "cluster_789"
+                                      },
+                                      "sessionBindingId": {
+                                        "type": "string",
+                                        "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/admin/sessions",
+        "operationId": "get__api_v1_admin_sessions"
+      }
+    },
+    "/api/v1/admin/sessions/{id}/start": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only start MessagingProvider session binding by id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/sessions/{id}/start",
+        "operationId": "post__api_v1_admin_sessions_id_start"
+      }
+    },
+    "/api/v1/admin/sessions/{id}/stop": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only stop MessagingProvider session binding by id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/sessions/{id}/stop",
+        "operationId": "post__api_v1_admin_sessions_id_stop"
+      }
+    },
+    "/api/v1/admin/sessions/{id}/logout": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only logout MessagingProvider session binding by id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/sessions/{id}/logout",
+        "operationId": "post__api_v1_admin_sessions_id_logout"
+      }
+    },
+    "/api/v1/admin/sessions/{id}/status": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only session status by binding id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/sessions/{id}/status",
+        "operationId": "get__api_v1_admin_sessions_id_status"
+      }
+    },
+    "/api/v1/admin/sessions/{id}/qr": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only QR payload by binding id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/sessions/{id}/qr",
+        "operationId": "get__api_v1_admin_sessions_id_qr"
+      }
+    },
+    "/api/v1/admin/sessions/bootstrap": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only bootstrap a WhatsApp session for an agency/tenant pair",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "example": "agency_123"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "example": "tenant_456"
+                  },
+                  "accountName": {
+                    "type": "string",
+                    "example": "Noxivo Sales"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/sessions/bootstrap",
+        "operationId": "post__api_v1_admin_sessions_bootstrap"
+      }
+    },
+    "/api/v1/admin/workers/status": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only worker and queue status",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/workers/status",
+        "operationId": "get__api_v1_admin_workers_status"
+      }
+    },
+    "/api/v1/admin/events/stream": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only Mission Control event stream",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/events/stream",
+        "operationId": "get__api_v1_admin_events_stream"
+      }
+    },
+    "/api/v1/admin/login": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only login for standalone Admin SPA",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "owner@noxivo.ai"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "p@ssw0rd123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "owner@noxivo.ai"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Noxivo Owner"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "owner"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/admin/login",
+        "operationId": "post__api_v1_admin_login"
+      }
+    },
+    "/api/v1/admin/register": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Developer registration for engine docs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "name"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/register",
+        "operationId": "post__api_v1_admin_register"
+      }
+    },
+    "/api/v1/admin/users/{id}/approve": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only approval for pending developers",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/admin/users/{id}/approve",
+        "operationId": "patch__api_v1_admin_users_id_approve"
+      }
+    },
+    "/api/v1/admin/users/pending": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "description": "Owner-only list of pending developers",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/users/pending",
+        "operationId": "get__api_v1_admin_users_pending"
+      }
+    },
+    "/v1/internal/dashboard/register": {
+      "post": {
+        "tags": [
+          "Dashboard Registry"
+        ],
+        "description": "Register a new dashboard with the workflow engine (protected by PSK)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "dashboardName",
+                  "dashboardUrl",
+                  "webhookSecret"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "description": "Unique agency identifier from dashboard"
+                  },
+                  "dashboardName": {
+                    "type": "string",
+                    "description": "Display name of the dashboard"
+                  },
+                  "dashboardUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Base URL of the dashboard"
+                  },
+                  "webhookSecret": {
+                    "type": "string",
+                    "minLength": 32,
+                    "description": "Secret for webhook validation"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "apiKey": {
+                      "type": "string",
+                      "description": "API key the dashboard will use"
+                    },
+                    "agencyId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /v1/internal/dashboard/register",
+        "operationId": "post__v1_internal_dashboard_register"
+      }
+    },
+    "/v1/internal/dashboard/config": {
+      "get": {
+        "tags": [
+          "Dashboard Registry"
+        ],
+        "description": "Get dashboard config by agencyId (protected by PSK)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/internal/dashboard/config",
+        "operationId": "get__v1_internal_dashboard_config"
+      },
+      "patch": {
+        "tags": [
+          "Dashboard Registry"
+        ],
+        "description": "Update dashboard config (protected by PSK)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string"
+                  },
+                  "dashboardName": {
+                    "type": "string"
+                  },
+                  "dashboardUrl": {
+                    "type": "string"
+                  },
+                  "webhookSecret": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "suspended",
+                      "disconnected"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /v1/internal/dashboard/config",
+        "operationId": "patch__v1_internal_dashboard_config"
+      }
+    },
+    "/v1/internal/dashboard/agencies": {
+      "get": {
+        "tags": [
+          "Dashboard Registry"
+        ],
+        "description": "List all agencies from all dashboards (protected by PSK)",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/internal/dashboard/agencies",
+        "operationId": "get__v1_internal_dashboard_agencies"
+      }
+    },
+    "/api/v1/admin/dashboards": {
+      "get": {
+        "tags": [
+          "Admin - Dashboards"
+        ],
+        "description": "Engine admin: List all registered dashboards",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "agencyId": {
+                        "type": "string"
+                      },
+                      "dashboardName": {
+                        "type": "string"
+                      },
+                      "dashboardUrl": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "lastSyncAt": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "updatedAt": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/admin/dashboards",
+        "operationId": "get__api_v1_admin_dashboards"
+      }
+    },
+    "/api/v1/admin/dashboards/{agencyId}": {
+      "get": {
+        "tags": [
+          "Admin - Dashboards"
+        ],
+        "description": "Engine admin: Get specific dashboard details",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/dashboards/{agencyId}",
+        "operationId": "get__api_v1_admin_dashboards_agencyId"
+      }
+    },
+    "/api/v1/admin/dashboards/{agencyId}/sessions": {
+      "get": {
+        "tags": [
+          "Admin - Dashboards"
+        ],
+        "description": "Engine admin: Get all sessions for a specific dashboard (agency)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/admin/dashboards/{agencyId}/sessions",
+        "operationId": "get__api_v1_admin_dashboards_agencyId_sessions"
+      }
+    },
+    "/api/v1/admin/dashboards/{agencyId}/sync": {
+      "post": {
+        "tags": [
+          "Admin - Dashboards"
+        ],
+        "description": "Engine admin: Mark dashboard as synced",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/dashboards/{agencyId}/sync",
+        "operationId": "post__api_v1_admin_dashboards_agencyId_sync"
+      }
+    },
+    "/api/v1/admin/dashboards/{agencyId}/suspend": {
+      "post": {
+        "tags": [
+          "Admin - Dashboards"
+        ],
+        "description": "Engine admin: Suspend a dashboard",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/dashboards/{agencyId}/suspend",
+        "operationId": "post__api_v1_admin_dashboards_agencyId_suspend"
+      }
+    },
+    "/api/v1/admin/dashboards/{agencyId}/activate": {
+      "post": {
+        "tags": [
+          "Admin - Dashboards"
+        ],
+        "description": "Engine admin: Reactivate a suspended dashboard",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/admin/dashboards/{agencyId}/activate",
+        "operationId": "post__api_v1_admin_dashboards_agencyId_activate"
+      }
+    },
+    "/api/v1/workers/status": {
+      "get": {
+        "tags": [
+          "Workers"
+        ],
+        "description": "Get real-time BullMQ worker and queue status",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "queues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "example": "workflow-continuation"
+                          },
+                          "waiting": {
+                            "type": "integer",
+                            "example": 5
+                          },
+                          "active": {
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "completed": {
+                            "type": "integer",
+                            "example": 150
+                          },
+                          "failed": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "delayed": {
+                            "type": "integer",
+                            "example": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Queue system not initialized"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/workers/status",
+        "operationId": "get__api_v1_workers_status"
+      }
+    },
+    "/api/v1/sessions/{id}/qr": {
+      "get": {
+        "tags": [
+          "Pairing"
+        ],
+        "description": "Fetch QR code for pairing a specific session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "qr": {
+                      "type": "string",
+                      "example": "1@abcd...long-qr-string"
+                    },
+                    "value": {
+                      "type": "string",
+                      "example": "1@abcd...long-qr-string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/sessions/{id}/qr",
+        "operationId": "get__api_v1_sessions_id_qr"
+      }
+    },
+    "/api/v1/sessions/{id}/status": {
+      "get": {
+        "tags": [
+          "Pairing"
+        ],
+        "description": "Check connection status of a specific session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "CONNECTED"
+                    },
+                    "me": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "1234567890@c.us"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Noxivo Engine"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/sessions/{id}/status",
+        "operationId": "get__api_v1_sessions_id_status"
+      }
+    },
+    "/api/v1/sessions/{id}/profile": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "description": "Fetch detailed profile information for a session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/sessions/{id}/profile",
+        "operationId": "get__api_v1_sessions_id_profile"
+      }
+    },
+    "/api/v1/sessions/{id}/contacts": {
+      "get": {
+        "tags": [
+          "Contacts"
+        ],
+        "description": "Fetch contacts for a session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "1234567890@c.us"
+                      },
+                      "name": {
+                        "type": "string",
+                        "example": "John Doe"
+                      },
+                      "pushname": {
+                        "type": "string",
+                        "example": "John"
+                      },
+                      "isGroup": {
+                        "type": "boolean",
+                        "example": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/sessions/{id}/contacts",
+        "operationId": "get__api_v1_sessions_id_contacts"
+      }
+    },
+    "/api/v1/media/send": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "description": "Send media attachment through engine",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "to",
+                  "url",
+                  "kind"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                  },
+                  "to": {
+                    "type": "string",
+                    "example": "1234567890@c.us"
+                  },
+                  "url": {
+                    "type": "string",
+                    "example": "https://placehold.co/600x400.png"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "image",
+                      "document",
+                      "video",
+                      "audio"
+                    ],
+                    "example": "image"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "example": "Check this out!"
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "example": "noxivo-promo.png"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "sent"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/media/send",
+        "operationId": "post__api_v1_media_send"
+      }
+    },
+    "/api/v1/health/messaging": {
+      "get": {
+        "tags": [
+          "Observability"
+        ],
+        "description": "Check status of upstream messaging provider server",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "upstream": {
+                      "type": "string",
+                      "example": "MessagingProvider"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "unhealthy"
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Service Unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/health/messaging",
+        "operationId": "get__api_v1_health_messaging"
+      }
+    },
+    "/api/v1/sessions/{id}/status/stories": {
+      "get": {
+        "tags": [
+          "Status"
+        ],
+        "description": "Fetch status updates (stories) for a session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "story_123"
+                      },
+                      "from": {
+                        "type": "string",
+                        "example": "1234567890@c.us"
+                      },
+                      "text": {
+                        "type": "string",
+                        "example": "My first story!"
+                      },
+                      "timestamp": {
+                        "type": "string",
+                        "example": "2026-04-16T12:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "GET /api/v1/sessions/{id}/status/stories",
+        "operationId": "get__api_v1_sessions_id_status_stories"
+      }
+    },
+    "/api/v1/sessions/{id}/status/text": {
+      "post": {
+        "tags": [
+          "Status"
+        ],
+        "description": "Post text status (story) for a session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "example": "Feeling great with Noxivo! 🚀"
+                  },
+                  "backgroundColor": {
+                    "type": "string",
+                    "example": "#0C5CAB"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "64a1b2c3d4e5f6g7h8i9j0k1"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "example": "msg_status_789"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /api/v1/sessions/{id}/status/text",
+        "operationId": "post__api_v1_sessions_id_status_text"
+      }
+    },
+    "/api/v1/storage": {
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "description": "Get internal storage metrics",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/storage",
+        "operationId": "get__api_v1_storage"
+      }
+    },
+    "/api/v1/keys": {
+      "get": {
+        "tags": [
+          "Api Keys"
+        ],
+        "description": "List MessagingProvider API keys (Master only)",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/keys",
+        "operationId": "get__api_v1_keys"
+      }
+    },
+    "/api/v1/api-keys/me": {
+      "get": {
+        "tags": [
+          "Api Keys"
+        ],
+        "description": "Get or create the scoped API key for the current session context",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "tenantId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/api-keys/me",
+        "operationId": "get__api_v1_api_keys_me"
+      },
+      "post": {
+        "tags": [
+          "Api Keys"
+        ],
+        "description": "Generate a new scoped API key for the current session context",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string"
+                  },
+                  "tenantId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/api-keys/me",
+        "operationId": "post__api_v1_api_keys_me"
+      },
+      "delete": {
+        "tags": [
+          "Api Keys"
+        ],
+        "description": "Revoke the current scoped API key",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string"
+                  },
+                  "tenantId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/api-keys/me",
+        "operationId": "delete__api_v1_api_keys_me"
+      }
+    },
+    "/api/v1/{*}": {
+      "get": {
+        "tags": [
+          "MessagingProvider Proxy"
+        ],
+        "description": "Fallback passthrough for MessagingProvider endpoints not implemented as native engine routes",
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/{*}",
+        "operationId": "get__api_v1"
+      }
+    },
+    "/ai-sales-agent/state": {
+      "post": {
+        "tags": [
+          "AI Sales Agent"
+        ],
+        "description": "Get AI Sales Agent state (enabled/mode) for a specific tenant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "example": "agency_123"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "example": "tenant_456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "bot_active",
+                        "human_takeover"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /ai-sales-agent/state",
+        "operationId": "post__ai_sales_agent_state"
+      },
+      "put": {
+        "tags": [
+          "AI Sales Agent"
+        ],
+        "description": "Update AI Sales Agent state (enabled/mode) for a specific tenant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "example": "agency_123"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "example": "tenant_456"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "bot_active",
+                      "human_takeover"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "PUT /ai-sales-agent/state",
+        "operationId": "put__ai_sales_agent_state"
+      }
+    },
+    "/ai-sales-agent/persona": {
+      "post": {
+        "tags": [
+          "AI Sales Agent"
+        ],
+        "description": "Get AI Sales Agent persona configuration for a specific tenant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "example": "agency_123"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "example": "tenant_456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "agentName": {
+                      "type": "string"
+                    },
+                    "modelChoice": {
+                      "type": "string"
+                    },
+                    "systemPrompt": {
+                      "type": "string"
+                    },
+                    "fallbackMessage": {
+                      "type": "string"
+                    },
+                    "temperature": {
+                      "type": "number"
+                    },
+                    "maxTokens": {
+                      "type": "number"
+                    },
+                    "active": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "POST /ai-sales-agent/persona",
+        "operationId": "post__ai_sales_agent_persona"
+      },
+      "put": {
+        "tags": [
+          "AI Sales Agent"
+        ],
+        "description": "Update AI Sales Agent persona configuration for a specific tenant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agencyId",
+                  "tenantId"
+                ],
+                "properties": {
+                  "agencyId": {
+                    "type": "string",
+                    "example": "agency_123"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "example": "tenant_456"
+                  },
+                  "agentName": {
+                    "type": "string"
+                  },
+                  "modelChoice": {
+                    "type": "string"
+                  },
+                  "systemPrompt": {
+                    "type": "string"
+                  },
+                  "fallbackMessage": {
+                    "type": "string"
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "maxTokens": {
+                    "type": "number"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "PUT /ai-sales-agent/persona",
+        "operationId": "put__ai_sales_agent_persona"
+      }
+    },
+    "/api/v1/spa/bookings": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/spa/bookings",
+        "operationId": "post__api_v1_spa_bookings"
+      }
+    },
+    "/api/v1/spa/catalog/services": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/catalog/services",
+        "operationId": "get__api_v1_spa_catalog_services"
+      }
+    },
+    "/api/v1/spa/auth/sign-up": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/spa/auth/sign-up",
+        "operationId": "post__api_v1_spa_auth_sign_up"
+      }
+    },
+    "/api/v1/spa/auth/sign-in": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/spa/auth/sign-in",
+        "operationId": "post__api_v1_spa_auth_sign_in"
+      }
+    },
+    "/api/v1/spa/auth/sign-out": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/spa/auth/sign-out",
+        "operationId": "post__api_v1_spa_auth_sign_out"
+      }
+    },
+    "/api/v1/spa/auth/me": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/auth/me",
+        "operationId": "get__api_v1_spa_auth_me"
+      }
+    },
+    "/api/v1/spa/account/bookings": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/account/bookings",
+        "operationId": "get__api_v1_spa_account_bookings"
+      }
+    },
+    "/api/v1/spa/account/profile": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/account/profile",
+        "operationId": "get__api_v1_spa_account_profile"
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PUT /api/v1/spa/account/profile",
+        "operationId": "put__api_v1_spa_account_profile"
+      }
+    },
+    "/api/v1/spa/admin/customers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/admin/customers",
+        "operationId": "get__api_v1_spa_admin_customers"
+      }
+    },
+    "/api/v1/spa/admin/services": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/admin/services",
+        "operationId": "get__api_v1_spa_admin_services"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/spa/admin/services",
+        "operationId": "post__api_v1_spa_admin_services"
+      }
+    },
+    "/api/v1/spa/admin/site-settings": {
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PUT /api/v1/spa/admin/site-settings",
+        "operationId": "put__api_v1_spa_admin_site_settings"
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/admin/site-settings",
+        "operationId": "get__api_v1_spa_admin_site_settings"
+      }
+    },
+    "/api/v1/spa/admin/gallery": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/spa/admin/gallery",
+        "operationId": "post__api_v1_spa_admin_gallery"
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/admin/gallery",
+        "operationId": "get__api_v1_spa_admin_gallery"
+      }
+    },
+    "/api/v1/spa/admin/ai-concierge": {
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PUT /api/v1/spa/admin/ai-concierge",
+        "operationId": "put__api_v1_spa_admin_ai_concierge"
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/spa/admin/ai-concierge",
+        "operationId": "get__api_v1_spa_admin_ai_concierge"
+      }
+    },
+    "/api/v1/agency/webhooks": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agency/webhooks",
+        "operationId": "get__api_v1_agency_webhooks"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/agency/webhooks",
+        "operationId": "post__api_v1_agency_webhooks"
+      }
+    },
+    "/api/v1/agency/webhooks/{webhookId}": {
+      "put": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "webhookId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PUT /api/v1/agency/webhooks/{webhookId}",
+        "operationId": "put__api_v1_agency_webhooks_webhookId"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "webhookId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/agency/webhooks/{webhookId}",
+        "operationId": "delete__api_v1_agency_webhooks_webhookId"
+      }
+    },
+    "/api/v1/agencies/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agencies/",
+        "operationId": "get__api_v1_agencies"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/agencies/",
+        "operationId": "post__api_v1_agencies"
+      }
+    },
+    "/api/v1/agencies/{agencyId}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agencies/{agencyId}",
+        "operationId": "get__api_v1_agencies_agencyId"
+      },
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/agencies/{agencyId}",
+        "operationId": "patch__api_v1_agencies_agencyId"
+      }
+    },
+    "/api/v1/agencies/{agencyId}/tenants": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agencies/{agencyId}/tenants",
+        "operationId": "get__api_v1_agencies_agencyId_tenants"
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/agencies/{agencyId}/tenants",
+        "operationId": "post__api_v1_agencies_agencyId_tenants"
+      }
+    },
+    "/api/v1/agencies/{agencyId}/tenants/{tenantId}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "tenantId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agencies/{agencyId}/tenants/{tenantId}",
+        "operationId": "get__api_v1_agencies_agencyId_tenants_tenantId"
+      }
+    },
+    "/api/v1/agencies/{agencyId}/team": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agencies/{agencyId}/team",
+        "operationId": "get__api_v1_agencies_agencyId_team"
+      }
+    },
+    "/api/v1/agencies/{agencyId}/team/{userId}": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/agencies/{agencyId}/team/{userId}",
+        "operationId": "patch__api_v1_agencies_agencyId_team_userId"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/agencies/{agencyId}/team/{userId}",
+        "operationId": "delete__api_v1_agencies_agencyId_team_userId"
+      }
+    },
+    "/api/v1/agencies/{agencyId}/invitations": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/agencies/{agencyId}/invitations",
+        "operationId": "get__api_v1_agencies_agencyId_invitations"
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/agencies/{agencyId}/invitations",
+        "operationId": "post__api_v1_agencies_agencyId_invitations"
+      }
+    },
+    "/api/v1/agencies/{agencyId}/invitations/{invitationId}": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "invitationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/agencies/{agencyId}/invitations/{invitationId}",
+        "operationId": "patch__api_v1_agencies_agencyId_invitations_invitationId"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "agencyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "invitationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/agencies/{agencyId}/invitations/{invitationId}",
+        "operationId": "delete__api_v1_agencies_agencyId_invitations_invitationId"
+      }
+    },
+    "/api/v1/catalog/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/catalog/",
+        "operationId": "get__api_v1_catalog"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/catalog/",
+        "operationId": "post__api_v1_catalog"
+      }
+    },
+    "/api/v1/catalog/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/catalog/{id}",
+        "operationId": "get__api_v1_catalog_id"
+      },
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/catalog/{id}",
+        "operationId": "patch__api_v1_catalog_id"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/catalog/{id}",
+        "operationId": "delete__api_v1_catalog_id"
+      }
+    },
+    "/api/v1/catalog/settings": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/catalog/settings",
+        "operationId": "get__api_v1_catalog_settings"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/catalog/settings",
+        "operationId": "post__api_v1_catalog_settings"
+      }
+    },
+    "/api/v1/catalog/upload": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/catalog/upload",
+        "operationId": "post__api_v1_catalog_upload"
+      }
+    },
+    "/api/v1/catalog/ai-help": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/catalog/ai-help",
+        "operationId": "post__api_v1_catalog_ai_help"
+      }
+    },
+    "/api/v1/catalog/publish": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/catalog/publish",
+        "operationId": "post__api_v1_catalog_publish"
+      }
+    },
+    "/api/v1/workflows/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/workflows/",
+        "operationId": "get__api_v1_workflows"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/workflows/",
+        "operationId": "post__api_v1_workflows"
+      }
+    },
+    "/api/v1/workflows/clone": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/workflows/clone",
+        "operationId": "post__api_v1_workflows_clone"
+      }
+    },
+    "/api/v1/workflows/{workflowId}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/workflows/{workflowId}",
+        "operationId": "get__api_v1_workflows_workflowId"
+      },
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/workflows/{workflowId}",
+        "operationId": "patch__api_v1_workflows_workflowId"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/workflows/{workflowId}",
+        "operationId": "delete__api_v1_workflows_workflowId"
+      }
+    },
+    "/api/v1/workflows/{workflowId}/toggle": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/workflows/{workflowId}/toggle",
+        "operationId": "post__api_v1_workflows_workflowId_toggle"
+      }
+    },
+    "/api/v1/workflows/{workflowId}/runs": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/workflows/{workflowId}/runs",
+        "operationId": "get__api_v1_workflows_workflowId_runs"
+      }
+    },
+    "/api/v1/workflows/{workflowId}/analytics": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/workflows/{workflowId}/analytics",
+        "operationId": "get__api_v1_workflows_workflowId_analytics"
+      }
+    },
+    "/api/v1/workflows/{workflowId}/execution-events": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "workflowId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/workflows/{workflowId}/execution-events",
+        "operationId": "get__api_v1_workflows_workflowId_execution_events"
+      }
+    },
+    "/api/v1/team-inbox/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/",
+        "operationId": "get__api_v1_team_inbox"
+      }
+    },
+    "/api/v1/team-inbox/events": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/events",
+        "operationId": "get__api_v1_team_inbox_events"
+      }
+    },
+    "/api/v1/team-inbox/stats": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/stats",
+        "operationId": "get__api_v1_team_inbox_stats"
+      }
+    },
+    "/api/v1/team-inbox/plugins": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/plugins",
+        "operationId": "get__api_v1_team_inbox_plugins"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/plugins",
+        "operationId": "post__api_v1_team_inbox_plugins"
+      }
+    },
+    "/api/v1/team-inbox/billing": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/billing",
+        "operationId": "get__api_v1_team_inbox_billing"
+      }
+    },
+    "/api/v1/team-inbox/leads": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/leads",
+        "operationId": "get__api_v1_team_inbox_leads"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/assign": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/assign",
+        "operationId": "post__api_v1_team_inbox_conversationId_assign"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/read": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/read",
+        "operationId": "post__api_v1_team_inbox_conversationId_read"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/actions": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/actions",
+        "operationId": "post__api_v1_team_inbox_conversationId_actions"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/unhandoff": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/unhandoff",
+        "operationId": "post__api_v1_team_inbox_conversationId_unhandoff"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/suggest-reply": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/suggest-reply",
+        "operationId": "post__api_v1_team_inbox_conversationId_suggest_reply"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/lead": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/{conversationId}/lead",
+        "operationId": "get__api_v1_team_inbox_conversationId_lead"
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/lead",
+        "operationId": "post__api_v1_team_inbox_conversationId_lead"
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/team-inbox/{conversationId}/lead",
+        "operationId": "delete__api_v1_team_inbox_conversationId_lead"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/messages": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/{conversationId}/messages",
+        "operationId": "get__api_v1_team_inbox_conversationId_messages"
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/messages",
+        "operationId": "post__api_v1_team_inbox_conversationId_messages"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/messages/{messageId}": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "messageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/messages/{messageId}",
+        "operationId": "post__api_v1_team_inbox_conversationId_messages_messageId"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/delivery-history": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/{conversationId}/delivery-history",
+        "operationId": "get__api_v1_team_inbox_conversationId_delivery_history"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/crm": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/team-inbox/{conversationId}/crm",
+        "operationId": "get__api_v1_team_inbox_conversationId_crm"
+      },
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/team-inbox/{conversationId}/crm",
+        "operationId": "patch__api_v1_team_inbox_conversationId_crm"
+      }
+    },
+    "/api/v1/team-inbox/{conversationId}/messages/{messageId}/actions": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "messageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/team-inbox/{conversationId}/messages/{messageId}/actions",
+        "operationId": "post__api_v1_team_inbox_conversationId_messages_messageId_actions"
+      }
+    },
+    "/api/v1/settings/credentials": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/credentials",
+        "operationId": "get__api_v1_settings_credentials"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/settings/credentials",
+        "operationId": "post__api_v1_settings_credentials"
+      }
+    },
+    "/api/v1/settings/shop": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/shop",
+        "operationId": "get__api_v1_settings_shop"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/settings/shop",
+        "operationId": "post__api_v1_settings_shop"
+      }
+    },
+    "/api/v1/settings/storage": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/storage",
+        "operationId": "get__api_v1_settings_storage"
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PUT /api/v1/settings/storage",
+        "operationId": "put__api_v1_settings_storage"
+      }
+    },
+    "/api/v1/settings/webhook-inbox-activation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/webhook-inbox-activation",
+        "operationId": "get__api_v1_settings_webhook_inbox_activation"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/settings/webhook-inbox-activation",
+        "operationId": "post__api_v1_settings_webhook_inbox_activation"
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/settings/webhook-inbox-activation",
+        "operationId": "delete__api_v1_settings_webhook_inbox_activation"
+      }
+    },
+    "/api/v1/settings/webhook-inbox-sources": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/webhook-inbox-sources",
+        "operationId": "get__api_v1_settings_webhook_inbox_sources"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/settings/webhook-inbox-sources",
+        "operationId": "post__api_v1_settings_webhook_inbox_sources"
+      }
+    },
+    "/api/v1/settings/webhook-inbox-sources/{sourceId}": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "sourceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /api/v1/settings/webhook-inbox-sources/{sourceId}",
+        "operationId": "patch__api_v1_settings_webhook_inbox_sources_sourceId"
+      }
+    },
+    "/api/v1/settings/developer-api": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/developer-api",
+        "operationId": "get__api_v1_settings_developer_api"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/settings/developer-api",
+        "operationId": "post__api_v1_settings_developer_api"
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/settings/developer-api",
+        "operationId": "delete__api_v1_settings_developer_api"
+      }
+    },
+    "/api/v1/settings/whatsapp-check": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/whatsapp-check",
+        "operationId": "get__api_v1_settings_whatsapp_check"
+      }
+    },
+    "/api/v1/settings/qr": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /api/v1/settings/qr",
+        "operationId": "get__api_v1_settings_qr"
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /api/v1/settings/qr",
+        "operationId": "post__api_v1_settings_qr"
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "DELETE /api/v1/settings/qr",
+        "operationId": "delete__api_v1_settings_qr"
+      }
+    },
+    "/v1/internal/inbox/conversations/{conversationId}/messages": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /v1/internal/inbox/conversations/{conversationId}/messages",
+        "operationId": "post__v1_internal_inbox_conversations_conversationId_messages"
+      }
+    },
+    "/v1/internal/inbox/sync": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /v1/internal/inbox/sync",
+        "operationId": "post__v1_internal_inbox_sync"
+      }
+    },
+    "/v1/internal/crm/conversations/{conversationId}/profile": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/internal/crm/conversations/{conversationId}/profile",
+        "operationId": "get__v1_internal_crm_conversations_conversationId_profile"
+      },
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "PATCH /v1/internal/crm/conversations/{conversationId}/profile",
+        "operationId": "patch__v1_internal_crm_conversations_conversationId_profile"
+      }
+    },
+    "/v1/webhooks/messaging": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /v1/webhooks/messaging",
+        "operationId": "post__v1_webhooks_messaging"
+      }
+    },
+    "/v1/messaging/session/bootstrap": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /v1/messaging/session/bootstrap",
+        "operationId": "post__v1_messaging_session_bootstrap"
+      }
+    },
+    "/v1/messaging/session/qr": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/messaging/session/qr",
+        "operationId": "get__v1_messaging_session_qr"
+      }
+    },
+    "/v1/messaging/session/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/messaging/session/status",
+        "operationId": "get__v1_messaging_session_status"
+      }
+    },
+    "/v1/messaging/{sessionName}/{*}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "sessionName",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/messaging/{sessionName}/{*}",
+        "operationId": "get__v1_messaging_sessionName"
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "sessionName",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /v1/messaging/{sessionName}/{*}",
+        "operationId": "post__v1_messaging_sessionName"
+      }
+    },
+    "/v1/inbox/chats": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/inbox/chats",
+        "operationId": "get__v1_inbox_chats"
+      }
+    },
+    "/v1/inbox/conversations/{conversationId}/messages": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/inbox/conversations/{conversationId}/messages",
+        "operationId": "get__v1_inbox_conversations_conversationId_messages"
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "conversationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "POST /v1/inbox/conversations/{conversationId}/messages",
+        "operationId": "post__v1_inbox_conversations_conversationId_messages"
+      }
+    },
+    "/v1/inbox/messages/{messageId}/status": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "messageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        },
+        "summary": "GET /v1/inbox/messages/{messageId}/status",
+        "operationId": "get__v1_inbox_messages_messageId_status"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api-workflow-engine.noxivo.app",
+      "description": "Production Engine API"
+    },
+    {
+      "url": "http://localhost:4000",
+      "description": "Local Development"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    },
+    {
+      "psk": []
+    }
+  ]
+}

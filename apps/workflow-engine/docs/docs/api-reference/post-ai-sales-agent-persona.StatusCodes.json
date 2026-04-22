@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"Default Response","content":{"application/json":{"schema":{"type":"object","nullable":true,"properties":{"agentName":{"type":"string"},"modelChoice":{"type":"string"},"systemPrompt":{"type":"string"},"fallbackMessage":{"type":"string"},"temperature":{"type":"number"},"maxTokens":{"type":"number"},"active":{"type":"boolean"}}}}}}}}

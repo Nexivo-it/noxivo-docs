@@ -1,0 +1,1 @@
+{"title":"Body","body":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["email","password"],"properties":{"email":{"type":"string","format":"email","example":"owner@noxivo.ai"},"password":{"type":"string","example":"p@ssw0rd123"}}}}}}}

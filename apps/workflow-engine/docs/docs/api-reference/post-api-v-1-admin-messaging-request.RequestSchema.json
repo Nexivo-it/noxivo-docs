@@ -1,0 +1,1 @@
+{"title":"Body","body":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["method","path"],"properties":{"method":{"type":"string","enum":["GET","POST","PUT","PATCH","DELETE"]},"path":{"type":"string"},"query":{"type":"object"},"body":{"description":"Optional JSON request body forwarded upstream"}}}}}}}

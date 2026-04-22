@@ -1,0 +1,1 @@
+{"title":"Body","body":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["agencyId"],"properties":{"agencyId":{"type":"string"},"dashboardName":{"type":"string"},"dashboardUrl":{"type":"string"},"webhookSecret":{"type":"string"},"status":{"type":"string","enum":["active","suspended","disconnected"]}}}}}}}

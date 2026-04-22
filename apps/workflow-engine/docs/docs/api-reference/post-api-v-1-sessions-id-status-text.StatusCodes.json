@@ -1,0 +1,1 @@
+{"responses":{"201":{"description":"Default Response","content":{"application/json":{"schema":{"type":"object","properties":{"success":{"type":"boolean","example":true},"id":{"type":"string","example":"msg_status_789"}}}}}},"404":{"description":"Default Response","content":{"application/json":{"schema":{"type":"object","properties":{"error":{"type":"string"}}}}}}}}

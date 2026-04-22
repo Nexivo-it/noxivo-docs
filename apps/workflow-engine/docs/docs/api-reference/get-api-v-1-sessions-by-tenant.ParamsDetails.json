@@ -1,0 +1,1 @@
+{"parameters":[{"schema":{"type":"string","example":"agency_123"},"in":"query","name":"agencyId","required":true},{"schema":{"type":"string","example":"tenant_456"},"in":"query","name":"tenantId","required":true}]}

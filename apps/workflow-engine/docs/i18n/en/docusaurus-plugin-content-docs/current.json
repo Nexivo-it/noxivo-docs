@@ -1,0 +1,22 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.API Reference": {
+    "message": "API Reference",
+    "description": "The label for category 'API Reference' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.API Reference.link.generated-index.description": {
+    "message": "Full technical reference for the Noxivo Engine API.",
+    "description": "The generated-index page description for category 'API Reference' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.architecture": {
+    "message": "architecture",
+    "description": "The label for category 'architecture' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.integrations": {
+    "message": "integrations",
+    "description": "The label for category 'integrations' in sidebar 'tutorialSidebar'"
+  }
+}

@@ -1,0 +1,1 @@
+{"title":"Body","body":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["text"],"properties":{"text":{"type":"string","example":"Feeling great with Noxivo! 🚀"},"backgroundColor":{"type":"string","example":"#0C5CAB"}}}}}}}
