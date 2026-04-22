@@ -48,17 +48,8 @@ const config: Config = {
     ],
   ],
 
-  plugins: [
-  ],
+  plugins: [],
 
-  configureWebpack(config, isServer, utils) {
-    return {
-      plugins: config.plugins.filter((plugin) => {
-        const name = plugin.constructor.name;
-        return name !== 'ProgressPlugin' && name !== 'WebpackBar';
-      }),
-    };
-  },
 
   themeConfig: {
     colorMode: {
