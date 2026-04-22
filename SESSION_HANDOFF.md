@@ -1,6 +1,19 @@
 # Session Handoff - Backend Modularization Phase 8 (Proxy Cleanup)
 
 ## Recent Activity
+- Added a dashboard-authenticated docs bridge for workflow-engine Swagger access:
+  - New dashboard route: `apps/dashboard/app/dashboard/engine-docs/route.ts`
+  - New dashboard token/signing helper: `apps/dashboard/lib/api/workflow-engine-docs-auth.ts`
+  - Dashboard test coverage: `apps/dashboard/test/engine-docs-route.test.ts`
+- Added workflow-engine docs access helpers in `apps/workflow-engine/src/modules/docs/docs-access.ts` to validate short-lived bridge tokens, mint the docs access cookie, and redirect anonymous `/docs` traffic back to the dashboard entrypoint.
+- Updated workflow-engine docs gate in `apps/workflow-engine/src/server.ts`:
+  - `/docs/authorize` bypasses the normal docs gate so the dashboard bridge can mint a docs cookie
+  - valid `noxivo_docs_access` cookie now unlocks `/docs` and `/docs/json`
+  - anonymous/non-authorized `/docs` requests now redirect to `https://noxivo.app/dashboard/engine-docs?returnTo=...`
+  - existing admin owner/developer access path remains intact for admin-session users
+- Updated Swagger metadata quick link in `apps/workflow-engine/src/plugins/swagger.plugin.ts` to point Documentation at `https://noxivo.app/dashboard/engine-docs` instead of the old admin-only docs URL.
+- Added workflow-engine regression coverage in `apps/workflow-engine/test/docs-auth.test.ts` and aligned `apps/workflow-engine/test/admin-mission-control.test.ts` with the current `/admin/login` redirect behavior.
+- Fixed a stray syntax tail in `apps/workflow-engine/src/routes/v1/admin.routes.ts` so Vitest can parse the file again.
 - Fixed workflow-engine verification failure in `test/spa-admin-routes.test.ts` by removing a stale expectation against the retired `/api/v1/spa/admin/media-storage` endpoint; test now validates the currently supported admin API surface.
 - Continued Phase 8 test cleanup by replacing stale pre-proxy dashboard route suites with workflow-engine proxy-focused tests for settings/team-management/smoke/CRM:
   - `test/settings-credentials-route.test.ts`
@@ -85,6 +98,15 @@
 - Added workflow-engine TDD coverage for settings module route behavior and verified RED→GREEN.
 
 ## Files Changed
+- `apps/dashboard/app/dashboard/engine-docs/route.ts` (new dashboard-authenticated redirect entrypoint for engine docs)
+- `apps/dashboard/lib/api/workflow-engine-docs-auth.ts` (new signed bridge token + public docs URL helper)
+- `apps/dashboard/test/engine-docs-route.test.ts` (new dashboard docs bridge coverage)
+- `apps/workflow-engine/src/modules/docs/docs-access.ts` (new docs cookie/token verification helpers)
+- `apps/workflow-engine/src/plugins/swagger.plugin.ts` (docs authorize bridge route + quick-link update)
+- `apps/workflow-engine/src/server.ts` (docs gate now accepts docs cookie and redirects anonymous docs traffic to dashboard entrypoint)
+- `apps/workflow-engine/test/docs-auth.test.ts` (new workflow-engine docs auth regression coverage)
+- `apps/workflow-engine/test/admin-mission-control.test.ts` (aligned `/admin/` anonymous redirect expectation)
+- `apps/workflow-engine/src/routes/v1/admin.routes.ts` (removed stray duplicate tail so file parses again)
 - `apps/workflow-engine/test/spa-admin-routes.test.ts` (removed stale media-storage assertion; aligned with active SPA admin endpoints)
 - `apps/dashboard/test/settings-credentials-route.test.ts` (rewritten to proxy-focused assertions)
 - `apps/dashboard/test/settings-shop-route.test.ts` (rewritten to proxy-focused assertions)
@@ -247,9 +269,11 @@
 - Running `pnpm --filter @noxivo/dashboard test -- ...` currently executes broader dashboard tests that include legacy/local-backend expectations; prefer `pnpm --filter @noxivo/dashboard exec vitest run ...` for explicit proxy-focused subsets during this migration branch.
 
 ## Next Step
-- Prepare branch for PR: summarize Phase 2–8 backend modularization + dashboard proxy cutover, include verification evidence, and request review.
+- Verify the dashboard-authenticated docs bridge in a live environment with real subdomains/cookies (`/auth/login` on dashboard → `/dashboard/engine-docs` → workflow-engine `/docs`) and then decide whether to surface the entrypoint in dashboard settings/navigation.
 
 ## Commands Still Relevant
+- `pnpm --filter @noxivo/dashboard exec vitest run test/engine-docs-route.test.ts test/workflow-engine-proxy-helper.test.ts`
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/docs-auth.test.ts test/admin-mission-control.test.ts`
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/catalog-routes.test.ts`
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/agency-management-routes.test.ts`
 - `pnpm --filter @noxivo/workflow-engine exec vitest run test/workflows-routes.test.ts`

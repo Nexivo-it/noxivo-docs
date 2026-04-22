@@ -2,6 +2,9 @@
 
 ## Active Sprint
 
+- [x] Protect workflow-engine Swagger docs with dashboard-authenticated access by adding a dashboard `/dashboard/engine-docs` bridge route, short-lived docs access token handoff, and workflow-engine docs session cookie gate
+- [ ] Verify the new dashboard → workflow-engine docs bridge end-to-end in a live local/dev environment (dashboard login → redirect → `/docs` loads with Swagger + `/docs/json`)
+
 - [x] Phase 7 backend modularization: cut dashboard `/api/{agencies,catalog,workflows,team-inbox,settings}/**` route trees over to workflow-engine proxy handlers via shared `proxyDashboardRouteToWorkflowEngine` helper
 - [x] Phase 8 cleanup: harden dashboard proxy dynamic-path encoding (`conversationId`/`messageId`/`sourceId`) and replace stale local-backend dashboard inbox tests with proxy-focused coverage
 - [x] Phase 8 cleanup (continued): migrate stale dashboard settings/team-management/smoke/CRM route tests to workflow-engine proxy assertions (remove pre-proxy local-backend expectations)
@@ -106,6 +109,8 @@
 ## Commands Still Relevant
 
 - `pnpm --filter @noxivo/contracts build` ✅
+- `pnpm --filter @noxivo/dashboard exec vitest run test/engine-docs-route.test.ts test/workflow-engine-proxy-helper.test.ts` ✅
+- `pnpm --filter @noxivo/workflow-engine exec vitest run test/docs-auth.test.ts test/admin-mission-control.test.ts` ✅
 - `pnpm --filter @noxivo/database build` ✅
 - `pnpm --filter @noxivo/workflow-engine test -- test/spa-media-url.service.test.ts test/spa-auth-routes.test.ts test/spa-catalog-routes.test.ts test/spa-bookings-routes.test.ts test/spa-admin-routes.test.ts` ✅
 - `pnpm --filter @noxivo/workflow-engine test` ✅
