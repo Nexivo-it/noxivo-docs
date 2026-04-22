@@ -30,6 +30,7 @@
     "@docusaurus/types": "3.10.0",
     "@types/react": "^19.0.0",
     "typescript": "~6.0.2",
+    "webpack": "^5.106.2",
     "webpackbar": "^7.0.0"
   },
   "browserslist": {
