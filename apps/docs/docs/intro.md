@@ -7,7 +7,7 @@ Welcome to the **Noxivo Engine Developer Documentation**.
 
 Noxivo is a high-performance, headless workflow engine designed to automate WhatsApp interactions at scale. Our architecture is built for decoupling, security, and "Agentic Intelligence."
 
-## 🚀 Getting Started
+## 🚀 Getting Started {#-getting-started}
 
 To start using the Noxivo Engine API, you must first connect your WhatsApp account through our dashboard.
 
@@ -18,7 +18,7 @@ To start using the Noxivo Engine API, you must first connect your WhatsApp accou
 
 ---
 
-## 🛠️ Public API Capabilities
+## 🛠️ Public API Capabilities {#️-public-api-capabilities}
 
 Once connected, you can use our API to:
 - **Send & Receive Messages**: Full support for text, media, and interactive elements.
@@ -28,7 +28,7 @@ Once connected, you can use our API to:
 
 ---
 
-## 📦 Installation
+## 📦 Installation {#-installation}
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -56,19 +56,19 @@ import TabItem from '@theme/TabItem';
   </TabItem>
 </Tabs>
 
-## Core Features
+## Core Features {#core-features}
 
 - **Agentic Memory**: Persistent contact facts injected into AI prompts for hyper-contextual automation.
 - **Visual DAG Builder**: Design complex automation flows using a modern drag-and-drop interface.
 - **messaging Native Support**: Native handling of WhatsApp interactive payloads (Buttons and Lists).
 
-## Integration Paths
+## Integration Paths {#integration-paths}
 
 Are you an agency or developer looking to connect external tools?
 
 - Check out our [n8n Integration Guide](./integrations/n8n-guide.md) to start connecting your workflows to external services like Make, Zapier, or custom backends.
 
-## API Security
+## API Security {#api-security}
 
 All requests to the Noxivo Engine must be authenticated using the `API-Key` header.
 
@@ -78,4 +78,4 @@ To obtain your API key, log in to your **Noxivo Dashboard** at [https://noxivo.a
 3. Click **Generate New Key**.
 4. Securely store your `ENGINE_API_KEY`. It will only be shown once.
 
-For more details on key types, see our [Authentication Guide](./api-reference/api-master-guide.md#1-global-authentication).
+For more details on key types, see our [Authentication Guide](./api-reference/api-master-guide.md#1-authentication).
