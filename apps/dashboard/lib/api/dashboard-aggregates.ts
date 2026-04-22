@@ -1,4 +1,11 @@
-import type { AgencySummary, AgencyTeamRole } from '@noxivo/contracts';
+import type {
+  AgencyInvitationRecord,
+  AgencySummary,
+  AgencyTeamRole,
+  TeamMemberRecord,
+} from '@noxivo/contracts';
+
+export type AgencyListItem = AgencySummary;
 
 export interface DashboardShellData {
   user: {
@@ -82,5 +89,22 @@ export interface AgencyOverviewData {
     billingMode: string;
     customDomain: string | null;
     createdAt: string;
+  }>;
+}
+
+export interface TeamManagementData {
+  members: TeamMemberRecord[];
+  invitations: AgencyInvitationRecord[];
+}
+
+export interface WorkflowsPageData {
+  workflows: Array<{
+    id: string;
+    name: string;
+    description: string;
+    status: 'active' | 'paused';
+    lastRun: string;
+    executions: number;
+    type: string;
   }>;
 }

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireCurrentSession } from '../../../lib/auth/current-user';
 import { canManageAgencySettings } from '../../../lib/auth/authorization';
-import type { AgencyOverviewData } from '../../../lib/dashboard/queries';
+import type { AgencyOverviewData } from '../../../lib/api/dashboard-aggregates';
 import { workflowEngineServerFetch } from '../../../lib/api/workflow-engine-server';
 import { TenantsWorkspace } from '../../../components/tenants-workspace';
 

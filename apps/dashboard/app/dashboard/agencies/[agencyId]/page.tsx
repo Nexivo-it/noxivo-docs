@@ -1,5 +1,5 @@
 import { requireCurrentSession } from '../../../../lib/auth/current-user';
-import type { AgencyOverviewData, TeamManagementData } from '../../../../lib/dashboard/queries';
+import type { AgencyOverviewData, TeamManagementData } from '../../../../lib/api/dashboard-aggregates';
 import { workflowEngineServerFetch } from '../../../../lib/api/workflow-engine-server';
 import { TeamWorkspace } from '../../../../components/team-workspace';
 import { TenantsWorkspace } from '../../../../components/tenants-workspace';

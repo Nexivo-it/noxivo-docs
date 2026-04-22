@@ -1,6 +1,6 @@
 import { requireCurrentSession } from '../../../lib/auth/current-user';
 import { canManageWorkflows } from '../../../lib/auth/authorization';
-import type { WorkflowsPageData } from '../../../lib/dashboard/queries';
+import type { WorkflowsPageData } from '../../../lib/api/dashboard-aggregates';
 import { workflowEngineServerFetch } from '../../../lib/api/workflow-engine-server';
 import { WorkflowsClient } from './workflows-client';
 
