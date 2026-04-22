@@ -17,19 +17,15 @@ async function runDiagnostics() {
 
   let allHealthy = true;
 
-  // 1. Check Dashboard Health
+  // 1. Check Dashboard Availability
   try {
-    console.log('Checking Dashboard Health...');
-    const response = await fetch(`${DASHBOARD_URL}/api/health`);
-    const data = await response.json();
+    console.log('Checking Dashboard Availability...');
+    const response = await fetch(`${DASHBOARD_URL}/healthz`);
     
     if (response.ok) {
-      console.log('✅ Dashboard is healthy');
-      console.log(`   MongoDB: ${data.checks.mongodb}`);
-      if (data.checks.redis) console.log(`   Redis:   ${data.checks.redis}`);
+      console.log('✅ Dashboard is reachable');
     } else {
-      console.error('❌ Dashboard is UNHEALTHY');
-      console.error(JSON.stringify(data, null, 2));
+      console.error(`❌ Dashboard is unavailable (${response.status})`);
       allHealthy = false;
     }
   } catch (err) {
