@@ -34,6 +34,18 @@ import {
   Code
 } from 'lucide-react';
 import Link from 'next/link';
+import { dashboardApi } from '../../../../../lib/api/dashboard-api';
+
+type WorkflowRunsResponse = {
+  runs: Array<{
+    status: string;
+    workflowRunId: string;
+  }>;
+  events: Array<{
+    workflowRunId: string;
+    nodeId: string;
+  }>;
+};
 
 // Custom Nodes Components
 const CustomNodeWrapper = ({ children, title, icon: Icon, color, selected, data }: any) => (
@@ -216,9 +228,7 @@ export default function WorkflowBuilderPage({ params: paramsPromise }: { params:
 
     const fetchLiveStats = async () => {
       try {
-        const res = await fetch(`/api/workflows/${workflowId}/runs`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await dashboardApi.getWorkflowRuns<WorkflowRunsResponse>(workflowId);
         
         const newActiveNodes = new Set<string>();
         const activeRunIds = data.runs.filter((r: any) => r.status === 'running').map((r: any) => r.workflowRunId);
@@ -309,21 +319,11 @@ export default function WorkflowBuilderPage({ params: paramsPromise }: { params:
   const onSave = async () => {
     try {
       const { editorGraph, compiledDag } = compileDag();
-      
-      const response = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          editorGraph,
-          compiledDag,
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to save workflow');
-      }
+      await dashboardApi.saveWorkflowDefinition(workflowId, {
+        editorGraph,
+        compiledDag,
+      });
 
       alert('Workflow saved successfully!');
     } catch (error) {

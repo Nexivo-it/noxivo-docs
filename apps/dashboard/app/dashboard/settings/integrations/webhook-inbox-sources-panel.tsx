@@ -12,6 +12,7 @@ import {
   Webhook,
 } from 'lucide-react';
 import { Badge, WorkspacePanel } from '../../../../components/dashboard-workspace-ui';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 type WebhookInboxSourceRecord = {
   id: string;
@@ -91,17 +92,10 @@ export function WebhookInboxSourcesPanel() {
     setError(null);
 
     try {
-      const response = await fetch('/api/settings/webhook-inbox-sources', { cache: 'no-store' });
-      const payload = await response.json().catch(() => null) as {
+      const payload = await dashboardApi.getWebhookInboxSources() as {
         error?: string;
         sources?: WebhookInboxSourceRecord[];
       } | null;
-
-      if (!response.ok) {
-        setError(payload?.error ?? 'Failed to load webhook inbox sources');
-        setSources([]);
-        return;
-      }
 
       setSources(Array.isArray(payload?.sources) ? payload.sources : []);
     } catch {
@@ -151,6 +145,7 @@ export function WebhookInboxSourcesPanel() {
       const parsedHeaders = JSON.parse(formState.outboundHeadersJson || '{}') as unknown;
       if (!parsedHeaders || typeof parsedHeaders !== 'object' || Array.isArray(parsedHeaders)) {
         setError('Outbound headers must be a JSON object');
+        setIsSaving(false);
         return;
       }
 
@@ -190,20 +185,13 @@ export function WebhookInboxSourcesPanel() {
     }
 
     try {
-      const response = await fetch(
-        activeSource ? `/api/settings/webhook-inbox-sources/${activeSource.id}` : '/api/settings/webhook-inbox-sources',
-        {
-          method: activeSource ? 'PATCH' : 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-      );
-
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-
-      if (!response.ok) {
-        setError(result?.error ?? 'Failed to save webhook inbox source');
-        return;
+      if (activeSource) {
+        await dashboardApi.updateWebhookInboxSource(activeSource.id, payload);
+      } else {
+        await dashboardApi.createWebhookInboxSource({
+          ...payload,
+          inboundSecret: payload.inboundSecret ?? '',
+        });
       }
 
       await loadSources();
@@ -220,17 +208,7 @@ export function WebhookInboxSourcesPanel() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/settings/webhook-inbox-sources/${source.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) {
-        setError(result?.error ?? 'Failed to update webhook inbox source status');
-        return;
-      }
+      await dashboardApi.updateWebhookInboxSource(source.id, { status });
 
       await loadSources();
     } catch {

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Link2, ArrowLeft, Package, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { CatalogItem } from '@/lib/catalog/types';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 export default function CatalogLinking() {
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -14,8 +15,7 @@ export default function CatalogLinking() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch('/api/catalog');
-        const data = await response.json();
+        const data = await dashboardApi.getCatalog();
         if (data.items) {
           setItems(data.items.filter((i: CatalogItem) => i.itemType === 'service'));
         }
@@ -54,19 +54,16 @@ export default function CatalogLinking() {
 
   const saveBundle = async (bundle: typeof bundles[0]) => {
     try {
-      const response = await fetch('/api/catalog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          payload: {
-            name: bundle.name,
-            itemType: 'bundle',
-            priceAmount: bundle.priceAmount,
-            customFields: JSON.stringify({ originalPrice: bundle.originalPrice, items: bundle.items })
-          }
-        }),
+      const priceAmount = bundle.priceAmount ?? 0;
+      await dashboardApi.createCatalogItem({
+        payload: {
+          name: bundle.name,
+          itemType: 'bundle',
+          status: 'ready',
+          priceAmount,
+          customFields: JSON.stringify({ originalPrice: bundle.originalPrice ?? 0, items: bundle.items })
+        }
       });
-      if (!response.ok) throw new Error('Failed to save');
       toast.success('Bundle saved!');
     } catch (error) {
       toast.error('Failed to save bundle');

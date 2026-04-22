@@ -14,6 +14,7 @@ import {
   Trash2,
   User
 } from 'lucide-react';
+import { dashboardApi } from '../../lib/api/dashboard-api';
 
 interface TeamInboxContactProfileSummary {
   totalMessages: number;
@@ -224,59 +225,40 @@ function toProfileDraft(profile: TeamInboxCrmProfile | null): TeamInboxCrmProfil
   };
 }
 
-async function readErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
-  const payload = await response.json().catch(() => null);
-
-  if (payload && typeof payload === 'object' && typeof (payload as { error?: unknown }).error === 'string') {
-    return (payload as { error: string }).error;
-  }
-
-  return fallbackMessage;
-}
-
 export async function fetchTeamInboxCrmProfile(conversationId: string): Promise<TeamInboxCrmProfile> {
-  const response = await fetch(`/api/team-inbox/${conversationId}/crm`);
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Unable to load CRM profile'));
+  try {
+    return await dashboardApi.getTeamInboxCrmProfile<TeamInboxCrmProfile>(conversationId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    throw new Error(message || 'Unable to load CRM profile');
   }
-
-  return response.json() as Promise<TeamInboxCrmProfile>;
 }
 
 export async function fetchContactMemories(contactId: string): Promise<MemoryItem[]> {
-  const response = await fetch(`/api/memories?contactId=${encodeURIComponent(contactId)}`);
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error || 'Failed to fetch memories');
+  try {
+    const data = await dashboardApi.getMemories<MemoryItem>(contactId);
+    return data.memories;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    throw new Error(message || 'Failed to fetch memories');
   }
-
-  const data = await response.json() as { memories: MemoryItem[] };
-  return data.memories;
 }
 
 export async function createMemory(contactId: string, fact: string, category: string, source: string): Promise<void> {
-  const response = await fetch('/api/memories', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ contactId, fact, category, source })
-  });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error || 'Failed to create memory');
+  try {
+    await dashboardApi.createMemory({ contactId, fact, category, source });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    throw new Error(message || 'Failed to create memory');
   }
 }
 
 export async function deleteMemory(memoryId: string): Promise<void> {
-  const response = await fetch(`/api/memories?memoryId=${encodeURIComponent(memoryId)}`, {
-    method: 'DELETE'
-  });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error || 'Failed to delete memory');
+  try {
+    await dashboardApi.deleteMemory(memoryId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    throw new Error(message || 'Failed to delete memory');
   }
 }
 
@@ -284,17 +266,12 @@ export async function patchTeamInboxCrmProfile(
   conversationId: string,
   mutation: TeamInboxCrmMutation
 ): Promise<TeamInboxCrmProfile> {
-  const response = await fetch(`/api/team-inbox/${conversationId}/crm`, {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(mutation)
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Unable to update CRM profile'));
+  try {
+    return await dashboardApi.patchTeamInboxCrmProfile<TeamInboxCrmProfile>(conversationId, mutation);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    throw new Error(message || 'Unable to update CRM profile');
   }
-
-  return response.json() as Promise<TeamInboxCrmProfile>;
 }
 
 function normalizeOptionalText(value: string): string | null {

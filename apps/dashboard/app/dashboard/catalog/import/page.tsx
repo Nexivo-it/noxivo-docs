@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { Upload, FileText, ArrowRight, Loader2, Plus, X, Download, FileJson, FileCode, FileSpreadsheet, Link2 } from 'lucide-react';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 type FieldMapping = {
   sourceField: string;
@@ -93,14 +94,7 @@ export default function CatalogImport() {
         const formData = new FormData();
         formData.append('file', file);
         
-        const response = await fetch('/api/catalog/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error('Upload failed');
-        
-        const data = await response.json();
+        const data = await dashboardApi.uploadCatalogAsset(formData);
         
         toast.success('File analyzed! Review extracted services below.');
         setParsedData(data.aiAnalysis || []);
@@ -192,23 +186,18 @@ export default function CatalogImport() {
       let savedCount = 0;
       
       for (const item of parsedData) {
-        const response = await fetch('/api/catalog', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            payload: {
-              name: item.name || 'Untitled',
-              priceAmount: item.price || 0,
-              durationMinutes: item.duration || 30,
-              shortDescription: item.description || '',
-              categoryId: item.category || '',
-              itemType: 'service',
-              status: 'needs_review',
-            }
-          }),
+        await dashboardApi.createCatalogItem({
+          payload: {
+            name: item.name || 'Untitled',
+            priceAmount: item.price || 0,
+            durationMinutes: item.duration || 30,
+            shortDescription: item.description || '',
+            categoryId: item.category || '',
+            itemType: 'service',
+            status: 'needs_review',
+          }
         });
-
-        if (response.ok) savedCount++;
+        savedCount++;
       }
 
       toast.success(`Saved ${savedCount} services!`);

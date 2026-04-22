@@ -18,6 +18,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ImageKitWrapper, IKUpload } from '@/components/media/imagekit-provider';
+import { dashboardApi, type SaveCatalogSettingsInput, type StorageInfo } from '@/lib/api/dashboard-api';
 
 interface CatalogSettings {
   currency: string;
@@ -26,15 +27,6 @@ interface CatalogSettings {
   accentColor: string;
   logoUrl: string;
   defaultDuration: number;
-}
-
-interface StorageInfo {
-  provider: string;
-  isActive: boolean;
-  publicBaseUrl: string;
-  publicConfig: Record<string, any>;
-  secretConfig: Record<string, string>;
-  pathPrefix: string;
 }
 
 export default function CatalogSettingsPage() {
@@ -85,37 +77,19 @@ export default function CatalogSettingsPage() {
     setLoading(true);
     setHasError(false);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.warn('[DEBUG] Fetch timeout reached, aborting');
-      controller.abort();
-    }, 10000);
-
     try {
-      const response = await fetch('/api/catalog/settings', {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server returned ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await dashboardApi.getCatalogSettings();
       
       if (data.settings) setSettings(data.settings);
       if (data.storage) setStorage(data.storage);
       if (data.storeUrl) setStoreUrl(data.storeUrl);
     } catch (error) {
       console.error('[DEBUG] Fetch error:', error);
-      const isAbort = error instanceof Error && error.name === 'AbortError';
-      const message = isAbort ? 'Connection timed out. The server might be hanging.' : (error instanceof Error ? error.message : 'Failed to load settings');
+      const message = error instanceof Error ? error.message : 'Failed to load settings';
       
       toast.error(message);
       setHasError(true);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -126,18 +100,11 @@ export default function CatalogSettingsPage() {
     try {
       const payload = {
         ...settings,
-        storage: isEditingStorage ? storage : undefined
-      };
+        storage: isEditingStorage ? storage : undefined,
+      } as SaveCatalogSettingsInput;
 
-      const response = await fetch('/api/catalog/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error('Failed to save settings');
+      const data = await dashboardApi.saveCatalogSettings(payload);
       
-      const data = await response.json();
       if (data.storage) setStorage(data.storage);
       
       setIsEditingStorage(false);
@@ -303,8 +270,8 @@ export default function CatalogSettingsPage() {
                 <label className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-subtle)] ml-1">Catalog Logo</label>
                 
                 <ImageKitWrapper 
-                  publicKey={storage.publicConfig.publicKey}
-                  urlEndpoint={storage.publicBaseUrl || storage.publicConfig.urlEndpoint}
+                  publicKey={storage.publicConfig.publicKey ?? ''}
+                  urlEndpoint={(storage.publicBaseUrl ?? '') || (storage.publicConfig.urlEndpoint ?? '')}
                 >
                   <div className="bg-[var(--surface-section)] border-2 border-dashed border-[var(--glass-border)] rounded-[2rem] p-8 flex flex-col items-center justify-center group/logo hover:border-[var(--color-primary)]/50 transition-colors relative overflow-hidden">
                     {settings.logoUrl ? (
@@ -482,7 +449,7 @@ export default function CatalogSettingsPage() {
                         <input 
                           type="text"
                           placeholder="Storage Zone Name"
-                          value={storage.publicConfig.storageZoneName || ''}
+                          value={(storage.publicConfig.storageZoneName as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, storageZoneName: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
@@ -501,14 +468,14 @@ export default function CatalogSettingsPage() {
                         <input 
                           type="text"
                           placeholder="Bucket Name"
-                          value={storage.publicConfig.bucket || ''}
+                          value={(storage.publicConfig.bucket as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, bucket: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
                          <input 
                           type="text"
                           placeholder="Account ID"
-                          value={storage.publicConfig.accountId || ''}
+                          value={(storage.publicConfig.accountId as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, accountId: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
@@ -534,14 +501,14 @@ export default function CatalogSettingsPage() {
                         <input 
                           type="text"
                           placeholder="Bucket"
-                          value={storage.publicConfig.bucket || ''}
+                          value={(storage.publicConfig.bucket as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, bucket: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
                          <input 
                           type="text"
                           placeholder="Region"
-                          value={storage.publicConfig.region || ''}
+                          value={(storage.publicConfig.region as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, region: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
@@ -567,14 +534,14 @@ export default function CatalogSettingsPage() {
                         <input 
                           type="text"
                           placeholder="Cloud Name"
-                          value={storage.publicConfig.cloudName || ''}
+                          value={(storage.publicConfig.cloudName as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, cloudName: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
                         <input 
                           type="text"
                           placeholder="API Key"
-                          value={storage.publicConfig.apiKey || ''}
+                          value={(storage.publicConfig.apiKey as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, apiKey: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
@@ -593,14 +560,14 @@ export default function CatalogSettingsPage() {
                         <input 
                           type="text"
                           placeholder="Public Key"
-                          value={storage.publicConfig.publicKey || ''}
+                          value={(storage.publicConfig.publicKey as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, publicKey: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />
                         <input 
                           type="text"
                           placeholder="URL Endpoint"
-                          value={storage.publicConfig.urlEndpoint || ''}
+                          value={(storage.publicConfig.urlEndpoint as string) || ''}
                           onChange={(e) => setStorage({ ...storage, publicConfig: { ...storage.publicConfig, urlEndpoint: e.target.value } })}
                           className="w-full bg-[var(--surface-card)] border border-[var(--glass-border)] rounded-lg p-2 text-xs text-white"
                         />

@@ -16,6 +16,7 @@ import {
   WorkspaceHeader,
   WorkspacePanel,
 } from '../../../../components/dashboard-workspace-ui';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 import { WebhookInboxSourcesPanel } from './webhook-inbox-sources-panel';
 import { WebhookInboxActivationPanel } from './webhook-inbox-activation-panel';
 
@@ -309,8 +310,8 @@ export function IntegrationsClient() {
 
     try {
       const [credentialsResult, shopResult] = await Promise.allSettled([
-        fetch('/api/settings/credentials', { cache: 'no-store' }),
-        fetch('/api/settings/shop', { cache: 'no-store' }),
+        dashboardApi.getSettingsCredentials(),
+        dashboardApi.getSettingsShop(),
       ]);
 
       if (credentialsResult.status !== 'fulfilled') {
@@ -321,19 +322,10 @@ export function IntegrationsClient() {
         return false;
       }
 
-      const credentialsResponse = credentialsResult.value;
-      const credentialsPayload = await credentialsResponse.json().catch(() => null) as {
-        error?: string;
-        credentials?: CredentialRecord[];
-      } | null;
-
-      if (!credentialsResponse.ok) {
-        setLoadError(scope, credentialsPayload?.error ?? 'Failed to load integration credentials');
-        setCredentials([]);
-        setShopStatuses([]);
-        setIsShopStatusStale(true);
-        return false;
-      }
+      const credentialsPayload: { error?: string; credentials?: CredentialRecord[] } | null =
+        credentialsResult.value && typeof credentialsResult.value === 'object'
+          ? credentialsResult.value as unknown as { error?: string; credentials?: CredentialRecord[] }
+          : null;
 
       setCredentials(Array.isArray(credentialsPayload?.credentials) ? credentialsPayload.credentials : []);
 
@@ -344,18 +336,10 @@ export function IntegrationsClient() {
         return false;
       }
 
-      const shopResponse = shopResult.value;
-      const shopPayload = await shopResponse.json().catch(() => null) as {
+      const shopPayload = shopResult.value as {
         error?: string;
         providers?: ShopStatusRecord[];
       } | null;
-
-      if (!shopResponse.ok) {
-        setShopStatuses([]);
-        setIsShopStatusStale(true);
-        setLoadError(scope, shopPayload?.error ?? 'Failed to load shop provider status');
-        return false;
-      }
 
       setShopStatuses(Array.isArray(shopPayload?.providers) ? shopPayload.providers : []);
       setIsShopStatusStale(false);
@@ -480,18 +464,7 @@ export function IntegrationsClient() {
             };
 
     try {
-      const response = await fetch('/api/settings/credentials', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-
-      if (!response.ok) {
-        setModalSaveError(result?.error ?? 'Failed to save integration credential');
-        return;
-      }
+      await dashboardApi.upsertSettingsCredential(payload);
 
       setSecretDrafts((current) => ({
         ...current,
@@ -532,18 +505,7 @@ export function IntegrationsClient() {
     setToggleError(null);
 
     try {
-      const response = await fetch('/api/settings/shop', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ provider, enabled }),
-      });
-
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-
-      if (!response.ok) {
-        setToggleError(result?.error ?? 'Failed to update shop provider status');
-        return;
-      }
+      await dashboardApi.updateSettingsShop({ provider, enabled });
 
       await loadData('toggle');
     } catch {

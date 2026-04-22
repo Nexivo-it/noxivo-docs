@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, User, Building2, ArrowRight, Check } from 'lucide-react';
 import { buildAuthPath } from '../lib/auth/paths';
+import { signupWithWorkflowEngine } from '../lib/api/dashboard-auth-client';
 
 interface SignupFormProps {
   brandName?: string;
@@ -50,7 +51,7 @@ export function SignupForm({
     return strength;
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: { preventDefault: () => void }) {
     event.preventDefault();
     setError('');
 
@@ -62,29 +63,26 @@ export function SignupForm({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          fullName: formData.fullName,
-          agencyName: invitationToken ? undefined : formData.agencyName,
-          invitationToken: invitationToken ?? undefined
-        })
-      });
+      const payload = invitationToken
+        ? {
+            email: formData.email,
+            password: formData.password,
+            fullName: formData.fullName,
+            invitationToken
+          }
+        : {
+            email: formData.email,
+            password: formData.password,
+            fullName: formData.fullName,
+            agencyName: formData.agencyName
+          };
 
-      const payload = await response.json();
-
-      if (!response.ok) {
-        setError(typeof payload.error === 'string' ? payload.error : 'Unable to create account');
-        return;
-      }
+      await signupWithWorkflowEngine(payload);
 
       router.push('/dashboard');
       router.refresh();
-    } catch {
-      setError('Unable to create account');
+    } catch (error) {
+      setError(error instanceof Error && error.message.length > 0 ? error.message : 'Unable to create account');
     } finally {
       setIsLoading(false);
     }

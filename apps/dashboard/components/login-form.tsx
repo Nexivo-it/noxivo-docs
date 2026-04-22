@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, ArrowRight, CheckCircle2, ShieldCheck, Globe } from 'lucide-react';
 import { buildAuthPath } from '../lib/auth/paths';
+import { loginWithWorkflowEngine } from '../lib/api/dashboard-auth-client';
 import Image from 'next/image';
 
 interface LoginFormProps {
@@ -44,23 +45,12 @@ export function LoginForm({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const payload = await response.json();
-
-      if (!response.ok) {
-        setError(typeof payload.error === 'string' ? payload.error : 'Unable to sign in');
-        return;
-      }
+      await loginWithWorkflowEngine({ email, password });
 
       router.push('/dashboard');
       router.refresh();
-    } catch {
-      setError('Unable to sign in');
+    } catch (error) {
+      setError(error instanceof Error && error.message.length > 0 ? error.message : 'Unable to sign in');
     } finally {
       setIsLoading(false);
     }

@@ -6,6 +6,9 @@ import {
   buildCrmLinkRecordMutation,
   buildCrmNoteMutation,
   buildCrmProfileMutation,
+  createMemory,
+  deleteMemory,
+  fetchContactMemories,
   fetchTeamInboxCrmProfile,
   isCrmProfileEmpty,
   normalizeCrmTagsInput,
@@ -223,16 +226,59 @@ describe('team inbox CRM panel UI', () => {
       conversationId: 'conversation-1'
     });
 
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/team-inbox/conversation-1/crm');
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/team-inbox/conversation-1/crm', expect.objectContaining({
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://localhost:3001/api/v1/team-inbox/conversation-1/crm', expect.objectContaining({
+      credentials: 'include'
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://localhost:3001/api/v1/team-inbox/conversation-1/crm', expect.objectContaining({
       method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         action: 'update_profile',
         owner: null,
         pipelineStage: null,
         tags: []
       })
+    }));
+  });
+
+  it('uses direct memories workflow-engine endpoints', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ memories: [{ id: 'm1' }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchContactMemories('15550001111@c.us');
+    await createMemory('15550001111@c.us', 'Prefers PDF invoices', 'preference', 'manual');
+    await deleteMemory('memory-42');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://localhost:3001/api/v1/memories?contactId=15550001111%40c.us', expect.objectContaining({
+      credentials: 'include'
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://localhost:3001/api/v1/memories', expect.objectContaining({
+      method: 'POST',
+      credentials: 'include',
+      body: JSON.stringify({
+        contactId: '15550001111@c.us',
+        fact: 'Prefers PDF invoices',
+        category: 'preference',
+        source: 'manual'
+      })
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, 'http://localhost:3001/api/v1/memories?memoryId=memory-42', expect.objectContaining({
+      method: 'DELETE',
+      credentials: 'include'
     }));
   });
 });

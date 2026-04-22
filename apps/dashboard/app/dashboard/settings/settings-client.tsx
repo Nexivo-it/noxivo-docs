@@ -23,6 +23,7 @@ import {
   WorkspacePanel,
 } from '../../../components/dashboard-workspace-ui';
 import { toast } from 'sonner';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 import {
   getQrPollIntervalMs,
   mapPairingSnapshotToUi,
@@ -348,8 +349,7 @@ export function SettingsClient() {
     }
 
     try {
-      const res = await fetch('/api/settings/qr', { cache: 'no-store' });
-      const payload = await res.json().catch(() => null);
+      const payload = await dashboardApi.getSettingsQr();
       const data = isRecord(payload) ? payload : {};
       const snapshot = mapPairingSnapshotToUi(data);
       const sessionName = readString(data.sessionName);
@@ -357,27 +357,6 @@ export function SettingsClient() {
       const profile = resolveConnectedProfile(data);
       const diagnostics = isRecord(data.diagnostics) ? data.diagnostics : null;
       const syncedAt = readDateCandidate(data.syncedAt ?? data.snapshotAt ?? data.fetchedAt);
-
-      if (!res.ok) {
-        setQrState((prev) => ({
-          ...prev,
-          status: 'failed',
-          reason: snapshot.reason,
-          poll: false,
-          qrValue: null,
-          error: error ?? 'Failed to refresh WhatsApp pairing state',
-          sessionName: sessionName ?? prev.sessionName,
-          profile: profile ?? prev.profile,
-          diagnostics: diagnostics ?? prev.diagnostics,
-          syncedAt: syncedAt ?? prev.syncedAt,
-        }));
-
-        return {
-          ok: false,
-          status: 'failed',
-          error: error ?? 'Failed to refresh WhatsApp pairing state'
-        };
-      }
 
       const stateError = snapshot.state === 'failed'
         ? (error ?? 'Unable to recover WhatsApp pairing state')
@@ -396,14 +375,14 @@ export function SettingsClient() {
       });
 
       return { ok: true, status: snapshot.state, error: stateError };
-    } catch {
-      const networkError = 'Network error';
+    } catch (error) {
+      const requestError = error instanceof Error ? error.message : 'Network error';
       setQrState((prev) => ({
         status: prev.status === 'connected' ? 'connected' : 'failed',
         reason: prev.status === 'connected' ? prev.reason : 'network_error',
         poll: false,
         qrValue: prev.qrValue,
-        error: prev.status === 'connected' ? prev.error ?? networkError : networkError,
+        error: prev.status === 'connected' ? prev.error ?? requestError : requestError,
         sessionName: prev.sessionName,
         profile: prev.profile,
         diagnostics: prev.diagnostics,
@@ -412,7 +391,7 @@ export function SettingsClient() {
       return {
         ok: false,
         status: null,
-        error: networkError
+        error: requestError
       };
     } finally {
       if (isManualRefresh) {
@@ -463,20 +442,7 @@ export function SettingsClient() {
     }));
 
     try {
-      const response = await fetch('/api/settings/qr', {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action }),
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const errorMessage = isRecord(payload) ? readString(payload.error) : null;
-        throw new Error(errorMessage ?? (isLoginAction ? 'Failed to start WhatsApp login' : 'Failed to regenerate QR code'));
-      }
+      await dashboardApi.updateSettingsQr({ action });
 
       const refreshed = await fetchQR('background');
       if (!refreshed.ok) {
@@ -536,16 +502,7 @@ export function SettingsClient() {
     setQrState((prev) => ({ ...prev, error: null }));
 
     try {
-      const response = await fetch('/api/settings/qr', {
-        method: 'DELETE',
-        cache: 'no-store'
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const errorMessage = isRecord(payload) ? readString(payload.error) : null;
-        throw new Error(errorMessage ?? 'Failed to log out of WhatsApp');
-      }
+      await dashboardApi.deleteSettingsQr();
 
       const refreshed = await fetchQR('background');
       if (!refreshed.ok) {
@@ -573,9 +530,9 @@ export function SettingsClient() {
 
   const fetchApiKey = async () => {
     try {
-      const res = await fetch('/api/settings/developer-api');
-      const data = await res.json();
-      if (data.key) {
+      const payload = await dashboardApi.getSettingsDeveloperApi();
+      const data = isRecord(payload) ? payload : {};
+      if (typeof data.key === 'string' && data.key.length > 0) {
         setApiApiKey(data.key);
         setIsApiEnabled(true);
       } else {
@@ -593,13 +550,11 @@ export function SettingsClient() {
     setIsTogglingApi(true);
 
     try {
-      const res = await fetch('/api/settings/developer-api', { method: action });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Failed to update API status');
+      const payload = await dashboardApi.updateSettingsDeveloperApi(action);
+      const data = isRecord(payload) ? payload : {};
 
       if (action === 'POST') {
-        setApiApiKey(data.key);
+        setApiApiKey(typeof data.key === 'string' ? data.key : null);
         setIsApiEnabled(true);
         toast.success('Developer API enabled! You can now use your secret key.', { id: toastId });
       } else {
@@ -607,8 +562,8 @@ export function SettingsClient() {
         setIsApiEnabled(false);
         toast.success('Developer API access revoked.', { id: toastId });
       }
-    } catch (error: any) {
-      toast.error(error.message, { id: toastId });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update API status', { id: toastId });
     } finally {
       setIsTogglingApi(false);
     }
@@ -617,11 +572,8 @@ export function SettingsClient() {
   const fetchWebhooks = async () => {
     setIsLoadingWebhooks(true);
     try {
-      const res = await fetch('/api/v1/agency/webhooks');
-      if (res.ok) {
-        const data = await res.json();
-        setWebhooks(Array.isArray(data) ? data : []);
-      }
+      const data = await dashboardApi.listAgencyWebhooks<WebhookConfig>();
+      setWebhooks(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch webhooks:', err);
     } finally {
@@ -633,28 +585,25 @@ export function SettingsClient() {
     setIsSavingWebhook(true);
     try {
       const method = webhook.id && !webhook.id.includes('new') ? 'PUT' : 'POST';
-      const url = method === 'PUT' && webhook.id 
-? `/api/v1/agency/webhooks/${webhook.id}`
-      : '/api/v1/agency/webhooks';
-      
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...webhook,
-          isActive: webhook.isActive ?? true,
-          secret: '',
-        }),
-      });
+      const payload = {
+        ...webhook,
+        isActive: webhook.isActive ?? true,
+        secret: '',
+      };
 
-      if (!res.ok) throw new Error('Failed to save webhook');
+      if (method === 'PUT' && webhook.id) {
+        await dashboardApi.updateAgencyWebhook(webhook.id, payload);
+      } else {
+        await dashboardApi.createAgencyWebhook(payload);
+      }
       
       toast.success(webhook.id && !webhook.id.includes('new') ? 'Webhook updated!' : 'Webhook created!');
       setShowWebhookModal(false);
       setEditingWebhook(null);
       fetchWebhooks();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save webhook';
+      toast.error(message);
     } finally {
       setIsSavingWebhook(false);
     }
@@ -664,12 +613,12 @@ export function SettingsClient() {
     if (!confirm('Delete this webhook?')) return;
     
     try {
-      const res = await fetch(`/api/v1/agency/webhooks/${webhookId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
+      await dashboardApi.deleteAgencyWebhook(webhookId);
       toast.success('Webhook deleted');
       fetchWebhooks();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to delete';
+      toast.error(message);
     }
   };
 

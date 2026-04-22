@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { CatalogItem } from '@/lib/catalog/types';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 function safeParseGallery(raw?: string): string[] {
@@ -136,11 +137,11 @@ export default function CatalogWorkspace() {
   useEffect(() => {
     async function fetchItems() {
       try {
-        const r = await fetch('/api/catalog');
-        const data = await r.json();
+        const data = await dashboardApi.getCatalog();
         if (data.items) {
           setItems(data.items);
-          if (data.items.length > 0 && !selectedItemId) setSelectedItemId(data.items[0].id);
+          const firstItem = data.items[0];
+          if (firstItem && !selectedItemId) setSelectedItemId(firstItem.id);
         }
       } catch { toast.error('Failed to load catalog'); }
       finally { setLoading(false); }
@@ -197,13 +198,16 @@ export default function CatalogWorkspace() {
   const handleAddService = async () => {
     setSaving(true);
     try {
-      const r = await fetch('/api/catalog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: { name: 'New Service', itemType: 'service', status: 'needs_review', priceAmount: 0, durationMinutes: 30, isActive: true } }),
+      const { item } = await dashboardApi.createCatalogItem({
+        payload: {
+          name: 'New Service',
+          itemType: 'service',
+          status: 'needs_review',
+          priceAmount: 0,
+          durationMinutes: 30,
+          isActive: true,
+        },
       });
-      if (!r.ok) throw new Error();
-      const { item } = await r.json();
       setItems(prev => [...prev, item]);
       setSelectedItemId(item.id);
       toast.success('New service added');
@@ -224,17 +228,11 @@ export default function CatalogWorkspace() {
         !!editItem.categoryId &&
         !!editItem.seoTitle && !!editItem.seoDescription &&
         editItem.isActive !== false;
-      const derivedStatus = (forceReady || contentReady)
+      const derivedStatus: CatalogItem['status'] = (forceReady || contentReady)
         ? 'ready'
         : (editItem.status === 'ready' ? 'needs_review' : (editItem.status ?? 'needs_review'));
       const payload = { ...editItem, status: derivedStatus };
-      const r = await fetch(`/api/catalog/${selectedItemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!r.ok) throw new Error();
-      const updated = await r.json();
+      const updated = await dashboardApi.updateCatalogItem(selectedItemId, payload);
       setItems(prev => prev.map(i => i.id === selectedItemId ? updated : i));
       setEditItem(prev => ({ ...prev, status: derivedStatus }));
       if (forceReady) toast.success('🎉 Service marked as Ready!');
@@ -249,8 +247,7 @@ export default function CatalogWorkspace() {
     if (!id) return;
     if (!confirm('Archive this service?')) return;
     try {
-      const r = await fetch(`/api/catalog/${id}`, { method: 'DELETE' });
-      if (!r.ok) throw new Error();
+      await dashboardApi.deleteCatalogItem(id);
       setItems(prev => prev.filter(i => i.id !== id));
       if (selectedItemId === id) setSelectedItemId(null);
       toast.success('Item archived');
@@ -266,39 +263,44 @@ export default function CatalogWorkspace() {
   const handleAiHelp = async (targetField: 'all' | 'seo') => {
     setGeneratingAi(targetField);
     try {
-      const response = await fetch('/api/catalog/ai-help', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: targetField === 'seo' ? 'seo-only' : 'all',
-          context: {
-            itemType: editItem.itemType || 'service',
-            name: editItem.name,
-            currentDescription: editItem.shortDescription || editItem.longDescription,
-            title: editItem.seoTitle,
-            description: editItem.seoDescription
-          }
-        })
+      const context: {
+        itemType: CatalogItem['itemType'];
+        name?: string;
+        currentDescription?: string;
+        title?: string;
+        description?: string;
+      } = {
+        itemType: editItem.itemType || 'service',
+      };
+
+      if (editItem.name) context.name = editItem.name;
+
+      const currentDescription = editItem.shortDescription || editItem.longDescription;
+      if (currentDescription) context.currentDescription = currentDescription;
+
+      if (editItem.seoTitle) context.title = editItem.seoTitle;
+      if (editItem.seoDescription) context.description = editItem.seoDescription;
+
+      const { suggestions } = await dashboardApi.getCatalogAiHelp({
+        mode: targetField === 'seo' ? 'seo-only' : 'all',
+        context,
       });
 
-      if (!response.ok) throw new Error();
-      const { suggestions } = await response.json();
+      setEditItem(prev => {
+        const patch: Partial<CatalogItem> = {};
 
-      setEditItem(prev => ({
-        ...prev,
-        ...(targetField === 'all' ? {
-          name: suggestions.name || prev.name,
-          shortDescription: suggestions.shortDescription || prev.shortDescription,
-          longDescription: suggestions.longDescription || prev.longDescription,
-          seoTitle: suggestions.seoTitle || prev.seoTitle,
-          seoDescription: suggestions.seoDescription || prev.seoDescription,
-          seoKeywords: suggestions.seoKeywords || prev.seoKeywords,
-        } : {
-          seoTitle: suggestions.seoTitle || prev.seoTitle,
-          seoDescription: suggestions.seoDescription || prev.seoDescription,
-          seoKeywords: suggestions.seoKeywords || prev.seoKeywords,
-        })
-      }));
+        if (targetField === 'all') {
+          if (suggestions.name) patch.name = suggestions.name;
+          if (suggestions.shortDescription) patch.shortDescription = suggestions.shortDescription;
+          if (suggestions.longDescription) patch.longDescription = suggestions.longDescription;
+        }
+
+        if (suggestions.seoTitle) patch.seoTitle = suggestions.seoTitle;
+        if (suggestions.seoDescription) patch.seoDescription = suggestions.seoDescription;
+        if (suggestions.seoKeywords) patch.seoKeywords = suggestions.seoKeywords;
+
+        return { ...prev, ...patch };
+      });
       toast.success('AI suggestions applied! Review and save.');
     } catch {
       toast.error('AI was unable to generate suggestions at this time.');
@@ -313,9 +315,7 @@ export default function CatalogWorkspace() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const r = await fetch('/api/catalog/upload', { method: 'POST', body: fd });
-      if (!r.ok) throw new Error();
-      const { url } = await r.json();
+      const { url } = await dashboardApi.uploadCatalogAsset(fd);
       setEditItem(prev => ({ ...prev, mediaPath: url, imageUrl: url }));
       toast.success('Image uploaded');
     } catch { toast.error('Upload failed'); }
@@ -329,9 +329,7 @@ export default function CatalogWorkspace() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const r = await fetch('/api/catalog/upload', { method: 'POST', body: fd });
-      if (!r.ok) throw new Error();
-      const { url } = await r.json();
+      const { url } = await dashboardApi.uploadCatalogAsset(fd);
       const updated = [...galleryUrls, url];
       setEditItem(prev => ({ ...prev, gallery: JSON.stringify(updated) }));
       toast.success('Gallery image added');

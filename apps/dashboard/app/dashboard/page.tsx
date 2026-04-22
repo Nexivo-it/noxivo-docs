@@ -2,20 +2,15 @@ import {
   Zap, 
   CheckCircle, 
   Workflow, 
-  CreditCard, 
-  TrendingUp, 
-  ArrowUpRight,
-  MoreVertical,
   Activity,
   ArrowRight,
   Crown,
   Sparkles,
-  BarChart3,
-  Globe2,
   ZapOff
 } from 'lucide-react';
 import { requireCurrentSession } from '../../lib/auth/current-user';
-import { queryDashboardOverview } from '../../lib/dashboard/queries';
+import { workflowEngineServerFetch } from '../../lib/api/workflow-engine-server';
+import type { DashboardOverviewData } from '../../lib/api/dashboard-aggregates';
 import Link from 'next/link';
 import { 
   WorkspaceHeader, 
@@ -28,7 +23,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await requireCurrentSession();
-  const overview = await queryDashboardOverview(session);
+  const overview = await workflowEngineServerFetch<DashboardOverviewData>('/api/v1/dashboard-data/overview');
 
   const stats = [
     { 

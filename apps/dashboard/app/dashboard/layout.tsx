@@ -1,12 +1,13 @@
 import { DashboardShell } from '../../components/dashboard-shell';
 import { requireCurrentSession } from '../../lib/auth/current-user';
-import { queryDashboardShellData } from '../../lib/dashboard/queries';
+import { workflowEngineServerFetch } from '../../lib/api/workflow-engine-server';
+import type { DashboardShellData } from '../../lib/api/dashboard-aggregates';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireCurrentSession();
-  const shellData = await queryDashboardShellData(session);
+  await requireCurrentSession();
+  const shellData = await workflowEngineServerFetch<DashboardShellData>('/api/v1/dashboard-data/shell');
 
   return (
     <DashboardShell

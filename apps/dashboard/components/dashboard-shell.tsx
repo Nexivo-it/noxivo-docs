@@ -21,6 +21,8 @@ import {
 import { ThemeToggle } from './theme-toggle';
 import { AccessRoleIcon, formatPlanLabel, formatRoleLabel } from './dashboard-workspace-ui';
 import { getDashboardNavigation } from '../lib/dashboard/navigation';
+import { logoutFromWorkflowEngine } from '../lib/api/dashboard-auth-client';
+import { dashboardApi } from '../lib/api/dashboard-api';
 
 const COLLAPSE_KEY = 'nf_sidebar_collapsed';
 const AGENCY_CONTEXT_KEY = 'nf_admin_agency_ctx';
@@ -86,12 +88,9 @@ export function DashboardShell({ user, agency, allAgencies, clientTenants, activ
   useEffect(() => {
     async function fetchNotifications() {
       try {
-        const res = await fetch('/api/notifications');
-        if (res.ok) {
-          const data = await res.json();
-          setNotifications(data.notifications || []);
-          setUnreadCount(data.unreadCount || 0);
-        }
+        const data = await dashboardApi.getNotifications();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
       } catch {}
     }
     fetchNotifications();
@@ -100,21 +99,13 @@ export function DashboardShell({ user, agency, allAgencies, clientTenants, activ
   }, []);
 
   const handleMarkAsRead = async (id: string) => {
-    await fetch('/api/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'markAsRead', notificationId: id })
-    });
+    await dashboardApi.markNotificationAsRead(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const handleMarkAllAsRead = async () => {
-    await fetch('/api/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'markAllAsRead' })
-    });
+    await dashboardApi.markAllNotificationsAsRead();
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };
@@ -404,10 +395,12 @@ export function DashboardShell({ user, agency, allAgencies, clientTenants, activ
     setIsLoggingOut(true);
 
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await logoutFromWorkflowEngine();
+    } catch (error) {
+      console.error('Dashboard logout failed, proceeding with local cleanup', error);
+    } finally {
       router.push('/auth/login');
       router.refresh();
-    } finally {
       setIsLoggingOut(false);
     }
   }

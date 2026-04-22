@@ -1,25 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, Play, Square, RotateCcw, Trash2, QrCode, Phone, User, Settings, Eye, EyeOff } from 'lucide-react';
-
-interface MessagingSession {
-  name: string;
-  status: string;
-  config: Record<string, unknown>;
-  me: { id: string; pushName: string } | null;
-  engine: { engine: string };
-}
-
-interface MessagingQR {
-  value?: string;
-}
+import { RefreshCw, Play, Square, RotateCcw, Trash2, QrCode, User, EyeOff } from 'lucide-react';
+import { dashboardApi, type AdminMessagingSession } from '@/lib/api/dashboard-api';
+import { buildWorkflowEngineUrl } from '@/lib/api/workflow-engine-client';
 
 export default function MessagingDashboardPage() {
-  const [sessions, setSessions] = useState<MessagingSession[]>([]);
+  const [sessions, setSessions] = useState<AdminMessagingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<string | null>(null);
-  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [showQR, setShowQR] = useState<string | null>(null);
   const [qrData, setQrData] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -27,11 +16,8 @@ export default function MessagingDashboardPage() {
   const fetchSessions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/messaging-proxy/default/sessions');
-      if (res.ok) {
-        const data = await res.json();
-        setSessions(Array.isArray(data) ? data : []);
-      }
+      const data = await dashboardApi.listAdminMessagingSessions();
+      setSessions(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Failed to fetch sessions:', e);
     }
@@ -42,43 +28,44 @@ export default function MessagingDashboardPage() {
     fetchSessions();
   }, [fetchSessions]);
 
-  const doAction = async (sessionName: string, action: string, method: string = 'POST') => {
-    setAction(`${sessionName}:${action}`);
+  const doAction = async (sessionId: string, actionName: 'start' | 'stop' | 'restart' | 'logout') => {
+    setAction(`${sessionId}:${actionName}`);
     setError('');
     try {
-      const res = await fetch(`/api/messaging-proxy/${sessionName}/${action}`, { method });
-      if (!res.ok) {
-        const err = await res.text();
-        setError(`Failed: ${err}`);
-      } else {
-        await fetchSessions();
-      }
+      await dashboardApi.controlAdminMessagingSession(sessionId, actionName);
+      await fetchSessions();
     } catch (e: any) {
       setError(e.message);
     }
     setAction(null);
   };
 
-  const getQR = async (sessionName: string) => {
-    setShowQR(sessionName);
+  const deleteSession = async (sessionId: string) => {
+    setAction(`${sessionId}:delete`);
+    setError('');
     try {
-      const res = await fetch(`/api/messaging-proxy/${sessionName}/auth/qr?format=raw`);
-      if (res.ok) {
-        const data = await res.json() as MessagingQR;
-        setQrData(data.value || '');
-      }
+      await dashboardApi.deleteAdminMessagingSession(sessionId);
+      await fetchSessions();
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setAction(null);
+  };
+
+  const getQR = async (sessionId: string) => {
+    setShowQR(sessionId);
+    try {
+      const data = await dashboardApi.getAdminMessagingQr(sessionId) as { code?: string };
+      setQrData(data.code || '');
     } catch (e) {
       console.error('Failed to get QR:', e);
     }
   };
 
-  const getMe = async (sessionName: string) => {
+  const getMe = async (sessionId: string) => {
     try {
-      const res = await fetch(`/api/messaging-proxy/${sessionName}/me`);
-      if (res.ok) {
-        const data = await res.json();
-        alert(`Logged in as: ${JSON.stringify(data, null, 2)}`);
-      }
+      const data = await dashboardApi.getAdminMessagingStatus(sessionId);
+      alert(`Session status: ${JSON.stringify(data, null, 2)}`);
     } catch (e) {
       console.error('Failed to get me:', e);
     }
@@ -130,33 +117,33 @@ export default function MessagingDashboardPage() {
 
             <div className="grid grid-cols-4 gap-2">
               {session.status !== 'WORKING' && session.status !== 'STARTING' && (
-                <button onClick={() => doAction(session.name, 'start')} disabled={!!action} className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded text-green-500" title="Start">
+                <button onClick={() => doAction(session.id, 'start')} disabled={!!action} className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded text-green-500" title="Start">
                   <Play className="w-4 h-4" />
                 </button>
               )}
               {session.status === 'WORKING' && (
-                <button onClick={() => doAction(session.name, 'stop')} disabled={!!action} className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-yellow-500" title="Stop">
+                <button onClick={() => doAction(session.id, 'stop')} disabled={!!action} className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-yellow-500" title="Stop">
                   <Square className="w-4 h-4" />
                 </button>
               )}
-              <button onClick={() => doAction(session.name, 'restart')} disabled={!!action} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded text-blue-500" title="Restart">
+              <button onClick={() => doAction(session.id, 'restart')} disabled={!!action} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded text-blue-500" title="Restart">
                 <RotateCcw className="w-4 h-4" />
               </button>
-              <button onClick={() => doAction(session.name, 'logout', 'POST')} disabled={!!action} className="p-2 bg-orange-500/20 hover:bg-orange-500/30 rounded text-orange-500" title="Logout">
+              <button onClick={() => doAction(session.id, 'logout')} disabled={!!action} className="p-2 bg-orange-500/20 hover:bg-orange-500/30 rounded text-orange-500" title="Logout">
                 <EyeOff className="w-4 h-4" />
               </button>
-              <button onClick={() => getQR(session.name)} className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded text-purple-500" title="Get QR">
+              <button onClick={() => getQR(session.id)} className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded text-purple-500" title="Get QR">
                 <QrCode className="w-4 h-4" />
               </button>
-              <button onClick={() => getMe(session.name)} className="p-2 bg-cyan-500/20 hover:bg-cyan-500/30 rounded text-cyan-500" title="Get Me">
+              <button onClick={() => getMe(session.id)} className="p-2 bg-cyan-500/20 hover:bg-cyan-500/30 rounded text-cyan-500" title="Get Me">
                 <User className="w-4 h-4" />
               </button>
-              <button onClick={() => { if (confirm('Delete session?')) doAction(session.name, '', 'DELETE') }} disabled={!!action} className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded text-red-500" title="Delete">
+              <button onClick={() => { if (confirm('Delete session?')) deleteSession(session.id) }} disabled={!!action} className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded text-red-500" title="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
 
-            {action?.startsWith(session.name) && (
+            {action?.startsWith(session.id) && (
               <div className="mt-2 text-xs text-muted-foreground">Processing...</div>
             )}
           </div>
@@ -188,8 +175,8 @@ export default function MessagingDashboardPage() {
       <div className="mt-6 p-4 bg-muted rounded-lg">
         <h3 className="font-semibold mb-2">Quick Links</h3>
         <div className="flex flex-wrap gap-2">
-          <a href="/api/messaging-proxy/default/sessions" target="_blank" className="px-3 py-1 bg-card rounded text-sm hover:bg-accent">All Sessions (JSON)</a>
-          <a href="/api/settings/qr" target="_blank" className="px-3 py-1 bg-card rounded text-sm hover:bg-accent">Get QR (Current)</a>
+          <a href={buildWorkflowEngineUrl('/api/v1/admin/sessions')} target="_blank" className="px-3 py-1 bg-card rounded text-sm hover:bg-accent">All Sessions (JSON)</a>
+          <a href={buildWorkflowEngineUrl('/api/v1/settings/qr')} target="_blank" className="px-3 py-1 bg-card rounded text-sm hover:bg-accent">Get QR (Current)</a>
         </div>
       </div>
     </div>

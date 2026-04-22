@@ -18,6 +18,7 @@ import {
   Badge,
 } from '../../../../components/dashboard-workspace-ui';
 import { getAllTemplates, type WorkflowTemplate } from '../../../../lib/workflows/templates-library';
+import { dashboardApi } from '../../../../lib/api/dashboard-api';
 
 const categoryLabels: Record<WorkflowTemplate['category'], string> = {
   crm: 'CRM',
@@ -49,15 +50,9 @@ export function TemplatesClient({ canManage }: TemplatesClientProps) {
     setError(null);
     
     try {
-      const res = await fetch('/api/workflows/clone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId })
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok && data.success) {
+      const data = await dashboardApi.cloneWorkflow(templateId);
+
+      if (data.success) {
         router.push(`/dashboard/workflows/${data.workflowId}/edit`);
       } else {
         setError(data.error || 'Failed to clone template');

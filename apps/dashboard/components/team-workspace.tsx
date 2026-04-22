@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Send, Trash2, Users } from 'lucide-react';
 import type { AgencyInvitationRecord, AgencyTeamRole, TeamMemberRecord } from '@noxivo/contracts';
+import { dashboardApi } from '@/lib/api/dashboard-api';
 import {
   Badge,
   EmptyWorkspaceState,
@@ -36,16 +37,6 @@ const inviteableRoles: InviteRole[] = ['agency_admin', 'agency_member', 'viewer'
 
 function canManageTeam(role: TeamWorkspaceProps['actorRole']): boolean {
   return role === 'platform_admin' || role === 'agency_owner' || role === 'agency_admin';
-}
-
-async function readErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
-  const payload = await response.json().catch(() => null);
-
-  if (payload && typeof payload === 'object' && typeof (payload as { error?: unknown }).error === 'string') {
-    return (payload as { error: string }).error;
-  }
-
-  return fallbackMessage;
 }
 
 export function TeamWorkspace({
@@ -103,20 +94,12 @@ export function TeamWorkspace({
     setFeedback(null);
 
     try {
-      const response = await fetch(`/api/agencies/${agencyId}/invitations`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          email: inviteEmail,
-          fullName: inviteFullName || undefined,
-          role: inviteRole,
-          tenantIds: inviteRole === 'agency_admin' ? [] : selectedTenantIds,
-        }),
+      await dashboardApi.createAgencyInvitation(agencyId, {
+        email: inviteEmail,
+        fullName: inviteFullName || undefined,
+        role: inviteRole,
+        tenantIds: inviteRole === 'agency_admin' ? [] : selectedTenantIds,
       });
-
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Unable to send team invitation'));
-      }
 
       setInviteEmail('');
       setInviteFullName('');
@@ -143,13 +126,7 @@ export function TeamWorkspace({
     setFeedback(null);
 
     try {
-      const response = await fetch(`/api/agencies/${agencyId}/invitations/${invitationId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Unable to revoke invitation'));
-      }
+      await dashboardApi.revokeAgencyInvitation(agencyId, invitationId);
 
       setFeedback({ tone: 'success', message: 'Invitation revoked.' });
       router.refresh();

@@ -17,7 +17,7 @@ import {
   WorkspacePanel, 
   Badge,
 } from '../../../components/dashboard-workspace-ui';
-import type { BillingPageData } from '../../../lib/dashboard/queries';
+import type { BillingPageData } from '../../../lib/api/dashboard-aggregates';
 
 interface BillingClientProps {
   data: BillingPageData;

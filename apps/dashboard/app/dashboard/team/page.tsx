@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { requireCurrentSession } from '../../../lib/auth/current-user';
 import { canManageAgencyTeam } from '../../../lib/auth/authorization';
-import { queryAgencyOverview, queryTeamManagement } from '../../../lib/dashboard/queries';
+import type { AgencyOverviewData, TeamManagementData } from '../../../lib/dashboard/queries';
+import { workflowEngineServerFetch } from '../../../lib/api/workflow-engine-server';
 import { TeamWorkspace } from '../../../components/team-workspace';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +12,10 @@ export default async function TeamPage() {
   if (!canManageAgencyTeam(session)) {
     redirect('/dashboard/conversations');
   }
+  const agencyId = encodeURIComponent(session.actor.agencyId);
   const [agencyOverview, teamManagement] = await Promise.all([
-    queryAgencyOverview(session),
-    queryTeamManagement(session),
+    workflowEngineServerFetch<AgencyOverviewData>(`/api/v1/agencies/${agencyId}`),
+    workflowEngineServerFetch<TeamManagementData>(`/api/v1/agencies/${agencyId}/team`),
   ]);
 
   return (
