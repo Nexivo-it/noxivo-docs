@@ -1,0 +1,26 @@
+{
+  "title": {
+    "message": "Noxivo Docs",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "Noxivo Logo",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Documentation": {
+    "message": "Documentation",
+    "description": "Navbar item with label Documentation"
+  },
+  "item.label.API Reference (Swagger)": {
+    "message": "API Reference (Swagger)",
+    "description": "Navbar item with label API Reference (Swagger)"
+  },
+  "item.label.Go to Dashboard": {
+    "message": "Go to Dashboard",
+    "description": "Navbar item with label Go to Dashboard"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

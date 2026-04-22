@@ -1,0 +1,1448 @@
+{
+  "basePath": "/api/v1",
+  "source": "apps/workflow-engine/src/modules",
+  "categories": [
+    {
+      "category": "dashboard-auth",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/dashboard-auth/branding/:agencySlug",
+          "description": "Resolve pre-login agency branding by slug.",
+          "auth": "Public (no API key, no session required)",
+          "params": {
+            "agencySlug": "string (required)"
+          },
+          "response": {
+            "200": {
+              "agencyId": "string",
+              "agencyName": "string",
+              "agencySlug": "string",
+              "branding": "WhiteLabelConfig"
+            },
+            "404": {
+              "error": "Not found"
+            }
+          },
+          "example": {
+            "curl": "curl -X GET '$BASE_URL/api/v1/dashboard-auth/branding/acme'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/dashboard-auth/login",
+          "description": "Authenticate user and create noxivo_session cookie.",
+          "auth": "Public endpoint; sets HttpOnly session cookie on success",
+          "requestBody": {
+            "email": "string email (required)",
+            "password": "string min 8 chars (required)"
+          },
+          "response": {
+            "200": {
+              "user": {
+                "id": "string",
+                "agencyId": "string",
+                "tenantId": "string",
+                "tenantIds": [
+                  "string"
+                ],
+                "email": "string",
+                "fullName": "string",
+                "role": "platform_admin | agency_owner | agency_admin | agency_member | viewer",
+                "status": "active | suspended"
+              },
+              "setCookie": "noxivo_session"
+            },
+            "401": {
+              "error": "Invalid email or password"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/dashboard-auth/login' -H 'content-type: application/json' -d '{\"email\":\"owner@acme.com\",\"password\":\"password123\"}' -c cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/dashboard-auth/signup",
+          "description": "Create owner/invited user account and create session cookie.",
+          "auth": "Public endpoint; sets HttpOnly session cookie on success",
+          "requestBody": {
+            "email": "string email (required)",
+            "password": "string min 8 chars (required)",
+            "fullName": "string 2-120 chars (required)",
+            "agencyName": "string 2-120 chars (required when invitationToken is omitted)",
+            "invitationToken": "string (optional)"
+          },
+          "response": {
+            "200": {
+              "user": "AuthenticatedUser",
+              "setCookie": "noxivo_session"
+            },
+            "400": {
+              "error": "Validation or invitation/domain error"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/dashboard-auth/signup' -H 'content-type: application/json' -d '{\"email\":\"new@acme.com\",\"password\":\"password123\",\"fullName\":\"Jane Doe\",\"agencyName\":\"Acme\"}' -c cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/dashboard-auth/logout",
+          "description": "Delete active auth session token (if any) and clear session cookie.",
+          "auth": "Public endpoint; consumes optional noxivo_session cookie",
+          "response": {
+            "200": {
+              "ok": true
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/dashboard-auth/logout' -b cookies.txt -c cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/dashboard-auth/session",
+          "description": "Return current authenticated actor resolved from noxivo_session cookie.",
+          "auth": "Cookie session required (noxivo_session)",
+          "response": {
+            "200": {
+              "user": "Session actor"
+            },
+            "401": {
+              "error": "Unauthorized"
+            }
+          },
+          "example": {
+            "curl": "curl -X GET '$BASE_URL/api/v1/dashboard-auth/session' -b cookies.txt"
+          }
+        }
+      ]
+    },
+    {
+      "category": "agencies",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/agencies",
+          "description": "List agencies accessible to current session actor.",
+          "auth": "Cookie session required (noxivo_session)",
+          "response": {
+            "200": {
+              "items": "AgencySummary[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/agencies' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/agencies",
+          "description": "Create a new agency and default tenant (platform admin only).",
+          "auth": "Cookie session required; platform owner scope",
+          "requestBody": {
+            "name": "string (required)",
+            "slug": "string kebab-case (required)",
+            "plan": "reseller_basic | reseller_pro | enterprise (required)",
+            "customDomain": "string|null (optional)",
+            "supportEmail": "email|null (optional)",
+            "primaryColor": "#RRGGBB|null (optional)",
+            "ownerEmail": "email (optional)",
+            "ownerFullName": "string (optional)"
+          },
+          "response": {
+            "201": {
+              "agency": "AgencySummary",
+              "ownerInvitation": {
+                "email": "string",
+                "signupUrl": "string"
+              }
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/agencies' -b cookies.txt -H 'content-type: application/json' -d '{\"name\":\"Acme\",\"slug\":\"acme\",\"plan\":\"reseller_basic\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/agencies/:agencyId",
+          "description": "Get agency admin detail including tenants summary and team counts.",
+          "auth": "Cookie session required; target agency access",
+          "params": {
+            "agencyId": "ObjectId"
+          },
+          "response": {
+            "200": {
+              "agency": "AgencySummary",
+              "tenantCount": "number",
+              "teamCount": "number",
+              "tenants": "TenantSummary[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/agencies/$AGENCY_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/agencies/:agencyId",
+          "description": "Update agency metadata/branding/plan/status.",
+          "auth": "Cookie session required; canManageAgencySettings + target agency",
+          "requestBody": {
+            "name": "string (optional)",
+            "customDomain": "string|null (optional)",
+            "supportEmail": "email|null (optional)",
+            "primaryColor": "#RRGGBB|null (optional)",
+            "logoUrl": "url|null (optional)",
+            "hidePlatformBranding": "boolean (optional)",
+            "plan": "AgencyPlan (platform owner only)",
+            "status": "trial|active|suspended|cancelled (platform owner only)"
+          },
+          "response": {
+            "200": "AgencySummary"
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/agencies/$AGENCY_ID' -b cookies.txt -H 'content-type: application/json' -d '{\"supportEmail\":\"help@acme.com\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/agencies/:agencyId/tenants",
+          "description": "List tenants for an agency.",
+          "auth": "Cookie session required; target agency access",
+          "response": {
+            "200": "TenantSummary[]"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/agencies/$AGENCY_ID/tenants' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/agencies/:agencyId/tenants",
+          "description": "Create tenant under agency (enforces usage limit and slug uniqueness).",
+          "auth": "Cookie session required; canManageAgencySettings + target agency",
+          "requestBody": {
+            "slug": "string kebab-case (required)",
+            "name": "string (required)",
+            "region": "eu-west-1 | me-central-1 | us-east-1",
+            "billingMode": "agency_pays | tenant_pays",
+            "whiteLabelOverrides": "partial WhiteLabelConfig (optional)"
+          },
+          "response": {
+            "201": "TenantSummary"
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/agencies/$AGENCY_ID/tenants' -b cookies.txt -H 'content-type: application/json' -d '{\"slug\":\"acme-sales\",\"name\":\"Sales\",\"region\":\"us-east-1\",\"billingMode\":\"agency_pays\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/agencies/:agencyId/tenants/:tenantId",
+          "description": "Get single tenant detail in agency scope.",
+          "auth": "Cookie session required; target agency access",
+          "response": {
+            "200": "TenantSummary",
+            "404": {
+              "error": "Tenant not found"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/agencies/$AGENCY_ID/tenants/$TENANT_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/agencies/:agencyId/team",
+          "description": "List agency team members and pending invitations.",
+          "auth": "Cookie session required; target agency access",
+          "response": {
+            "200": {
+              "members": "TeamMemberRecord[]",
+              "invitations": "AgencyInvitationRecord[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/agencies/$AGENCY_ID/team' -b cookies.txt"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/agencies/:agencyId/team/:userId",
+          "description": "Update team member role/status/tenant access.",
+          "auth": "Cookie session required; canManageAgencyTeam + target agency",
+          "requestBody": {
+            "role": "agency_owner | agency_admin | agency_member | viewer (optional)",
+            "status": "active | suspended (optional)",
+            "tenantIds": [
+              "string"
+            ],
+            "defaultTenantId": "string (optional)"
+          },
+          "response": {
+            "200": "TeamMemberRecord"
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/agencies/$AGENCY_ID/team/$USER_ID' -b cookies.txt -H 'content-type: application/json' -d '{\"role\":\"agency_admin\"}'"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/agencies/:agencyId/team/:userId",
+          "description": "Remove team member (blocks last-owner removal).",
+          "auth": "Cookie session required; canManageAgencyTeam + target agency",
+          "response": {
+            "200": {
+              "success": true
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/agencies/$AGENCY_ID/team/$USER_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/agencies/:agencyId/invitations",
+          "description": "List pending invitations for agency.",
+          "auth": "Cookie session required; target agency access",
+          "response": {
+            "200": "AgencyInvitationRecord[]"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/agencies/$AGENCY_ID/invitations' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/agencies/:agencyId/invitations",
+          "description": "Create/refresh invitation with signup URL.",
+          "auth": "Cookie session required; canManageAgencyTeam + target agency",
+          "requestBody": {
+            "email": "string email (required)",
+            "fullName": "string (optional)",
+            "role": "agency_admin | agency_member | viewer",
+            "tenantIds": [
+              "string"
+            ]
+          },
+          "response": {
+            "201": {
+              "invitation": "AgencyInvitationRecord",
+              "signupUrl": "string"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/agencies/$AGENCY_ID/invitations' -b cookies.txt -H 'content-type: application/json' -d '{\"email\":\"agent@acme.com\",\"role\":\"agency_member\"}'"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/agencies/:agencyId/invitations/:invitationId",
+          "description": "Update invitation fields (role/tenant scope/etc.).",
+          "auth": "Cookie session required; canManageAgencyTeam + target agency",
+          "requestBody": {
+            "email": "string email (optional)",
+            "fullName": "string|null (optional)",
+            "role": "AgencyTeamRole (optional)",
+            "tenantIds": [
+              "string"
+            ],
+            "status": "pending|accepted|expired|revoked (optional)"
+          },
+          "response": {
+            "200": "AgencyInvitationRecord"
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/agencies/$AGENCY_ID/invitations/$INVITATION_ID' -b cookies.txt -H 'content-type: application/json' -d '{\"role\":\"agency_admin\"}'"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/agencies/:agencyId/invitations/:invitationId",
+          "description": "Revoke invitation.",
+          "auth": "Cookie session required; canManageAgencyTeam + target agency",
+          "response": {
+            "200": {
+              "success": true
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/agencies/$AGENCY_ID/invitations/$INVITATION_ID' -b cookies.txt"
+          }
+        }
+      ]
+    },
+    {
+      "category": "workflows",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/workflows",
+          "description": "List workflow definitions in session agency/tenant scope.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "workflows": [
+                {
+                  "id": "string",
+                  "name": "string",
+                  "description": "string",
+                  "status": "active|paused",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/workflows' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/workflows",
+          "description": "Create starter workflow definition.",
+          "auth": "Cookie session + canManageWorkflows",
+          "requestBody": {
+            "name": "string (required)",
+            "description": "string (optional)",
+            "channel": "string (optional, default whatsapp)"
+          },
+          "response": {
+            "200": {
+              "id": "string",
+              "name": "string",
+              "key": "string",
+              "status": "paused"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/workflows' -b cookies.txt -H 'content-type: application/json' -d '{\"name\":\"Lead Follow-up\"}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/workflows/clone",
+          "description": "Clone a template workflow into current scope.",
+          "auth": "Cookie session + canManageWorkflows",
+          "requestBody": {
+            "templateId": "string (required)",
+            "customName": "string (optional)"
+          },
+          "response": {
+            "200": {
+              "success": true,
+              "workflowId": "string",
+              "workflowName": "string"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/workflows/clone' -b cookies.txt -H 'content-type: application/json' -d '{\"templateId\":\"sales-template\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/workflows/:workflowId",
+          "description": "Fetch raw workflow definition document.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "workflow": "WorkflowDefinition"
+            },
+            "404": {
+              "error": "Workflow not found"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/workflows/$WORKFLOW_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/workflows/:workflowId",
+          "description": "Update workflow metadata or graphs (editorGraph/compiledDag).",
+          "auth": "Cookie session + canManageWorkflows",
+          "requestBody": {
+            "name": "string (optional)",
+            "description": "string (optional)",
+            "editorGraph": "object (optional)",
+            "compiledDag": "object (optional)"
+          },
+          "response": {
+            "200": {
+              "success": true,
+              "workflow": "WorkflowDefinition"
+            }
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/workflows/$WORKFLOW_ID' -b cookies.txt -H 'content-type: application/json' -d '{\"description\":\"Updated\"}'"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/workflows/:workflowId",
+          "description": "Delete workflow definition.",
+          "auth": "Cookie session + canManageWorkflows",
+          "response": {
+            "200": {
+              "success": true
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/workflows/$WORKFLOW_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/workflows/:workflowId/toggle",
+          "description": "Toggle workflow active/paused flag.",
+          "auth": "Cookie session + canManageWorkflows",
+          "response": {
+            "200": {
+              "success": true,
+              "isActive": "boolean"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/workflows/$WORKFLOW_ID/toggle' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/workflows/:workflowId/runs",
+          "description": "Return recent workflow runs and related execution events.",
+          "auth": "Cookie session + canManageWorkflows",
+          "response": {
+            "200": {
+              "runs": "WorkflowRun[]",
+              "events": "WorkflowExecutionEvent[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/workflows/$WORKFLOW_ID/runs' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/workflows/:workflowId/analytics",
+          "description": "Aggregate node execution analytics map.",
+          "auth": "Cookie session + canManageWorkflows",
+          "response": {
+            "200": {
+              "analytics": {
+                "<nodeId>": {
+                  "nodeId": "string",
+                  "executionCount": "number",
+                  "successCount": "number",
+                  "failureCount": "number",
+                  "avgDurationMs": "number|null"
+                }
+              }
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/workflows/$WORKFLOW_ID/analytics' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/workflows/:workflowId/execution-events",
+          "description": "SSE stream for workflow execution events with hydration of latest run.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "text/event-stream"
+          },
+          "example": {
+            "curl": "curl -N '$BASE_URL/api/v1/workflows/$WORKFLOW_ID/execution-events' -b cookies.txt"
+          }
+        }
+      ]
+    },
+    {
+      "category": "catalog",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/catalog",
+          "description": "List catalog items for tenant.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "items": "CatalogItem[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/catalog' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/catalog",
+          "description": "Create catalog item from payload envelope.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "payload": "object (catalog item fields)"
+          },
+          "response": {
+            "200": {
+              "item": "CatalogItem"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/catalog' -b cookies.txt -H 'content-type: application/json' -d '{\"payload\":{\"name\":\"Haircut\"}}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/catalog/:id",
+          "description": "Get single catalog item by id.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "CatalogItem",
+            "404": {
+              "error": "Item not found"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/catalog/$ITEM_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/catalog/:id",
+          "description": "Update catalog item fields.",
+          "auth": "Cookie session required",
+          "requestBody": "object (partial catalog item fields)",
+          "response": {
+            "200": "CatalogItem"
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/catalog/$ITEM_ID' -b cookies.txt -H 'content-type: application/json' -d '{\"priceAmount\":45}'"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/catalog/:id",
+          "description": "Delete catalog item.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "success": true
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/catalog/$ITEM_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/catalog/settings",
+          "description": "Read catalog settings + storage/branding context.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "CatalogSettings"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/catalog/settings' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/catalog/settings",
+          "description": "Update catalog settings including business profile and storage options.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "businessName": "string (optional)",
+            "currency": "USD|EUR|GBP|VND|AUD|CAD (optional)",
+            "timezone": "string (optional)",
+            "accentColor": "string (optional)",
+            "logoUrl": "string (optional)",
+            "defaultDuration": "number (optional)",
+            "storage": "object (provider/publicConfig/secretConfig/pathPrefix, optional)"
+          },
+          "response": {
+            "200": "CatalogSettings"
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/catalog/settings' -b cookies.txt -H 'content-type: application/json' -d '{\"currency\":\"USD\"}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/catalog/upload",
+          "description": "Upload catalog media multipart file to /public/uploads.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "multipart": "file field named 'file'"
+          },
+          "response": {
+            "200": {
+              "url": "string",
+              "filename": "string",
+              "type": "mime",
+              "size": "number",
+              "isImage": "boolean",
+              "isPdf": "boolean"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/catalog/upload' -b cookies.txt -F 'file=@/tmp/image.png'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/catalog/publish",
+          "description": "Publish catalog items to destination (webhook/WordPress/Shopify adapters).",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "destination": "unknown destination selector",
+            "items": "CatalogItem[] (optional explicit list)"
+          },
+          "response": {
+            "200": "PublishResult"
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/catalog/publish' -b cookies.txt -H 'content-type: application/json' -d '{\"destination\":\"webhook\"}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/catalog/ai-help",
+          "description": "Generate metadata/SEO suggestions for catalog entries.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "mode": "'seo-only' or omitted",
+            "context": "object"
+          },
+          "response": {
+            "200": {
+              "suggestions": "object|array"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/catalog/ai-help' -b cookies.txt -H 'content-type: application/json' -d '{\"context\":{\"itemType\":\"service\",\"name\":\"Haircut\"}}'"
+          }
+        }
+      ]
+    },
+    {
+      "category": "team-inbox",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox",
+          "description": "List conversations with optional query + status filters.",
+          "auth": "Cookie session required",
+          "query": {
+            "query": "string (optional search)",
+            "status": "all|active|archived (optional, default active)"
+          },
+          "response": {
+            "200": "ConversationListItem[]"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox?status=active&query=john' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/events",
+          "description": "SSE connect handshake for inbox events.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "text/event-stream (connected event then close)"
+          },
+          "example": {
+            "curl": "curl -N '$BASE_URL/api/v1/team-inbox/events' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/stats",
+          "description": "Return high-level agency/tenant operational counts.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "agencies": "number",
+              "tenants": "number",
+              "conversations": "number",
+              "messages": "number",
+              "users": "number",
+              "activeWorkflows": "number",
+              "activeSessions": "number",
+              "timestamp": "ISO date"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/stats' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/plugins",
+          "description": "List plugin installations for tenant inbox context.",
+          "auth": "Cookie session required",
+          "query": {
+            "pluginId": "string (optional)"
+          },
+          "response": {
+            "200": "PluginInstallation[]"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/plugins?pluginId=shop' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/plugins",
+          "description": "Upsert plugin installation toggles/config.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "pluginId": "string (required)",
+            "pluginVersion": "string (required)",
+            "enabled": "boolean (required)",
+            "config": "object (optional)"
+          },
+          "response": {
+            "200": "PluginInstallation"
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/plugins' -b cookies.txt -H 'content-type: application/json' -d '{\"pluginId\":\"shop\",\"pluginVersion\":\"1.0.0\",\"enabled\":true}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/billing",
+          "description": "Return agency billing plan/features for inbox UI.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "BillingSummary"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/billing' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/leads",
+          "description": "List lead-tagged contacts linked to conversations.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "{ conversationId, contactId, contactName }[]"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/leads' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/assign",
+          "description": "Assign/unassign a conversation.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "assignedTo": "string|null"
+          },
+          "response": {
+            "200": {
+              "success": true,
+              "assignedTo": "string|null"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/assign' -b cookies.txt -H 'content-type: application/json' -d '{\"assignedTo\":\"$USER_ID\"}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/read",
+          "description": "Mark conversation unreadCount to zero.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "success": true,
+              "unreadCount": 0
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/read' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/actions",
+          "description": "Archive/unarchive conversation metadata flag.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "action": "archive | unarchive"
+          },
+          "response": {
+            "200": {
+              "success": true,
+              "isArchived": "boolean"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/actions' -b cookies.txt -H 'content-type: application/json' -d '{\"action\":\"archive\"}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/unhandoff",
+          "description": "Return handoff/assigned conversation back to open queue.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "conversationId": "string",
+              "status": "open"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/unhandoff' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/suggest-reply",
+          "description": "Generate deterministic suggestion text (assist/auto mode).",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "mode": "assist | auto (optional)"
+          },
+          "response": {
+            "200": {
+              "mode": "assist|auto",
+              "reply": "string"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/suggest-reply' -b cookies.txt -H 'content-type: application/json' -d '{\"mode\":\"assist\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/:conversationId/lead",
+          "description": "Get leadSaved state and latest CRM note.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "leadSaved": "boolean",
+              "note": "string|null"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/lead' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/lead",
+          "description": "Save lead tag and optional note on contact profile.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "note": "string (optional)"
+          },
+          "response": {
+            "200": {
+              "success": true,
+              "leadSaved": true
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/lead' -b cookies.txt -H 'content-type: application/json' -d '{\"note\":\"high intent\"}'"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/team-inbox/:conversationId/lead",
+          "description": "Remove lead tag from contact profile.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "success": true,
+              "leadSaved": false
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/lead' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/:conversationId/messages",
+          "description": "Cursor-paginated conversation history.",
+          "auth": "Cookie session required",
+          "query": {
+            "limit": "number 1-100 (optional, default 20)",
+            "cursor": "base64url cursor (optional)"
+          },
+          "response": {
+            "200": {
+              "messages": "Message[]",
+              "hasMore": "boolean",
+              "nextCursor": "string|null"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/messages?limit=20' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/messages",
+          "description": "Send operator outbound message through internal inbox service.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "content": "string",
+            "attachments": "InternalInboxSendAttachment[] (optional)",
+            "replyToMessageId": "string (optional)"
+          },
+          "response": {
+            "200": "InternalInboxSendResult"
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/messages' -b cookies.txt -H 'content-type: application/json' -d '{\"content\":\"Hello!\"}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/messages/:messageId",
+          "description": "Resend an existing message payload.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": {
+              "messageId": "string",
+              "resentAt": "ISO date",
+              "result": "InternalInboxSendResult"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/messages/$MESSAGE_ID' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/:conversationId/delivery-history",
+          "description": "List latest delivery events for conversation messages.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "DeliveryEvent[]"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/delivery-history' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/team-inbox/:conversationId/crm",
+          "description": "Load CRM profile for conversation/contact.",
+          "auth": "Cookie session required",
+          "response": {
+            "200": "CrmConversationProfile"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/crm' -b cookies.txt"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/team-inbox/:conversationId/crm",
+          "description": "Mutate CRM profile (tags, notes, fields) for conversation.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "action": "mutation action (e.g. add_note)",
+            "...": "mutation payload"
+          },
+          "response": {
+            "200": "CrmConversationProfile"
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/crm' -b cookies.txt -H 'content-type: application/json' -d '{\"action\":\"add_note\",\"note\":{\"body\":\"Called today\"}}'"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/team-inbox/:conversationId/messages/:messageId/actions",
+          "description": "Apply message action: delete, star, unstar.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "action": "delete | star | unstar"
+          },
+          "response": {
+            "200": {
+              "success": true,
+              "status_or_starred": "revoked | boolean"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/team-inbox/$CONVERSATION_ID/messages/$MESSAGE_ID/actions' -b cookies.txt -H 'content-type: application/json' -d '{\"action\":\"star\"}'"
+          }
+        }
+      ]
+    },
+    {
+      "category": "settings",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/credentials",
+          "description": "List tenant credentials (provider/display/status/config metadata).",
+          "auth": "Cookie session + canManageCredentials",
+          "response": {
+            "200": {
+              "credentials": "CredentialSummary[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/credentials' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/credentials",
+          "description": "Upsert provider credentials and mirror shop providers to DataSourceModel.",
+          "auth": "Cookie session + canManageCredentials",
+          "requestBody": {
+            "provider": "airtable | google_sheets | shopify | woocommerce",
+            "displayName": "string 2-80 (optional)",
+            "secret": "object (provider-specific, required)",
+            "config": "object (provider-specific, optional)"
+          },
+          "response": {
+            "200": "CredentialSummary"
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/credentials' -b cookies.txt -H 'content-type: application/json' -d '{\"provider\":\"shopify\",\"secret\":{\"apiAccessToken\":\"...\"},\"config\":{\"storeUrl\":\"https://acme.myshopify.com\"}}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/shop",
+          "description": "Get per-provider entitlement/configuration/enabled status for shop integrations.",
+          "auth": "Cookie session + canManageCredentials",
+          "response": {
+            "200": {
+              "providers": "[{ provider, entitled, configured, enabled, credentialStatus, lastSyncedAt }]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/shop' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/shop",
+          "description": "Toggle a shop provider enabled/disabled with plan/credential checks.",
+          "auth": "Cookie session + canManageCredentials",
+          "requestBody": {
+            "provider": "shopify | woocommerce",
+            "enabled": "boolean"
+          },
+          "response": {
+            "200": {
+              "provider": "shopify|woocommerce",
+              "enabled": "boolean"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/shop' -b cookies.txt -H 'content-type: application/json' -d '{\"provider\":\"shopify\",\"enabled\":true}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/storage",
+          "description": "Get media storage config (secret fields redacted).",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": "MediaStorageConfig|null"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/storage' -b cookies.txt"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/settings/storage",
+          "description": "Upsert media storage configuration for agency.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "requestBody": {
+            "provider": "s3|google_drive|imagekit|cloudinary|bunny|cloudflare_r2|local",
+            "isActive": "boolean",
+            "publicBaseUrl": "string|null",
+            "publicConfig": "object",
+            "secretConfig": "object",
+            "pathPrefix": "string"
+          },
+          "response": {
+            "200": "MediaStorageConfig (redacted)",
+            "400": {
+              "error": "Failed to update storage configuration"
+            }
+          },
+          "example": {
+            "curl": "curl -X PUT '$BASE_URL/api/v1/settings/storage' -b cookies.txt -H 'content-type: application/json' -d '{\"provider\":\"imagekit\",\"isActive\":true,\"publicConfig\":{},\"secretConfig\":{}}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/notifications",
+          "description": "List latest notifications and unread count.",
+          "auth": "Cookie session required (any authenticated actor)",
+          "response": {
+            "200": {
+              "notifications": "Notification[]",
+              "unreadCount": "number"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/notifications' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/notifications",
+          "description": "Mark a single notification/all notifications as read.",
+          "auth": "Cookie session required",
+          "requestBody": {
+            "action": "markAsRead | markAllAsRead",
+            "notificationId": "string (required for markAsRead)"
+          },
+          "response": {
+            "200": {
+              "success": true
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/notifications' -b cookies.txt -H 'content-type: application/json' -d '{\"action\":\"markAllAsRead\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/imagekit-auth",
+          "description": "Return ImageKit auth signature/token for direct upload clients.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": {
+              "token": "string",
+              "expire": "number",
+              "signature": "string",
+              "publicKey": "string"
+            },
+            "404": {
+              "error": "ImageKit is not configured for this agency"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/imagekit-auth' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/webhook-inbox-activation",
+          "description": "Get activation state for webhook inbox ingest channel.",
+          "auth": "Cookie session + canManageCredentials",
+          "response": {
+            "200": {
+              "isActive": "boolean",
+              "webhookUrl": "string|null",
+              "activatedAt": "string|null",
+              "deactivatedAt": "string|null"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/webhook-inbox-activation' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/webhook-inbox-activation",
+          "description": "Activate webhook inbox source and return API key once.",
+          "auth": "Cookie session + canManageCredentials",
+          "response": {
+            "200": {
+              "isActive": true,
+              "webhookUrl": "string",
+              "apiKey": "string",
+              "activatedAt": "string"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/webhook-inbox-activation' -b cookies.txt"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/settings/webhook-inbox-activation",
+          "description": "Deactivate webhook inbox activation.",
+          "auth": "Cookie session + canManageCredentials",
+          "response": {
+            "200": {
+              "isActive": false
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/settings/webhook-inbox-activation' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/webhook-inbox-sources",
+          "description": "List webhook inbox sources (secret hash excluded).",
+          "auth": "Cookie session + canManageCredentials",
+          "response": {
+            "200": {
+              "sources": "WebhookInboxSourceDto[]"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/webhook-inbox-sources' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/webhook-inbox-sources",
+          "description": "Create webhook inbox source with generated inboundPath and hashed secret.",
+          "auth": "Cookie session + canManageCredentials",
+          "requestBody": {
+            "name": "string 2-120 (required)",
+            "outboundUrl": "valid URL (required)",
+            "inboundSecret": "string (required)",
+            "outboundHeaders": "Record<string,string> (optional)"
+          },
+          "response": {
+            "201": {
+              "source": "WebhookInboxSourceDto"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/webhook-inbox-sources' -b cookies.txt -H 'content-type: application/json' -d '{\"name\":\"CRM Bridge\",\"outboundUrl\":\"https://example.com/hook\",\"inboundSecret\":\"secret\"}'"
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/settings/webhook-inbox-sources/:sourceId",
+          "description": "Update source metadata/url/headers/status/inboundSecret.",
+          "auth": "Cookie session + canManageCredentials",
+          "requestBody": {
+            "name": "string (optional)",
+            "outboundUrl": "valid URL (optional)",
+            "inboundSecret": "string (optional)",
+            "outboundHeaders": "Record<string,string> (optional)",
+            "status": "active|disabled (optional)"
+          },
+          "response": {
+            "200": {
+              "source": "WebhookInboxSourceDto"
+            }
+          },
+          "example": {
+            "curl": "curl -X PATCH '$BASE_URL/api/v1/settings/webhook-inbox-sources/$SOURCE_ID' -b cookies.txt -H 'content-type: application/json' -d '{\"status\":\"disabled\"}'"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/developer-api",
+          "description": "Return current active scoped API key status for agency/tenant.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": {
+              "key": "string|null",
+              "status": "active|inactive"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/developer-api' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/developer-api",
+          "description": "Revoke existing keys and create a new active scoped API key.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": {
+              "key": "nx_<hex>",
+              "status": "active"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/developer-api' -b cookies.txt"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/settings/developer-api",
+          "description": "Revoke all scoped developer API keys for current agency/tenant.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": {
+              "success": true
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/settings/developer-api' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/whatsapp-check",
+          "description": "Get messaging session snapshot (status/profile/qr diagnostics).",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": "DashboardMessagingSessionSnapshot + agencyId/tenantId",
+            "502": {
+              "error": "Failed to communicate with Engine API"
+            }
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/whatsapp-check' -b cookies.txt"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/settings/qr",
+          "description": "Get current QR/session snapshot for WhatsApp connection.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": "DashboardMessagingSessionSnapshot"
+          },
+          "example": {
+            "curl": "curl '$BASE_URL/api/v1/settings/qr' -b cookies.txt"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/settings/qr",
+          "description": "Login/regenerate QR by starting or restarting backing session.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "requestBody": {
+            "action": "login | regenerate (optional; default login)"
+          },
+          "response": {
+            "200": "DashboardMessagingSessionSnapshot + { bootstrapped, restarted }",
+            "502": {
+              "error": "Failed to regenerate/recover WhatsApp session"
+            }
+          },
+          "example": {
+            "curl": "curl -X POST '$BASE_URL/api/v1/settings/qr' -b cookies.txt -H 'content-type: application/json' -d '{\"action\":\"regenerate\"}'"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/settings/qr",
+          "description": "Logout/revoke WhatsApp session then return refreshed snapshot.",
+          "auth": "Cookie session + canManageAgencySettings",
+          "response": {
+            "200": {
+              "ok": true,
+              "snapshot": "DashboardMessagingSessionSnapshot"
+            }
+          },
+          "example": {
+            "curl": "curl -X DELETE '$BASE_URL/api/v1/settings/qr' -b cookies.txt"
+          }
+        }
+      ]
+    }
+  ]
+}
